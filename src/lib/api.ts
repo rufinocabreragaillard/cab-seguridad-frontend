@@ -28,10 +28,16 @@ api.interceptors.request.use(async (config) => {
 api.interceptors.response.use(
   (res) => res,
   (error: AxiosError) => {
-    const msg =
-      (error.response?.data as { detail?: string })?.detail ||
-      error.message ||
-      'Error desconocido'
+    const detail = (error.response?.data as { detail?: unknown })?.detail
+    let msg: string
+    if (Array.isArray(detail)) {
+      // FastAPI validation errors: [{loc, msg, type}, ...]
+      msg = detail.map((e: { msg?: string }) => e.msg || JSON.stringify(e)).join('; ')
+    } else if (typeof detail === 'string') {
+      msg = detail
+    } else {
+      msg = error.message || 'Error desconocido'
+    }
     return Promise.reject(new Error(msg))
   }
 )
@@ -54,6 +60,10 @@ export const usuariosApi = {
   actualizar: (id: string, datos: Partial<Usuario>) =>
     api.put<Usuario>(`/usuarios/${id}`, datos).then((r) => r.data),
   desactivar: (id: string) => api.delete(`/usuarios/${id}`),
+  listarRoles: (id: string) =>
+    api.get<{ codigo_rol: string; roles: { nombre: string; activo: boolean } }[]>(
+      `/usuarios/${id}/roles`
+    ).then((r) => r.data),
   asignarRol: (id: string, codigoRol: string) =>
     api.post(`/usuarios/${id}/roles`, { codigo_rol: codigoRol }),
   quitarRol: (id: string, codigoRol: string) =>
@@ -78,12 +88,12 @@ export const rolesApi = {
 // ─── Funciones ────────────────────────────────────────────────────────────────
 
 export const funcionesApi = {
-  listar: () => api.get<Funcion[]>('/roles/funciones').then((r) => r.data),
+  listar: () => api.get<Funcion[]>('/funciones').then((r) => r.data),
   crear: (datos: Partial<Funcion>) =>
-    api.post<Funcion>('/roles/funciones', datos).then((r) => r.data),
+    api.post<Funcion>('/funciones', datos).then((r) => r.data),
   actualizar: (id: string, datos: Partial<Funcion>) =>
-    api.put<Funcion>(`/roles/funciones/${id}`, datos).then((r) => r.data),
-  eliminar: (id: string) => api.delete(`/roles/funciones/${id}`),
+    api.put<Funcion>(`/funciones/${id}`, datos).then((r) => r.data),
+  eliminar: (id: string) => api.delete(`/funciones/${id}`),
 }
 
 // ─── Entidades ────────────────────────────────────────────────────────────────

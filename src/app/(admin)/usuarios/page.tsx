@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState, useCallback } from 'react'
-import { Plus, Search, Pencil, Trash2, UserCheck, UserX } from 'lucide-react'
+import { Plus, Search, Pencil, Trash2, UserCheck, UserX, X } from 'lucide-react'
 import { Boton } from '@/components/ui/boton'
 import { Input } from '@/components/ui/input'
 import { Insignia } from '@/components/ui/insignia'
@@ -9,6 +9,8 @@ import { Modal } from '@/components/ui/modal'
 import { Tabla, TablaCabecera, TablaCuerpo, TablaFila, TablaTh, TablaTd } from '@/components/ui/tabla'
 import { usuariosApi, rolesApi } from '@/lib/api'
 import type { Usuario, Rol } from '@/lib/tipos'
+
+type RolAsignado = { codigo_rol: string; roles: { nombre: string; activo: boolean } }
 
 export default function PaginaUsuarios() {
   const [usuarios, setUsuarios] = useState<Usuario[]>([])
@@ -20,6 +22,13 @@ export default function PaginaUsuarios() {
   const [guardando, setGuardando] = useState(false)
   const [error, setError] = useState('')
   const [errorCarga, setErrorCarga] = useState('')
+  const [tabActiva, setTabActiva] = useState<'datos' | 'roles'>('datos')
+
+  // Roles del usuario en edición
+  const [rolesUsuario, setRolesUsuario] = useState<RolAsignado[]>([])
+  const [cargandoRoles, setCargandoRoles] = useState(false)
+  const [rolNuevo, setRolNuevo] = useState('')
+  const [asignandoRol, setAsignandoRol] = useState(false)
 
   // Formulario
   const [form, setForm] = useState({
@@ -55,8 +64,21 @@ export default function PaginaUsuarios() {
     setUsuarioEditando(null)
     setForm({ codigo_usuario: '', nombre: '', telefono: '', rol_principal: '', invitar: true })
     setError('')
+    setTabActiva('datos')
     setModalAbierto(true)
   }
+
+  const cargarRolesUsuario = useCallback(async (codigo: string) => {
+    setCargandoRoles(true)
+    try {
+      const r = await usuariosApi.listarRoles(codigo)
+      setRolesUsuario(r)
+    } catch {
+      setRolesUsuario([])
+    } finally {
+      setCargandoRoles(false)
+    }
+  }, [])
 
   const abrirEditar = (u: Usuario) => {
     setUsuarioEditando(u)
@@ -68,6 +90,9 @@ export default function PaginaUsuarios() {
       invitar: false,
     })
     setError('')
+    setTabActiva('datos')
+    setRolNuevo('')
+    cargarRolesUsuario(u.codigo_usuario)
     setModalAbierto(true)
   }
 
@@ -103,6 +128,30 @@ export default function PaginaUsuarios() {
     }
   }
 
+  const asignarRol = async () => {
+    if (!rolNuevo || !usuarioEditando) return
+    setAsignandoRol(true)
+    try {
+      await usuariosApi.asignarRol(usuarioEditando.codigo_usuario, rolNuevo)
+      setRolNuevo('')
+      cargarRolesUsuario(usuarioEditando.codigo_usuario)
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Error al asignar rol')
+    } finally {
+      setAsignandoRol(false)
+    }
+  }
+
+  const quitarRol = async (codigoRol: string) => {
+    if (!usuarioEditando) return
+    try {
+      await usuariosApi.quitarRol(usuarioEditando.codigo_usuario, codigoRol)
+      cargarRolesUsuario(usuarioEditando.codigo_usuario)
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Error al quitar rol')
+    }
+  }
+
   const desactivar = async (u: Usuario) => {
     if (!confirm(`¿Desactivar al usuario ${u.nombre}?`)) return
     try {
@@ -112,6 +161,13 @@ export default function PaginaUsuarios() {
       alert(e instanceof Error ? e.message : 'Error al desactivar')
     }
   }
+
+  // Roles disponibles para asignar (excluir los ya asignados y el rol principal)
+  const rolesDisponibles = roles.filter((r) =>
+    r.activo &&
+    r.codigo_rol !== form.rol_principal &&
+    !rolesUsuario.some((ra) => ra.codigo_rol === r.codigo_rol)
+  )
 
   return (
     <div className="flex flex-col gap-6 max-w-6xl">
@@ -230,54 +286,163 @@ export default function PaginaUsuarios() {
         descripcion={usuarioEditando ? undefined : 'El usuario recibirá una invitación por correo'}
       >
         <div className="flex flex-col gap-4">
-          <Input
-            etiqueta="Correo electrónico *"
-            type="email"
-            value={form.codigo_usuario}
-            onChange={(e) => setForm({ ...form, codigo_usuario: e.target.value })}
-            disabled={!!usuarioEditando}
-            placeholder="usuario@correo.com"
-          />
-          <Input
-            etiqueta="Nombre completo *"
-            value={form.nombre}
-            onChange={(e) => setForm({ ...form, nombre: e.target.value })}
-            placeholder="Nombre Apellido"
-          />
-          <Input
-            etiqueta="Teléfono"
-            value={form.telefono}
-            onChange={(e) => setForm({ ...form, telefono: e.target.value })}
-            placeholder="+56 9 1234 5678"
-          />
-          <div className="flex flex-col gap-1.5">
-            <label className="text-sm font-medium text-texto">Rol principal</label>
-            <select
-              value={form.rol_principal}
-              onChange={(e) => setForm({ ...form, rol_principal: e.target.value })}
-              className="w-full rounded-lg border border-borde bg-surface px-3 py-2 text-sm text-texto focus:outline-none focus:ring-2 focus:ring-primario"
-            >
-              <option value="">Sin rol asignado</option>
-              {roles.filter((r) => r.activo).map((r) => (
-                <option key={r.codigo_rol} value={r.codigo_rol}>{r.nombre}</option>
-              ))}
-            </select>
-          </div>
-
-          {error && (
-            <div className="bg-red-50 border border-red-200 rounded-lg px-4 py-3">
-              <p className="text-sm text-error">{error}</p>
+          {/* Pestañas (solo en edición) */}
+          {usuarioEditando && (
+            <div className="flex border-b border-borde -mx-1">
+              <button
+                onClick={() => setTabActiva('datos')}
+                className={`px-4 py-2 text-sm font-medium transition-colors ${
+                  tabActiva === 'datos'
+                    ? 'border-b-2 border-primario text-primario'
+                    : 'text-texto-muted hover:text-texto'
+                }`}
+              >
+                Datos
+              </button>
+              <button
+                onClick={() => setTabActiva('roles')}
+                className={`px-4 py-2 text-sm font-medium transition-colors ${
+                  tabActiva === 'roles'
+                    ? 'border-b-2 border-primario text-primario'
+                    : 'text-texto-muted hover:text-texto'
+                }`}
+              >
+                Roles adicionales
+              </button>
             </div>
           )}
 
-          <div className="flex gap-3 justify-end pt-2">
-            <Boton variante="contorno" onClick={() => setModalAbierto(false)}>
-              Cancelar
-            </Boton>
-            <Boton variante="primario" onClick={guardar} cargando={guardando}>
-              {usuarioEditando ? 'Guardar cambios' : 'Crear usuario'}
-            </Boton>
-          </div>
+          {/* Tab Datos */}
+          {tabActiva === 'datos' && (
+            <>
+              <Input
+                etiqueta="Correo electrónico *"
+                type="email"
+                value={form.codigo_usuario}
+                onChange={(e) => setForm({ ...form, codigo_usuario: e.target.value })}
+                disabled={!!usuarioEditando}
+                placeholder="usuario@correo.com"
+              />
+              <Input
+                etiqueta="Nombre completo *"
+                value={form.nombre}
+                onChange={(e) => setForm({ ...form, nombre: e.target.value })}
+                placeholder="Nombre Apellido"
+              />
+              <Input
+                etiqueta="Teléfono"
+                value={form.telefono}
+                onChange={(e) => setForm({ ...form, telefono: e.target.value })}
+                placeholder="+56 9 1234 5678"
+              />
+              <div className="flex flex-col gap-1.5">
+                <label className="text-sm font-medium text-texto">Rol principal</label>
+                <select
+                  value={form.rol_principal}
+                  onChange={(e) => setForm({ ...form, rol_principal: e.target.value })}
+                  className="w-full rounded-lg border border-borde bg-surface px-3 py-2 text-sm text-texto focus:outline-none focus:ring-2 focus:ring-primario"
+                >
+                  <option value="">Sin rol asignado</option>
+                  {roles.filter((r) => r.activo).map((r) => (
+                    <option key={r.codigo_rol} value={r.codigo_rol}>{r.nombre}</option>
+                  ))}
+                </select>
+              </div>
+
+              {error && (
+                <div className="bg-red-50 border border-red-200 rounded-lg px-4 py-3">
+                  <p className="text-sm text-error">{error}</p>
+                </div>
+              )}
+
+              <div className="flex gap-3 justify-end pt-2">
+                <Boton variante="contorno" onClick={() => setModalAbierto(false)}>
+                  Cancelar
+                </Boton>
+                <Boton variante="primario" onClick={guardar} cargando={guardando}>
+                  {usuarioEditando ? 'Guardar cambios' : 'Crear usuario'}
+                </Boton>
+              </div>
+            </>
+          )}
+
+          {/* Tab Roles adicionales */}
+          {tabActiva === 'roles' && usuarioEditando && (
+            <div className="flex flex-col gap-4">
+              {/* Asignar nuevo rol */}
+              <div className="flex gap-2">
+                <div className="flex-1">
+                  <select
+                    value={rolNuevo}
+                    onChange={(e) => setRolNuevo(e.target.value)}
+                    className="w-full rounded-lg border border-borde bg-surface px-3 py-2 text-sm text-texto focus:outline-none focus:ring-2 focus:ring-primario"
+                  >
+                    <option value="">Seleccionar rol...</option>
+                    {rolesDisponibles.map((r) => (
+                      <option key={r.codigo_rol} value={r.codigo_rol}>{r.nombre}</option>
+                    ))}
+                  </select>
+                </div>
+                <Boton
+                  variante="primario"
+                  onClick={asignarRol}
+                  cargando={asignandoRol}
+                  disabled={!rolNuevo}
+                >
+                  <Plus size={14} />
+                  Asignar
+                </Boton>
+              </div>
+
+              {/* Lista de roles asignados */}
+              {cargandoRoles ? (
+                <div className="flex flex-col gap-2">
+                  {[1, 2].map((i) => (
+                    <div key={i} className="h-10 bg-surface rounded-lg border border-borde animate-pulse" />
+                  ))}
+                </div>
+              ) : rolesUsuario.length === 0 ? (
+                <p className="text-sm text-texto-muted text-center py-4">
+                  No tiene roles adicionales asignados
+                </p>
+              ) : (
+                <div className="flex flex-col gap-2">
+                  {rolesUsuario.map((ra) => (
+                    <div
+                      key={ra.codigo_rol}
+                      className="flex items-center justify-between px-3 py-2 rounded-lg border border-borde bg-surface"
+                    >
+                      <div>
+                        <span className="text-sm font-medium text-texto">
+                          {ra.roles?.nombre || ra.codigo_rol}
+                        </span>
+                        <span className="ml-2 text-xs text-texto-muted">{ra.codigo_rol}</span>
+                      </div>
+                      <button
+                        onClick={() => quitarRol(ra.codigo_rol)}
+                        className="p-1 rounded hover:bg-red-50 text-texto-muted hover:text-error transition-colors"
+                        title="Quitar rol"
+                      >
+                        <X size={14} />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {error && (
+                <div className="bg-red-50 border border-red-200 rounded-lg px-4 py-3">
+                  <p className="text-sm text-error">{error}</p>
+                </div>
+              )}
+
+              <div className="flex justify-end pt-2">
+                <Boton variante="contorno" onClick={() => setModalAbierto(false)}>
+                  Cerrar
+                </Boton>
+              </div>
+            </div>
+          )}
         </div>
       </Modal>
     </div>
