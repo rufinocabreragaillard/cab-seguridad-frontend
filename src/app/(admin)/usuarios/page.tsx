@@ -47,8 +47,8 @@ export default function PaginaUsuarios() {
   useEffect(() => { cargar() }, [cargar])
 
   const usuariosFiltrados = usuarios.filter((u) =>
-    u.nombre.toLowerCase().includes(busqueda.toLowerCase()) ||
-    u.codigo_usuario.toLowerCase().includes(busqueda.toLowerCase())
+    (u.nombre || '').toLowerCase().includes(busqueda.toLowerCase()) ||
+    (u.codigo_usuario || '').toLowerCase().includes(busqueda.toLowerCase())
   )
 
   const abrirNuevo = () => {
