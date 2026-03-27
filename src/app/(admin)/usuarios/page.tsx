@@ -7,10 +7,11 @@ import { Input } from '@/components/ui/input'
 import { Insignia } from '@/components/ui/insignia'
 import { Modal } from '@/components/ui/modal'
 import { Tabla, TablaCabecera, TablaCuerpo, TablaFila, TablaTh, TablaTd } from '@/components/ui/tabla'
-import { usuariosApi, rolesApi } from '@/lib/api'
-import type { Usuario, Rol } from '@/lib/tipos'
+import { usuariosApi, rolesApi, entidadesApi } from '@/lib/api'
+import type { Usuario, Rol, Entidad } from '@/lib/tipos'
 
 type RolAsignado = { codigo_rol: string; roles: { nombre: string; activo: boolean } }
+type EntidadAsignada = { codigo_entidad: string; entidades: { nombre: string; activo: boolean } }
 
 export default function PaginaUsuarios() {
   const [usuarios, setUsuarios] = useState<Usuario[]>([])
@@ -22,13 +23,20 @@ export default function PaginaUsuarios() {
   const [guardando, setGuardando] = useState(false)
   const [error, setError] = useState('')
   const [errorCarga, setErrorCarga] = useState('')
-  const [tabActiva, setTabActiva] = useState<'datos' | 'roles'>('datos')
+  const [tabActiva, setTabActiva] = useState<'datos' | 'roles' | 'entidades'>('datos')
 
   // Roles del usuario en edición
   const [rolesUsuario, setRolesUsuario] = useState<RolAsignado[]>([])
   const [cargandoRoles, setCargandoRoles] = useState(false)
   const [rolNuevo, setRolNuevo] = useState('')
   const [asignandoRol, setAsignandoRol] = useState(false)
+
+  // Entidades del usuario en edición
+  const [entidades, setEntidades] = useState<Entidad[]>([])
+  const [entidadesUsuario, setEntidadesUsuario] = useState<EntidadAsignada[]>([])
+  const [cargandoEntidades, setCargandoEntidades] = useState(false)
+  const [entidadNueva, setEntidadNueva] = useState('')
+  const [asignandoEntidad, setAsignandoEntidad] = useState(false)
 
   // Formulario
   const [form, setForm] = useState({
@@ -43,9 +51,10 @@ export default function PaginaUsuarios() {
     setCargando(true)
     setErrorCarga('')
     try {
-      const [u, r] = await Promise.all([usuariosApi.listar(), rolesApi.listar()])
+      const [u, r, e] = await Promise.all([usuariosApi.listar(), rolesApi.listar(), entidadesApi.listar()])
       setUsuarios(u)
       setRoles(r)
+      setEntidades(e)
     } catch (e) {
       setErrorCarga(e instanceof Error ? e.message : 'Error al cargar usuarios')
     } finally {
@@ -80,6 +89,18 @@ export default function PaginaUsuarios() {
     }
   }, [])
 
+  const cargarEntidadesUsuario = useCallback(async (codigo: string) => {
+    setCargandoEntidades(true)
+    try {
+      const e = await usuariosApi.listarEntidades(codigo)
+      setEntidadesUsuario(e)
+    } catch {
+      setEntidadesUsuario([])
+    } finally {
+      setCargandoEntidades(false)
+    }
+  }, [])
+
   const abrirEditar = (u: Usuario) => {
     setUsuarioEditando(u)
     setForm({
@@ -92,7 +113,9 @@ export default function PaginaUsuarios() {
     setError('')
     setTabActiva('datos')
     setRolNuevo('')
+    setEntidadNueva('')
     cargarRolesUsuario(u.codigo_usuario)
+    cargarEntidadesUsuario(u.codigo_usuario)
     setModalAbierto(true)
   }
 
@@ -152,6 +175,30 @@ export default function PaginaUsuarios() {
     }
   }
 
+  const asignarEntidad = async () => {
+    if (!entidadNueva || !usuarioEditando) return
+    setAsignandoEntidad(true)
+    try {
+      await usuariosApi.asignarEntidad(usuarioEditando.codigo_usuario, entidadNueva)
+      setEntidadNueva('')
+      cargarEntidadesUsuario(usuarioEditando.codigo_usuario)
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Error al asignar entidad')
+    } finally {
+      setAsignandoEntidad(false)
+    }
+  }
+
+  const quitarEntidad = async (codigoEntidad: string) => {
+    if (!usuarioEditando) return
+    try {
+      await usuariosApi.quitarEntidad(usuarioEditando.codigo_usuario, codigoEntidad)
+      cargarEntidadesUsuario(usuarioEditando.codigo_usuario)
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Error al quitar entidad')
+    }
+  }
+
   const desactivar = async (u: Usuario) => {
     if (!confirm(`¿Desactivar al usuario ${u.nombre}?`)) return
     try {
@@ -167,6 +214,12 @@ export default function PaginaUsuarios() {
     r.activo &&
     r.codigo_rol !== form.rol_principal &&
     !rolesUsuario.some((ra) => ra.codigo_rol === r.codigo_rol)
+  )
+
+  // Entidades disponibles para asignar (excluir las ya asignadas)
+  const entidadesDisponibles = entidades.filter((e) =>
+    e.activo !== false &&
+    !entidadesUsuario.some((ea) => ea.codigo_entidad === e.codigo_entidad)
   )
 
   return (
@@ -309,6 +362,16 @@ export default function PaginaUsuarios() {
               >
                 Roles adicionales
               </button>
+              <button
+                onClick={() => setTabActiva('entidades')}
+                className={`px-4 py-2 text-sm font-medium transition-colors ${
+                  tabActiva === 'entidades'
+                    ? 'border-b-2 border-primario text-primario'
+                    : 'text-texto-muted hover:text-texto'
+                }`}
+              >
+                Entidades
+              </button>
             </div>
           )}
 
@@ -422,6 +485,84 @@ export default function PaginaUsuarios() {
                         onClick={() => quitarRol(ra.codigo_rol)}
                         className="p-1 rounded hover:bg-red-50 text-texto-muted hover:text-error transition-colors"
                         title="Quitar rol"
+                      >
+                        <X size={14} />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {error && (
+                <div className="bg-red-50 border border-red-200 rounded-lg px-4 py-3">
+                  <p className="text-sm text-error">{error}</p>
+                </div>
+              )}
+
+              <div className="flex justify-end pt-2">
+                <Boton variante="contorno" onClick={() => setModalAbierto(false)}>
+                  Cerrar
+                </Boton>
+              </div>
+            </div>
+          )}
+
+          {/* Tab Entidades */}
+          {tabActiva === 'entidades' && usuarioEditando && (
+            <div className="flex flex-col gap-4">
+              {/* Asignar nueva entidad */}
+              <div className="flex gap-2">
+                <div className="flex-1">
+                  <select
+                    value={entidadNueva}
+                    onChange={(e) => setEntidadNueva(e.target.value)}
+                    className="w-full rounded-lg border border-borde bg-surface px-3 py-2 text-sm text-texto focus:outline-none focus:ring-2 focus:ring-primario"
+                  >
+                    <option value="">Seleccionar entidad...</option>
+                    {entidadesDisponibles.map((e) => (
+                      <option key={e.codigo_entidad} value={e.codigo_entidad}>{e.nombre}</option>
+                    ))}
+                  </select>
+                </div>
+                <Boton
+                  variante="primario"
+                  onClick={asignarEntidad}
+                  cargando={asignandoEntidad}
+                  disabled={!entidadNueva}
+                >
+                  <Plus size={14} />
+                  Asignar
+                </Boton>
+              </div>
+
+              {/* Lista de entidades asignadas */}
+              {cargandoEntidades ? (
+                <div className="flex flex-col gap-2">
+                  {[1, 2].map((i) => (
+                    <div key={i} className="h-10 bg-surface rounded-lg border border-borde animate-pulse" />
+                  ))}
+                </div>
+              ) : entidadesUsuario.length === 0 ? (
+                <p className="text-sm text-texto-muted text-center py-4">
+                  No tiene entidades asignadas
+                </p>
+              ) : (
+                <div className="flex flex-col gap-2">
+                  {entidadesUsuario.map((ea) => (
+                    <div
+                      key={ea.codigo_entidad}
+                      className="flex items-center justify-between px-3 py-2 rounded-lg border border-borde bg-surface"
+                    >
+                      <div>
+                        <span className="text-sm font-medium text-texto">
+                          {ea.entidades?.nombre || ea.codigo_entidad}
+                        </span>
+                        <span className="ml-2 text-xs text-texto-muted">{ea.codigo_entidad}</span>
+                      </div>
+                      <button
+                        onClick={() => quitarEntidad(ea.codigo_entidad)}
+                        className="p-1 rounded hover:bg-red-50 text-texto-muted hover:text-error transition-colors"
+                        title="Quitar entidad"
                       >
                         <X size={14} />
                       </button>

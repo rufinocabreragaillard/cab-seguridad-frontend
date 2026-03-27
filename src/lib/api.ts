@@ -68,6 +68,14 @@ export const usuariosApi = {
     api.post(`/usuarios/${id}/roles`, { codigo_rol: codigoRol }),
   quitarRol: (id: string, codigoRol: string) =>
     api.delete(`/usuarios/${id}/roles/${codigoRol}`),
+  listarEntidades: (id: string) =>
+    api.get<{ codigo_entidad: string; entidades: { nombre: string; activo: boolean } }[]>(
+      `/usuarios/${id}/entidades`
+    ).then((r) => r.data),
+  asignarEntidad: (id: string, codigoEntidad: string) =>
+    api.post(`/usuarios/${id}/entidades`, { codigo_entidad: codigoEntidad }),
+  quitarEntidad: (id: string, codigoEntidad: string) =>
+    api.delete(`/usuarios/${id}/entidades/${codigoEntidad}`),
 }
 
 // ─── Roles ────────────────────────────────────────────────────────────────────
@@ -79,6 +87,10 @@ export const rolesApi = {
   actualizar: (id: string, datos: Partial<Rol>) =>
     api.put<Rol>(`/roles/${id}`, datos).then((r) => r.data),
   eliminar: (id: string) => api.delete(`/roles/${id}`),
+  listarFunciones: (id: string) =>
+    api.get<{ codigo_funcion: string; funciones: { nombre_funcion: string; activo: boolean } }[]>(
+      `/roles/${id}/funciones`
+    ).then((r) => r.data),
   asignarFuncion: (id: string, codigoFuncion: string) =>
     api.post(`/roles/${id}/funciones`, { codigo_funcion: codigoFuncion }),
   quitarFuncion: (id: string, codigoFuncion: string) =>
