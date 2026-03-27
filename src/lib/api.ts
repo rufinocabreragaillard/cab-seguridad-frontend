@@ -15,7 +15,7 @@ import type {
 
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
 
-const api = axios.create({ baseURL: BASE_URL })
+const api = axios.create({ baseURL: BASE_URL, timeout: 15000 })
 
 // Interceptor: agrega el token JWT de Supabase en cada request
 api.interceptors.request.use(async (config) => {
