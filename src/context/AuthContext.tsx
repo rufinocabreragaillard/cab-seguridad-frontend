@@ -9,13 +9,16 @@ import {
   useRef,
   type ReactNode,
 } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, usePathname } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { authApi } from '@/lib/api'
 import type { UsuarioContexto } from '@/lib/tipos'
 
-// Timeout de inactividad por defecto (60 minutos) — se sobreescribe con parámetro SESION/DURACION_MINUTOS
-const DEFAULT_INACTIVITY_TIMEOUT_MS = 60 * 60 * 1000
+// Default 90 minutos — se sobreescribe con el parámetro del backend
+const DEFAULT_INACTIVITY_TIMEOUT_MS = 90 * 60 * 1000
+
+// Rutas que no requieren autenticación
+const PUBLIC_ROUTES = ['/login', '/auth/callback']
 
 interface AuthContextType {
   usuario: UsuarioContexto | null
@@ -40,6 +43,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [cargando, setCargando] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const router = useRouter()
+  const pathname = usePathname()
 
   const cargarContexto = useCallback(async () => {
     try {
@@ -52,81 +56,74 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [])
 
-  // Escucha cambios de sesión de Supabase (login, logout, OAuth callback)
+  const isPublicRoute = PUBLIC_ROUTES.includes(pathname)
+
+  // Escucha cambios de sesión de Supabase (login, logout, OAuth callback, token refresh)
   useEffect(() => {
     let isMounted = true
-    let initialLoadDone = false
 
     const { data: listener } = supabase.auth.onAuthStateChange(
       async (event, session) => {
         if (!isMounted) return
-        initialLoadDone = true
+
         if (session) {
+          // Hay sesión válida — cargar contexto del backend
           const ctx = await cargarContexto()
-          if (isMounted && ctx && event === 'SIGNED_IN') {
-            router.push(ctx.url_inicio || '/dashboard')
-          }
-          // Si la sesión existe pero no pudimos cargar contexto, redirigir a login
-          if (isMounted && !ctx) {
-            router.push('/login')
+          if (isMounted) {
+            setCargando(false)
+            // Solo redirigir al dashboard en login explícito, no en refresh/token_refresh
+            if (ctx && event === 'SIGNED_IN') {
+              router.push(ctx.url_inicio || '/dashboard')
+            }
           }
         } else {
+          // No hay sesión
           setUsuario(null)
-          // Redirigir a login si no hay sesión (cubre SIGNED_OUT y TOKEN_REFRESHED fallido)
-          if (event === 'SIGNED_OUT' || event === 'TOKEN_REFRESHED' || event === 'INITIAL_SESSION') {
-            router.push('/login')
+          if (isMounted) {
+            setCargando(false)
+            if (!isPublicRoute) {
+              router.push('/login')
+            }
           }
         }
-        if (isMounted) setCargando(false)
       }
     )
 
-    // Carga inicial - solo si el listener no la manejó ya
-    // Timeout de seguridad: si después de 10s sigue cargando, forzar fin de carga
-    const safetyTimeout = setTimeout(() => {
-      if (isMounted && !initialLoadDone) {
-        setCargando(false)
-        router.push('/login')
-      }
-    }, 10000)
-
+    // Carga inicial: verificar si hay sesión existente (persiste en localStorage)
     supabase.auth.getSession().then(async ({ data }) => {
-      if (!isMounted || initialLoadDone) return
+      if (!isMounted) return
+
       if (data.session) {
+        // Sesión existente (refresh de página) — cargar contexto
         await cargarContexto()
       } else {
-        // No hay sesión activa — redirigir a login
+        // Sin sesión — redirigir a login si está en ruta protegida
         setUsuario(null)
-        if (isMounted) {
-          const isLoginPage = window.location.pathname === '/login' || window.location.pathname === '/auth/callback'
-          if (!isLoginPage) {
-            router.push('/login')
-          }
+        if (!isPublicRoute) {
+          router.push('/login')
         }
       }
       if (isMounted) setCargando(false)
     }).catch(() => {
-      // Error al obtener sesión — terminar carga y redirigir
       if (isMounted) {
         setCargando(false)
-        router.push('/login')
+        if (!isPublicRoute) router.push('/login')
       }
     })
 
     return () => {
       isMounted = false
-      clearTimeout(safetyTimeout)
       listener.subscription.unsubscribe()
     }
-  }, [cargarContexto, router])
+  }, [cargarContexto, router, isPublicRoute])
 
-  // Timeout de inactividad: cierra sesión si no hay actividad
+  // Timeout de inactividad: usa la duración configurada desde el backend
   const inactivityTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   useEffect(() => {
     if (!usuario) return
 
-    const timeoutMs = DEFAULT_INACTIVITY_TIMEOUT_MS
+    const timeoutMs = (usuario.sesion_duracion_minutos ?? 90) * 60 * 1000
 
     const resetTimer = () => {
       if (inactivityTimer.current) clearTimeout(inactivityTimer.current)
@@ -194,6 +191,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       const ctx = await authApi.cambiarGrupo(codigoGrupo)
       setUsuario(ctx)
+      // Refrescar la página actual para que los datos se recarguen con el nuevo grupo
+      router.refresh()
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Error al cambiar grupo')
       throw e

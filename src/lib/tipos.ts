@@ -32,6 +32,7 @@ export interface UsuarioContexto {
   entidades: EntidadResumen[]
   entidad_activa: string
   url_inicio: string
+  sesion_duracion_minutos?: number
 }
 
 export interface LoginRequest {

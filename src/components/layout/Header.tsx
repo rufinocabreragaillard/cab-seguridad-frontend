@@ -26,7 +26,9 @@ export function Header({ titulo }: { titulo?: string }) {
     setCambiando(true)
     try {
       await cambiarGrupo(codigoGrupo)
-    } finally {
+      // Recargar la página para que todos los datos se refresquen con el nuevo grupo
+      window.location.reload()
+    } catch {
       setCambiando(false)
     }
   }
