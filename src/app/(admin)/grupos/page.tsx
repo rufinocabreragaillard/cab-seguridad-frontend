@@ -1,23 +1,26 @@
 'use client'
 
 import { useEffect, useState, useCallback } from 'react'
-import { Plus, Pencil, Layers, Users, Building2 } from 'lucide-react'
+import { Plus, Pencil, Layers, Users, Building2, X } from 'lucide-react'
 import { Boton } from '@/components/ui/boton'
 import { Input } from '@/components/ui/input'
 import { Insignia } from '@/components/ui/insignia'
 import { Modal } from '@/components/ui/modal'
 import { Tarjeta, TarjetaContenido } from '@/components/ui/tarjeta'
 import { Tabla, TablaCabecera, TablaCuerpo, TablaFila, TablaTh, TablaTd } from '@/components/ui/tabla'
-import { gruposApi } from '@/lib/api'
+import { gruposApi, usuariosApi } from '@/lib/api'
 import { useAuth } from '@/context/AuthContext'
-import type { Grupo, Entidad } from '@/lib/tipos'
+import type { Grupo, Entidad, Usuario } from '@/lib/tipos'
+
+type UsuarioGrupo = { codigo_usuario: string; fecha_alta?: string; usuarios?: { nombre: string; activo: boolean } }
 
 export default function PaginaGrupos() {
   const { esSuperAdmin } = useAuth()
   const [grupos, setGrupos] = useState<Grupo[]>([])
   const [grupoSeleccionado, setGrupoSeleccionado] = useState<Grupo | null>(null)
   const [entidadesGrupo, setEntidadesGrupo] = useState<Entidad[]>([])
-  const [usuariosGrupo, setUsuariosGrupo] = useState<{ codigo_usuario: string; usuarios?: { nombre: string; activo: boolean } }[]>([])
+  const [usuariosGrupo, setUsuariosGrupo] = useState<UsuarioGrupo[]>([])
+  const [todosUsuarios, setTodosUsuarios] = useState<Usuario[]>([])
   const [cargando, setCargando] = useState(true)
   const [cargandoDetalle, setCargandoDetalle] = useState(false)
   const [tabActivo, setTabActivo] = useState<'entidades' | 'usuarios'>('entidades')
@@ -28,11 +31,16 @@ export default function PaginaGrupos() {
   const [guardando, setGuardando] = useState(false)
   const [error, setError] = useState('')
 
+  // Asignación de usuarios al grupo
+  const [usuarioNuevo, setUsuarioNuevo] = useState('')
+  const [asignandoUsuario, setAsignandoUsuario] = useState(false)
+
   const cargar = useCallback(async () => {
     setCargando(true)
     try {
-      const g = await gruposApi.listar()
+      const [g, u] = await Promise.all([gruposApi.listar(), usuariosApi.listar()])
       setGrupos(g)
+      setTodosUsuarios(u)
       if (g.length > 0 && !grupoSeleccionado) setGrupoSeleccionado(g[0])
     } finally {
       setCargando(false)
@@ -91,6 +99,37 @@ export default function PaginaGrupos() {
     }
   }
 
+  const asignarUsuarioAlGrupo = async () => {
+    if (!usuarioNuevo || !grupoSeleccionado) return
+    setAsignandoUsuario(true)
+    setError('')
+    try {
+      await usuariosApi.asignarGrupo(usuarioNuevo, grupoSeleccionado.codigo_grupo)
+      setUsuarioNuevo('')
+      cargarDetalle(grupoSeleccionado.codigo_grupo)
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Error al asignar usuario')
+    } finally {
+      setAsignandoUsuario(false)
+    }
+  }
+
+  const quitarUsuarioDelGrupo = async (codigoUsuario: string) => {
+    if (!grupoSeleccionado) return
+    setError('')
+    try {
+      await gruposApi.quitarUsuario(grupoSeleccionado.codigo_grupo, codigoUsuario)
+      cargarDetalle(grupoSeleccionado.codigo_grupo)
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Error al quitar usuario')
+    }
+  }
+
+  // Usuarios disponibles para asignar (excluir los ya asignados al grupo)
+  const usuariosDisponibles = todosUsuarios.filter((u) =>
+    u.activo && !usuariosGrupo.some((ug) => ug.codigo_usuario === u.codigo_usuario)
+  )
+
   if (!esSuperAdmin()) {
     return (
       <div className="flex items-center justify-center h-48 text-texto-muted text-sm">
@@ -104,7 +143,7 @@ export default function PaginaGrupos() {
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-2xl font-bold text-texto">Grupos de Entidades</h2>
-          <p className="text-sm text-texto-muted mt-1">Gestion de grupos de organizaciones</p>
+          <p className="text-sm text-texto-muted mt-1">Gestion de grupos, entidades y usuarios asociados</p>
         </div>
         <Boton variante="primario" onClick={abrirNuevoGrupo}><Plus size={16} />Nuevo grupo</Boton>
       </div>
@@ -183,19 +222,16 @@ export default function PaginaGrupos() {
                 </div>
               </div>
               <TarjetaContenido className="p-0">
-                <Tabla>
-                  <TablaCabecera>
-                    {tabActivo === 'entidades' ? (
+                {/* Tab Entidades */}
+                {tabActivo === 'entidades' && (
+                  <Tabla>
+                    <TablaCabecera>
                       <tr><TablaTh>Codigo</TablaTh><TablaTh>Nombre</TablaTh><TablaTh>Estado</TablaTh></tr>
-                    ) : (
-                      <tr><TablaTh>Usuario</TablaTh><TablaTh>Nombre</TablaTh><TablaTh>Estado</TablaTh></tr>
-                    )}
-                  </TablaCabecera>
-                  <TablaCuerpo>
-                    {cargandoDetalle ? (
-                      <TablaFila><TablaTd className="py-8 text-center text-texto-muted" colSpan={3 as never}>Cargando...</TablaTd></TablaFila>
-                    ) : tabActivo === 'entidades' ? (
-                      entidadesGrupo.length === 0 ? (
+                    </TablaCabecera>
+                    <TablaCuerpo>
+                      {cargandoDetalle ? (
+                        <TablaFila><TablaTd className="py-8 text-center text-texto-muted" colSpan={3 as never}>Cargando...</TablaTd></TablaFila>
+                      ) : entidadesGrupo.length === 0 ? (
                         <TablaFila><TablaTd className="py-8 text-center text-texto-muted" colSpan={3 as never}>No hay entidades en este grupo</TablaTd></TablaFila>
                       ) : entidadesGrupo.map((e) => (
                         <TablaFila key={e.codigo_entidad}>
@@ -203,20 +239,87 @@ export default function PaginaGrupos() {
                           <TablaTd className="font-medium">{e.nombre}</TablaTd>
                           <TablaTd><Insignia variante={e.activo ? 'exito' : 'advertencia'}>{e.activo ? 'Activo' : 'Inactivo'}</Insignia></TablaTd>
                         </TablaFila>
-                      ))
-                    ) : (
-                      usuariosGrupo.length === 0 ? (
-                        <TablaFila><TablaTd className="py-8 text-center text-texto-muted" colSpan={3 as never}>No hay usuarios en este grupo</TablaTd></TablaFila>
-                      ) : usuariosGrupo.map((u) => (
-                        <TablaFila key={u.codigo_usuario}>
-                          <TablaTd><code className="text-xs bg-fondo px-2 py-1 rounded font-mono">{u.codigo_usuario}</code></TablaTd>
-                          <TablaTd className="font-medium">{u.usuarios?.nombre ?? '—'}</TablaTd>
-                          <TablaTd><Insignia variante={u.usuarios?.activo ? 'exito' : 'advertencia'}>{u.usuarios?.activo ? 'Activo' : 'Inactivo'}</Insignia></TablaTd>
-                        </TablaFila>
-                      ))
+                      ))}
+                    </TablaCuerpo>
+                  </Tabla>
+                )}
+
+                {/* Tab Usuarios — con asignación/desasignación */}
+                {tabActivo === 'usuarios' && (
+                  <div className="flex flex-col gap-4 p-4">
+                    {/* Asignar usuario al grupo */}
+                    <div className="flex gap-2">
+                      <div className="flex-1">
+                        <select
+                          value={usuarioNuevo}
+                          onChange={(e) => setUsuarioNuevo(e.target.value)}
+                          className="w-full rounded-lg border border-borde bg-surface px-3 py-2 text-sm text-texto focus:outline-none focus:ring-2 focus:ring-primario"
+                        >
+                          <option value="">Seleccionar usuario...</option>
+                          {usuariosDisponibles.map((u) => (
+                            <option key={u.codigo_usuario} value={u.codigo_usuario}>
+                              {u.nombre} ({u.codigo_usuario})
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                      <Boton
+                        variante="primario"
+                        onClick={asignarUsuarioAlGrupo}
+                        cargando={asignandoUsuario}
+                        disabled={!usuarioNuevo}
+                      >
+                        <Plus size={14} />
+                        Asignar
+                      </Boton>
+                    </div>
+
+                    {error && (
+                      <div className="bg-red-50 border border-red-200 rounded-lg px-4 py-3">
+                        <p className="text-sm text-error">{error}</p>
+                      </div>
                     )}
-                  </TablaCuerpo>
-                </Tabla>
+
+                    {/* Lista de usuarios del grupo */}
+                    {cargandoDetalle ? (
+                      <div className="flex flex-col gap-2">
+                        {[1, 2].map((i) => (
+                          <div key={i} className="h-10 bg-surface rounded-lg border border-borde animate-pulse" />
+                        ))}
+                      </div>
+                    ) : usuariosGrupo.length === 0 ? (
+                      <p className="text-sm text-texto-muted text-center py-4">No hay usuarios en este grupo</p>
+                    ) : (
+                      <div className="flex flex-col gap-2">
+                        {usuariosGrupo.map((u) => (
+                          <div
+                            key={u.codigo_usuario}
+                            className="flex items-center justify-between px-3 py-2 rounded-lg border border-borde bg-surface"
+                          >
+                            <div>
+                              <span className="text-sm font-medium text-texto">
+                                {u.usuarios?.nombre ?? u.codigo_usuario}
+                              </span>
+                              <span className="ml-2 text-xs text-texto-muted">{u.codigo_usuario}</span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <Insignia variante={u.usuarios?.activo ? 'exito' : 'advertencia'}>
+                                {u.usuarios?.activo ? 'Activo' : 'Inactivo'}
+                              </Insignia>
+                              <button
+                                onClick={() => quitarUsuarioDelGrupo(u.codigo_usuario)}
+                                className="p-1 rounded hover:bg-red-50 text-texto-muted hover:text-error transition-colors"
+                                title="Quitar del grupo"
+                              >
+                                <X size={14} />
+                              </button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
               </TarjetaContenido>
             </Tarjeta>
           ) : (

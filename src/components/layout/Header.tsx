@@ -45,6 +45,8 @@ export function Header({ titulo }: { titulo?: string }) {
     ? usuario.nombre.split(' ').map((n) => n[0]).slice(0, 2).join('').toUpperCase()
     : '?'
 
+  // Solo mostrar selector de grupo si el usuario pertenece a más de un grupo
+  // Los usuarios normales y admins de grupo solo ven su grupo, no pueden cambiar
   const tieneMultiplesGrupos = (usuario?.grupos?.length ?? 0) > 1
 
   return (
