@@ -1,14 +1,14 @@
 'use client'
 
 import { useState } from 'react'
-import { ChevronDown, Building2, Check, Bell } from 'lucide-react'
+import { ChevronDown, Building2, Layers, Check, Bell, Settings } from 'lucide-react'
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu'
 import * as Avatar from '@radix-ui/react-avatar'
 import { cn } from '@/lib/utils'
 import { useAuth } from '@/context/AuthContext'
 
 export function Header({ titulo }: { titulo?: string }) {
-  const { usuario, cambiarEntidad } = useAuth()
+  const { usuario, cambiarEntidad, cambiarGrupo } = useAuth()
   const [cambiando, setCambiando] = useState(false)
 
   const handleCambiarEntidad = async (codigoEntidad: string) => {
@@ -21,20 +21,95 @@ export function Header({ titulo }: { titulo?: string }) {
     }
   }
 
+  const handleCambiarGrupo = async (codigoGrupo: string) => {
+    if (codigoGrupo === usuario?.grupo_activo) return
+    setCambiando(true)
+    try {
+      await cambiarGrupo(codigoGrupo)
+    } finally {
+      setCambiando(false)
+    }
+  }
+
   const entidadActual = usuario?.entidades?.find(
     (e) => e.codigo_entidad === usuario?.entidad_activa
+  )
+
+  const grupoActual = usuario?.grupos?.find(
+    (g) => g.codigo_grupo === usuario?.grupo_activo
   )
 
   const iniciales = usuario?.nombre
     ? usuario.nombre.split(' ').map((n) => n[0]).slice(0, 2).join('').toUpperCase()
     : '?'
 
+  const tieneMultiplesGrupos = (usuario?.grupos?.length ?? 0) > 1
+
   return (
     <header className="h-16 bg-surface border-b border-borde flex items-center justify-between px-6 shrink-0">
-      {/* Título de sección */}
+      {/* Titulo de seccion */}
       <h1 className="text-base font-semibold text-texto">{titulo}</h1>
 
       <div className="flex items-center gap-3">
+        {/* Selector de grupo (solo si tiene multiples grupos) */}
+        {usuario && tieneMultiplesGrupos && (
+          <DropdownMenu.Root>
+            <DropdownMenu.Trigger asChild>
+              <button
+                className={cn(
+                  'flex items-center gap-2 px-3 py-1.5 rounded-lg border border-borde bg-fondo',
+                  'text-sm font-medium text-texto hover:bg-primario-muy-claro hover:border-primario/30',
+                  'transition-colors focus:outline-none',
+                  cambiando && 'opacity-50 cursor-wait'
+                )}
+                disabled={cambiando}
+              >
+                <Layers size={15} className="text-secundario shrink-0" />
+                <span className="max-w-[140px] truncate">
+                  {grupoActual?.nombre_grupo ?? usuario.grupo_activo}
+                </span>
+                <ChevronDown size={14} className="text-texto-muted shrink-0" />
+              </button>
+            </DropdownMenu.Trigger>
+
+            <DropdownMenu.Portal>
+              <DropdownMenu.Content
+                align="end"
+                sideOffset={8}
+                className="z-50 min-w-[200px] bg-surface rounded-xl border border-borde shadow-lg p-1"
+              >
+                <p className="px-3 py-2 text-xs font-semibold text-texto-muted uppercase tracking-wider">
+                  Mis grupos
+                </p>
+                {usuario.grupos.map((grupo) => (
+                  <DropdownMenu.Item
+                    key={grupo.codigo_grupo}
+                    onSelect={() => handleCambiarGrupo(grupo.codigo_grupo)}
+                    className={cn(
+                      'flex items-center gap-2 px-3 py-2 rounded-lg text-sm cursor-pointer',
+                      'hover:bg-primario-muy-claro hover:text-primario outline-none transition-colors',
+                      grupo.codigo_grupo === usuario.grupo_activo
+                        ? 'text-primario font-medium bg-primario-muy-claro'
+                        : 'text-texto'
+                    )}
+                  >
+                    <Check
+                      size={14}
+                      className={cn(
+                        'shrink-0',
+                        grupo.codigo_grupo === usuario.grupo_activo
+                          ? 'opacity-100'
+                          : 'opacity-0'
+                      )}
+                    />
+                    <span className="truncate">{grupo.nombre_grupo}</span>
+                  </DropdownMenu.Item>
+                ))}
+              </DropdownMenu.Content>
+            </DropdownMenu.Portal>
+          </DropdownMenu.Root>
+        )}
+
         {/* Selector de entidad */}
         {usuario && usuario.entidades && usuario.entidades.length > 0 && (
           <DropdownMenu.Root>
@@ -126,6 +201,13 @@ export function Header({ titulo }: { titulo?: string }) {
                 <p className="text-sm font-medium text-texto truncate">{usuario?.nombre}</p>
                 <p className="text-xs text-texto-muted truncate">{usuario?.codigo_usuario}</p>
               </div>
+              <DropdownMenu.Item
+                onSelect={() => window.location.href = '/parametros#mis-parametros'}
+                className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-texto hover:bg-fondo cursor-pointer outline-none"
+              >
+                <Settings size={14} className="shrink-0" />
+                Mis Parametros
+              </DropdownMenu.Item>
               <DropdownMenu.Item
                 onSelect={() => window.location.href = '/parametros#mi-cuenta'}
                 className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-texto hover:bg-fondo cursor-pointer outline-none"

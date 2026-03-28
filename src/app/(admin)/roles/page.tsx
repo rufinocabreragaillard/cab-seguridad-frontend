@@ -9,11 +9,13 @@ import { Modal } from '@/components/ui/modal'
 import { Tabla, TablaCabecera, TablaCuerpo, TablaFila, TablaTh, TablaTd } from '@/components/ui/tabla'
 import { Tarjeta, TarjetaCabecera, TarjetaTitulo, TarjetaContenido } from '@/components/ui/tarjeta'
 import { rolesApi, funcionesApi } from '@/lib/api'
+import { useAuth } from '@/context/AuthContext'
 import type { Rol, Funcion } from '@/lib/tipos'
 
 type FuncionAsignada = { codigo_funcion: string; funciones: { nombre_funcion: string; activo: boolean } }
 
 export default function PaginaRoles() {
+  const { grupoActivo } = useAuth()
   const [roles, setRoles] = useState<Rol[]>([])
   const [funciones, setFunciones] = useState<Funcion[]>([])
   const [cargando, setCargando] = useState(true)
@@ -89,7 +91,7 @@ export default function PaginaRoles() {
       if (rolEditando) {
         await rolesApi.actualizar(rolEditando.codigo_rol, { nombre: formRol.nombre, descripcion: formRol.descripcion, url_inicio: formRol.url_inicio })
       } else {
-        await rolesApi.crear(formRol)
+        await rolesApi.crear({ ...formRol, codigo_grupo: grupoActivo || 'ADMIN' })
       }
       setModalRol(false)
       cargar()
@@ -157,7 +159,7 @@ export default function PaginaRoles() {
       if (funcionEditando) {
         await funcionesApi.actualizar(funcionEditando.codigo_funcion, { nombre: formFuncion.nombre, descripcion: formFuncion.descripcion, url_default: formFuncion.url_default })
       } else {
-        await funcionesApi.crear(formFuncion)
+        await funcionesApi.crear({ ...formFuncion, codigo_grupo: grupoActivo || 'ADMIN' })
       }
       setModalFuncion(false)
       cargar()

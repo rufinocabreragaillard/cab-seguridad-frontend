@@ -9,9 +9,11 @@ import { Modal } from '@/components/ui/modal'
 import { Tarjeta, TarjetaContenido } from '@/components/ui/tarjeta'
 import { Tabla, TablaCabecera, TablaCuerpo, TablaFila, TablaTh, TablaTd } from '@/components/ui/tabla'
 import { entidadesApi } from '@/lib/api'
+import { useAuth } from '@/context/AuthContext'
 import type { Entidad, Area } from '@/lib/tipos'
 
 export default function PaginaEntidades() {
+  const { grupoActivo } = useAuth()
   const [entidades, setEntidades] = useState<Entidad[]>([])
   const [entidadSeleccionada, setEntidadSeleccionada] = useState<Entidad | null>(null)
   const [areas, setAreas] = useState<Area[]>([])
@@ -75,7 +77,7 @@ export default function PaginaEntidades() {
         await entidadesApi.actualizar(entidadEditando.codigo_entidad, { nombre: formEntidad.nombre })
       } else {
         const { descripcion, ...datosLimpios } = formEntidad
-        await entidadesApi.crear(datosLimpios)
+        await entidadesApi.crear({ ...datosLimpios, codigo_grupo: grupoActivo || 'ADMIN' })
       }
       setModalEntidad(false)
       cargar()

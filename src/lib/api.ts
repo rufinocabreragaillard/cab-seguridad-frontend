@@ -7,6 +7,7 @@ import type {
   Rol,
   Funcion,
   Entidad,
+  Grupo,
   Area,
   ParametroGeneral,
   ParametroUsuario,
@@ -49,6 +50,8 @@ export const authApi = {
   cerrarSesion: () => api.post('/auth/logout'),
   cambiarEntidad: (codigoEntidad: string) =>
     api.post<UsuarioContexto>('/auth/cambiar-entidad', { codigo_entidad: codigoEntidad }).then((r) => r.data),
+  cambiarGrupo: (codigoGrupo: string) =>
+    api.post<UsuarioContexto>('/auth/cambiar-grupo', { codigo_grupo: codigoGrupo }).then((r) => r.data),
 }
 
 // ─── Usuarios ─────────────────────────────────────────────────────────────────
@@ -76,6 +79,14 @@ export const usuariosApi = {
     api.post(`/usuarios/${id}/entidades`, { codigo_entidad: codigoEntidad }),
   quitarEntidad: (id: string, codigoEntidad: string) =>
     api.delete(`/usuarios/${id}/entidades/${codigoEntidad}`),
+  listarGrupos: (id: string) =>
+    api.get<{ codigo_grupo: string; grupos_entidades: { nombre: string; activo: boolean } }[]>(
+      `/usuarios/${id}/grupos`
+    ).then((r) => r.data),
+  asignarGrupo: (id: string, codigoGrupo: string) =>
+    api.post(`/usuarios/${id}/grupos`, { codigo_grupo: codigoGrupo }),
+  quitarGrupo: (id: string, codigoGrupo: string) =>
+    api.delete(`/usuarios/${id}/grupos/${codigoGrupo}`),
 }
 
 // ─── Roles ────────────────────────────────────────────────────────────────────
@@ -122,6 +133,24 @@ export const entidadesApi = {
     api.post<Area>(`/entidades/${idEntidad}/areas`, datos).then((r) => r.data),
 }
 
+// ─── Grupos de Entidades ──────────────────────────────────────────────────────
+
+export const gruposApi = {
+  listar: () => api.get<Grupo[]>('/grupos').then((r) => r.data),
+  crear: (datos: Partial<Grupo>) => api.post<Grupo>('/grupos', datos).then((r) => r.data),
+  actualizar: (id: string, datos: Partial<Grupo>) =>
+    api.put<Grupo>(`/grupos/${id}`, datos).then((r) => r.data),
+  desactivar: (id: string) => api.delete(`/grupos/${id}`),
+  listarParametros: (id: string) =>
+    api.get(`/grupos/${id}/parametros`).then((r) => r.data),
+  upsertParametro: (id: string, datos: { categoria_parametro: string; tipo_parametro: string; valor_parametro: string }) =>
+    api.put(`/grupos/${id}/parametros`, datos),
+  listarUsuarios: (id: string) =>
+    api.get(`/grupos/${id}/usuarios`).then((r) => r.data),
+  quitarUsuario: (id: string, codigoUsuario: string) =>
+    api.delete(`/grupos/${id}/usuarios/${codigoUsuario}`),
+}
+
 // ─── Parámetros ───────────────────────────────────────────────────────────────
 
 export const parametrosApi = {
@@ -129,10 +158,16 @@ export const parametrosApi = {
     api.get<ParametroGeneral[]>('/parametros/generales').then((r) => r.data),
   actualizarGeneral: (codigo: string, valor: string) =>
     api.put(`/parametros/generales/${codigo}`, { valor }),
+  listarGrupo: () =>
+    api.get('/parametros/grupo').then((r) => r.data),
+  upsertGrupo: (datos: { categoria_parametro: string; tipo_parametro: string; valor_parametro: string }) =>
+    api.put('/parametros/grupo', datos),
   listarUsuario: () =>
     api.get<ParametroUsuario[]>('/parametros/usuario').then((r) => r.data),
   actualizarUsuario: (codigo: string, valor: string) =>
     api.put(`/parametros/usuario/${codigo}`, { valor }),
+  upsertUsuario: (datos: { categoria_parametro: string; tipo_parametro: string; valor_parametro: string }) =>
+    api.put('/parametros/usuario', datos),
 }
 
 // ─── Auditoría ────────────────────────────────────────────────────────────────

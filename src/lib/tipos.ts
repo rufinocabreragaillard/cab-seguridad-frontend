@@ -1,3 +1,16 @@
+// ─── Grupos de Entidades ─────────────────────────────────────────────────────
+
+export interface GrupoResumen {
+  codigo_grupo: string
+  nombre_grupo: string
+}
+
+export interface Grupo {
+  codigo_grupo: string
+  nombre: string
+  activo: boolean
+}
+
 // ─── Autenticación ───────────────────────────────────────────────────────────
 
 export interface EntidadResumen {
@@ -10,6 +23,9 @@ export interface UsuarioContexto {
   codigo_usuario: string   // email
   nombre: string
   activo: boolean
+  grupo_activo: string
+  nombre_grupo?: string
+  grupos: GrupoResumen[]
   rol_principal: string | null
   roles: string[]
   funciones: string[]
@@ -34,6 +50,7 @@ export interface LoginResponse {
 export interface Entidad {
   codigo_entidad: string
   nombre: string
+  codigo_grupo?: string
   descripcion?: string
   activo: boolean
   fecha_creacion?: string
@@ -57,6 +74,7 @@ export interface Usuario {
   activo: boolean
   rol_principal?: string
   entidad_por_defecto?: string
+  grupo_por_defecto?: string
   fecha_creacion?: string
   ultimo_acceso?: string
 }
@@ -76,6 +94,7 @@ export interface CrearUsuarioRequest {
 export interface Rol {
   codigo_rol: string
   nombre: string
+  codigo_grupo?: string
   descripcion?: string
   url_inicio?: string
   activo: boolean
@@ -84,6 +103,7 @@ export interface Rol {
 export interface Funcion {
   codigo_funcion: string
   nombre: string
+  codigo_grupo?: string
   descripcion?: string
   url_default?: string
   activo: boolean

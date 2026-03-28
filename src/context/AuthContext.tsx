@@ -14,8 +14,8 @@ import { supabase } from '@/lib/supabase'
 import { authApi } from '@/lib/api'
 import type { UsuarioContexto } from '@/lib/tipos'
 
-// Timeout de inactividad en milisegundos (90 minutos por defecto)
-const INACTIVITY_TIMEOUT_MS = 90 * 60 * 1000
+// Timeout de inactividad por defecto (60 minutos) — se sobreescribe con parámetro SESION/DURACION_MINUTOS
+const DEFAULT_INACTIVITY_TIMEOUT_MS = 60 * 60 * 1000
 
 interface AuthContextType {
   usuario: UsuarioContexto | null
@@ -25,8 +25,12 @@ interface AuthContextType {
   loginConGoogle: () => Promise<void>
   logout: () => Promise<void>
   cambiarEntidad: (codigoEntidad: string) => Promise<void>
+  cambiarGrupo: (codigoGrupo: string) => Promise<void>
   tieneFuncion: (codigoFuncion: string) => boolean
   esAdmin: () => boolean
+  esSuperAdmin: () => boolean
+  entidadActiva: string | null
+  grupoActivo: string | null
 }
 
 const AuthContext = createContext<AuthContextType | null>(null)
@@ -93,11 +97,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!usuario) return
 
+    const timeoutMs = DEFAULT_INACTIVITY_TIMEOUT_MS
+
     const resetTimer = () => {
       if (inactivityTimer.current) clearTimeout(inactivityTimer.current)
       inactivityTimer.current = setTimeout(() => {
         logout()
-      }, INACTIVITY_TIMEOUT_MS)
+      }, timeoutMs)
     }
 
     const events = ['mousedown', 'keydown', 'scroll', 'touchstart']
@@ -155,15 +161,35 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }
 
+  const cambiarGrupo = async (codigoGrupo: string) => {
+    try {
+      const ctx = await authApi.cambiarGrupo(codigoGrupo)
+      setUsuario(ctx)
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Error al cambiar grupo')
+      throw e
+    }
+  }
+
   const tieneFuncion = (codigoFuncion: string) =>
     usuario?.funciones?.includes(codigoFuncion) ?? false
 
   const esAdmin = () =>
     usuario?.roles?.includes('ADMIN') || usuario?.rol_principal === 'ADMIN' ? true : false
 
+  const esSuperAdmin = () =>
+    usuario?.grupos?.some((g) => g.codigo_grupo === 'ADMIN') ?? false
+
+  const entidadActiva = usuario?.entidad_activa ?? null
+  const grupoActivo = usuario?.grupo_activo ?? null
+
   return (
     <AuthContext.Provider
-      value={{ usuario, cargando, error, login, loginConGoogle, logout, cambiarEntidad, tieneFuncion, esAdmin }}
+      value={{
+        usuario, cargando, error, login, loginConGoogle, logout,
+        cambiarEntidad, cambiarGrupo, tieneFuncion, esAdmin, esSuperAdmin,
+        entidadActiva, grupoActivo,
+      }}
     >
       {children}
     </AuthContext.Provider>

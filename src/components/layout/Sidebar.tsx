@@ -8,6 +8,7 @@ import {
   Users,
   ShieldCheck,
   Building2,
+  Layers,
   SlidersHorizontal,
   ClipboardList,
   LogOut,
@@ -19,8 +20,16 @@ import { cn } from '@/lib/utils'
 import { useAuth } from '@/context/AuthContext'
 import { tema } from '@/config/tema.config'
 
-const navegacion = [
+interface NavItem {
+  nombre: string
+  href: string
+  icono: typeof LayoutDashboard
+  requiereSuperAdmin?: boolean
+}
+
+const navegacion: NavItem[] = [
   { nombre: 'Dashboard', href: '/dashboard', icono: LayoutDashboard },
+  { nombre: 'Grupos', href: '/grupos', icono: Layers, requiereSuperAdmin: true },
   { nombre: 'Usuarios', href: '/usuarios', icono: Users },
   { nombre: 'Roles y Funciones', href: '/roles', icono: ShieldCheck },
   { nombre: 'Entidades y Áreas', href: '/entidades', icono: Building2 },
@@ -30,7 +39,7 @@ const navegacion = [
 
 export function Sidebar() {
   const pathname = usePathname()
-  const { logout } = useAuth()
+  const { logout, esSuperAdmin } = useAuth()
   const [colapsado, setColapsado] = useState(false)
 
   return (
@@ -72,7 +81,7 @@ export function Sidebar() {
 
       {/* Navegación */}
       <nav className="flex-1 py-4 px-2 flex flex-col gap-1 overflow-y-auto">
-        {navegacion.map((item) => {
+        {navegacion.filter((item) => !item.requiereSuperAdmin || esSuperAdmin()).map((item) => {
           const activo = pathname === item.href || pathname.startsWith(item.href + '/')
           const Icono = item.icono
           return (
