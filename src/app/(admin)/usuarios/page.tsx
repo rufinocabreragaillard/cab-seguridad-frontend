@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState, useCallback, useRef } from 'react'
-import { Plus, Search, Pencil, Trash2, UserCheck, UserX, X, Star } from 'lucide-react'
+import { Plus, Search, Pencil, Trash2, UserCheck, UserX, X, Star, Phone, PhoneOff } from 'lucide-react'
 import { Boton } from '@/components/ui/boton'
 import { Input } from '@/components/ui/input'
 import { Insignia } from '@/components/ui/insignia'
@@ -12,12 +12,15 @@ import { useAuth } from '@/context/AuthContext'
 import type { Usuario, Rol, Entidad, Area } from '@/lib/tipos'
 
 type RolAsignado = { codigo_rol: string; roles: { nombre: string; activo: boolean } }
+type GrupoAsignado = { codigo_grupo: string; grupos_entidades: { nombre: string; activo: boolean } }
 type EntidadAsignada = {
   codigo_entidad: string
   codigo_grupo: string
   codigo_area?: string
   entidades: { nombre: string; activo: boolean }
 }
+
+const selectClass = 'w-full rounded-lg border border-borde bg-surface px-3 py-2 text-sm text-texto focus:outline-none focus:ring-2 focus:ring-primario disabled:opacity-50'
 
 export default function PaginaUsuarios() {
   const { usuario: usuarioActual } = useAuth()
@@ -35,33 +38,44 @@ export default function PaginaUsuarios() {
   const [errorCarga, setErrorCarga] = useState('')
   const [tabActiva, setTabActiva] = useState<'datos' | 'roles' | 'entidades'>('datos')
 
-  // Roles del usuario en edición
+  // ── Roles ──────────────────────────────────────────────────────────────────
   const [rolesUsuario, setRolesUsuario] = useState<RolAsignado[]>([])
   const [cargandoRoles, setCargandoRoles] = useState(false)
   const [rolNuevo, setRolNuevo] = useState('')
   const [asignandoRol, setAsignandoRol] = useState(false)
 
-  // Entidades del usuario en edición
+  // ── Grupos del usuario (para dropdown de grupo_por_defecto) ────────────────
+  const [gruposUsuario, setGruposUsuario] = useState<GrupoAsignado[]>([])
+
+  // ── Entidades del usuario (pestaña Entidades) ─────────────────────────────
   const [entidades, setEntidades] = useState<Entidad[]>([])
   const [entidadesUsuario, setEntidadesUsuario] = useState<EntidadAsignada[]>([])
   const [cargandoEntidades, setCargandoEntidades] = useState(false)
   const [entidadNueva, setEntidadNueva] = useState('')
   const [asignandoEntidad, setAsignandoEntidad] = useState(false)
 
-  // Áreas de la entidad seleccionada para asignar
+  // Áreas de la entidad seleccionada para ASIGNAR (pestaña Entidades)
   const [areasParaEntidad, setAreasParaEntidad] = useState<Area[]>([])
   const [areaNueva, setAreaNueva] = useState('')
   const [cargandoAreas, setCargandoAreas] = useState(false)
 
-  // Formulario
+  // Áreas para los DEFAULTS (pestaña Datos)
+  const [areasParaDefault, setAreasParaDefault] = useState<Area[]>([])
+  const [cargandoAreasDefault, setCargandoAreasDefault] = useState(false)
+
+  // ── Formulario ─────────────────────────────────────────────────────────────
   const [form, setForm] = useState({
     codigo_usuario: '',
     nombre: '',
     telefono: '',
     rol_principal: '',
+    grupo_por_defecto: '',
+    entidad_por_defecto: '',
+    codigo_area_por_defecto: '',
     invitar: true,
   })
 
+  // ── Carga inicial ──────────────────────────────────────────────────────────
   const cargar = useCallback(async () => {
     setCargando(true)
     setErrorCarga('')
@@ -84,13 +98,11 @@ export default function PaginaUsuarios() {
     (u.codigo_usuario || '').toLowerCase().includes(busqueda.toLowerCase())
   )
 
-  // Cargar áreas cuando cambia la entidad seleccionada
+  // ── Efectos de cascada ─────────────────────────────────────────────────────
+
+  // Áreas para asignar (pestaña Entidades): carga cuando cambia entidadNueva
   useEffect(() => {
-    if (!entidadNueva) {
-      setAreasParaEntidad([])
-      setAreaNueva('')
-      return
-    }
+    if (!entidadNueva) { setAreasParaEntidad([]); setAreaNueva(''); return }
     setCargandoAreas(true)
     entidadesApi.listarAreas(entidadNueva)
       .then(setAreasParaEntidad)
@@ -99,39 +111,17 @@ export default function PaginaUsuarios() {
     setAreaNueva('')
   }, [entidadNueva])
 
-  const abrirNuevo = () => {
-    setUsuarioEditando(null)
-    setForm({ codigo_usuario: '', nombre: '', telefono: '', rol_principal: '', invitar: true })
-    setError('')
-    setTabActiva('datos')
-    setModalAbierto(true)
-  }
+  // Áreas para default (pestaña Datos): carga cuando cambia entidad_por_defecto en form
+  useEffect(() => {
+    if (!form.entidad_por_defecto) { setAreasParaDefault([]); return }
+    setCargandoAreasDefault(true)
+    entidadesApi.listarAreas(form.entidad_por_defecto)
+      .then(setAreasParaDefault)
+      .catch(() => setAreasParaDefault([]))
+      .finally(() => setCargandoAreasDefault(false))
+  }, [form.entidad_por_defecto])
 
-  const cargarRolesUsuario = useCallback(async (codigo: string) => {
-    setCargandoRoles(true)
-    try {
-      const r = await usuariosApi.listarRoles(codigo)
-      setRolesUsuario(r)
-    } catch {
-      setRolesUsuario([])
-    } finally {
-      setCargandoRoles(false)
-    }
-  }, [])
-
-  const cargarEntidadesUsuario = useCallback(async (codigo: string) => {
-    setCargandoEntidades(true)
-    try {
-      const e = await usuariosApi.listarEntidades(codigo)
-      setEntidadesUsuario(e)
-    } catch {
-      setEntidadesUsuario([])
-    } finally {
-      setCargandoEntidades(false)
-    }
-  }, [])
-
-  // Re-cargar entidades cuando cambie el grupo activo
+  // Re-cargar entidades cuando cambie el grupo activo del admin
   useEffect(() => {
     if (grupoActivo && grupoActivo !== grupoAnteriorRef.current) {
       grupoAnteriorRef.current = grupoActivo
@@ -140,7 +130,45 @@ export default function PaginaUsuarios() {
         cargarEntidadesUsuario(usuarioEditando.codigo_usuario)
       }
     }
-  }, [grupoActivo, usuarioEditando, cargarEntidadesUsuario])
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [grupoActivo, usuarioEditando])
+
+  // ── Funciones de carga ─────────────────────────────────────────────────────
+  const cargarRolesUsuario = useCallback(async (codigo: string) => {
+    setCargandoRoles(true)
+    try {
+      setRolesUsuario(await usuariosApi.listarRoles(codigo))
+    } catch { setRolesUsuario([]) }
+    finally { setCargandoRoles(false) }
+  }, [])
+
+  const cargarGruposUsuario = useCallback(async (codigo: string) => {
+    try {
+      setGruposUsuario(await usuariosApi.listarGrupos(codigo))
+    } catch { setGruposUsuario([]) }
+  }, [])
+
+  const cargarEntidadesUsuario = useCallback(async (codigo: string) => {
+    setCargandoEntidades(true)
+    try {
+      setEntidadesUsuario(await usuariosApi.listarEntidades(codigo))
+    } catch { setEntidadesUsuario([]) }
+    finally { setCargandoEntidades(false) }
+  }, [])
+
+  // ── Abrir modal ────────────────────────────────────────────────────────────
+  const abrirNuevo = () => {
+    setUsuarioEditando(null)
+    setForm({ codigo_usuario: '', nombre: '', telefono: '', rol_principal: '',
+      grupo_por_defecto: '', entidad_por_defecto: '', codigo_area_por_defecto: '', invitar: true })
+    setError('')
+    setTabActiva('datos')
+    setRolesUsuario([])
+    setGruposUsuario([])
+    setEntidadesUsuario([])
+    setAreasParaDefault([])
+    setModalAbierto(true)
+  }
 
   const abrirEditar = (u: Usuario) => {
     setUsuarioEditando(u)
@@ -149,6 +177,9 @@ export default function PaginaUsuarios() {
       nombre: u.nombre,
       telefono: u.telefono || '',
       rol_principal: u.rol_principal || '',
+      grupo_por_defecto: u.grupo_por_defecto || '',
+      entidad_por_defecto: u.entidad_por_defecto || '',
+      codigo_area_por_defecto: u.codigo_area_por_defecto || '',
       invitar: false,
     })
     setError('')
@@ -157,11 +188,14 @@ export default function PaginaUsuarios() {
     setEntidadNueva('')
     setAreaNueva('')
     setAreasParaEntidad([])
+    setAreasParaDefault([])
     cargarRolesUsuario(u.codigo_usuario)
+    cargarGruposUsuario(u.codigo_usuario)
     cargarEntidadesUsuario(u.codigo_usuario)
     setModalAbierto(true)
   }
 
+  // ── Guardar datos ──────────────────────────────────────────────────────────
   const guardar = async () => {
     setError('')
     if (!form.codigo_usuario || !form.nombre) {
@@ -175,6 +209,9 @@ export default function PaginaUsuarios() {
           nombre: form.nombre,
           telefono: form.telefono || undefined,
           rol_principal: form.rol_principal || undefined,
+          grupo_por_defecto: form.grupo_por_defecto || undefined,
+          entidad_por_defecto: form.entidad_por_defecto || undefined,
+          codigo_area_por_defecto: form.codigo_area_por_defecto || undefined,
         })
       } else {
         await usuariosApi.crear({
@@ -194,30 +231,35 @@ export default function PaginaUsuarios() {
     }
   }
 
+  // ── Roles ──────────────────────────────────────────────────────────────────
   const asignarRol = async () => {
     if (!rolNuevo || !usuarioEditando) return
     setAsignandoRol(true)
     try {
       await usuariosApi.asignarRol(usuarioEditando.codigo_usuario, rolNuevo)
       setRolNuevo('')
-      cargarRolesUsuario(usuarioEditando.codigo_usuario)
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Error al asignar rol')
-    } finally {
-      setAsignandoRol(false)
-    }
+      await cargarRolesUsuario(usuarioEditando.codigo_usuario)
+    } catch (e) { setError(e instanceof Error ? e.message : 'Error al asignar rol') }
+    finally { setAsignandoRol(false) }
   }
 
   const quitarRol = async (codigoRol: string) => {
     if (!usuarioEditando) return
     try {
       await usuariosApi.quitarRol(usuarioEditando.codigo_usuario, codigoRol)
-      cargarRolesUsuario(usuarioEditando.codigo_usuario)
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Error al quitar rol')
-    }
+      await cargarRolesUsuario(usuarioEditando.codigo_usuario)
+    } catch (e) { setError(e instanceof Error ? e.message : 'Error al quitar rol') }
   }
 
+  const marcarComoPrincipal = async (codigoRol: string) => {
+    if (!usuarioEditando) return
+    try {
+      await usuariosApi.actualizar(usuarioEditando.codigo_usuario, { rol_principal: codigoRol })
+      setForm({ ...form, rol_principal: codigoRol })
+    } catch (e) { setError(e instanceof Error ? e.message : 'Error al cambiar rol principal') }
+  }
+
+  // ── Entidades ──────────────────────────────────────────────────────────────
   const asignarEntidad = async () => {
     if (!entidadNueva || !usuarioEditando) return
     setAsignandoEntidad(true)
@@ -231,22 +273,17 @@ export default function PaginaUsuarios() {
       setEntidadNueva('')
       setAreaNueva('')
       setAreasParaEntidad([])
-      cargarEntidadesUsuario(usuarioEditando.codigo_usuario)
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Error al asignar entidad')
-    } finally {
-      setAsignandoEntidad(false)
-    }
+      await cargarEntidadesUsuario(usuarioEditando.codigo_usuario)
+    } catch (e) { setError(e instanceof Error ? e.message : 'Error al asignar entidad') }
+    finally { setAsignandoEntidad(false) }
   }
 
   const quitarEntidad = async (codigoEntidad: string) => {
     if (!usuarioEditando) return
     try {
       await usuariosApi.quitarEntidad(usuarioEditando.codigo_usuario, codigoEntidad)
-      cargarEntidadesUsuario(usuarioEditando.codigo_usuario)
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Error al quitar entidad')
-    }
+      await cargarEntidadesUsuario(usuarioEditando.codigo_usuario)
+    } catch (e) { setError(e instanceof Error ? e.message : 'Error al quitar entidad') }
   }
 
   const desactivar = async (u: Usuario) => {
@@ -254,34 +291,33 @@ export default function PaginaUsuarios() {
     try {
       await usuariosApi.desactivar(u.codigo_usuario)
       cargar()
-    } catch (e) {
-      alert(e instanceof Error ? e.message : 'Error al desactivar')
-    }
+    } catch (e) { alert(e instanceof Error ? e.message : 'Error al desactivar') }
   }
 
-  // Roles disponibles para asignar (excluir solo los ya asignados en rel_usuario_rol)
+  // ── Listas derivadas ───────────────────────────────────────────────────────
   const rolesDisponibles = roles.filter((r) =>
-    r.activo &&
-    !rolesUsuario.some((ra) => ra.codigo_rol === r.codigo_rol)
+    r.activo && !rolesUsuario.some((ra) => ra.codigo_rol === r.codigo_rol)
   )
 
-  // Marcar un rol asignado como principal
-  const marcarComoPrincipal = async (codigoRol: string) => {
-    if (!usuarioEditando) return
-    try {
-      await usuariosApi.actualizar(usuarioEditando.codigo_usuario, { rol_principal: codigoRol })
-      setForm({ ...form, rol_principal: codigoRol })
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Error al cambiar rol principal')
-    }
-  }
-
-  // Entidades disponibles para asignar (excluir las ya asignadas)
   const entidadesDisponibles = entidades.filter((e) =>
     e.activo !== false &&
     !entidadesUsuario.some((ea) => ea.codigo_entidad === e.codigo_entidad)
   )
 
+  // Entidades del usuario disponibles para seleccionar como default (ya asignadas)
+  const entidadesParaDefault = entidadesUsuario
+
+  // ── Handlers de cascada en Datos ──────────────────────────────────────────
+  const handleGrupoDefaultChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    setForm({ ...form, grupo_por_defecto: e.target.value, entidad_por_defecto: '', codigo_area_por_defecto: '' })
+    setAreasParaDefault([])
+  }
+
+  const handleEntidadDefaultChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    setForm({ ...form, entidad_por_defecto: e.target.value, codigo_area_por_defecto: '' })
+  }
+
+  // ── Render ─────────────────────────────────────────────────────────────────
   return (
     <div className="flex flex-col gap-6 max-w-6xl">
       {/* Encabezado */}
@@ -306,7 +342,6 @@ export default function PaginaUsuarios() {
         />
       </div>
 
-      {/* Error de carga */}
       {errorCarga && (
         <div className="bg-red-50 border border-red-200 rounded-lg px-4 py-3">
           <p className="text-sm text-error">{errorCarga}</p>
@@ -358,9 +393,7 @@ export default function PaginaUsuarios() {
                     </Insignia>
                   </TablaTd>
                   <TablaTd className="text-texto-muted text-xs">
-                    {u.ultimo_acceso
-                      ? new Date(u.ultimo_acceso).toLocaleDateString('es-CL')
-                      : '—'}
+                    {u.ultimo_acceso ? new Date(u.ultimo_acceso).toLocaleDateString('es-CL') : '—'}
                   </TablaTd>
                   <TablaTd>
                     <div className="flex items-center justify-end gap-1">
@@ -402,40 +435,23 @@ export default function PaginaUsuarios() {
           {/* Pestañas (solo en edición) */}
           {usuarioEditando && (
             <div className="flex border-b border-borde -mx-1">
-              <button
-                onClick={() => setTabActiva('datos')}
-                className={`px-4 py-2 text-sm font-medium transition-colors ${
-                  tabActiva === 'datos'
-                    ? 'border-b-2 border-primario text-primario'
-                    : 'text-texto-muted hover:text-texto'
-                }`}
-              >
-                Datos
-              </button>
-              <button
-                onClick={() => setTabActiva('roles')}
-                className={`px-4 py-2 text-sm font-medium transition-colors ${
-                  tabActiva === 'roles'
-                    ? 'border-b-2 border-primario text-primario'
-                    : 'text-texto-muted hover:text-texto'
-                }`}
-              >
-                Roles del usuario
-              </button>
-              <button
-                onClick={() => setTabActiva('entidades')}
-                className={`px-4 py-2 text-sm font-medium transition-colors ${
-                  tabActiva === 'entidades'
-                    ? 'border-b-2 border-primario text-primario'
-                    : 'text-texto-muted hover:text-texto'
-                }`}
-              >
-                Entidades
-              </button>
+              {(['datos', 'roles', 'entidades'] as const).map((tab) => (
+                <button
+                  key={tab}
+                  onClick={() => setTabActiva(tab)}
+                  className={`px-4 py-2 text-sm font-medium transition-colors capitalize ${
+                    tabActiva === tab
+                      ? 'border-b-2 border-primario text-primario'
+                      : 'text-texto-muted hover:text-texto'
+                  }`}
+                >
+                  {tab === 'datos' ? 'Datos' : tab === 'roles' ? 'Roles del usuario' : 'Entidades'}
+                </button>
+              ))}
             </div>
           )}
 
-          {/* Tab Datos */}
+          {/* ── Tab Datos ─────────────────────────────────────────────────── */}
           {tabActiva === 'datos' && (
             <>
               <Input
@@ -452,18 +468,43 @@ export default function PaginaUsuarios() {
                 onChange={(e) => setForm({ ...form, nombre: e.target.value })}
                 placeholder="Nombre Apellido"
               />
-              <Input
-                etiqueta="Teléfono"
-                value={form.telefono}
-                onChange={(e) => setForm({ ...form, telefono: e.target.value })}
-                placeholder="+56 9 1234 5678"
-              />
+
+              {/* Teléfono + indicador de verificación */}
+              <div className="flex flex-col gap-1.5">
+                <label className="text-sm font-medium text-texto">Teléfono</label>
+                <div className="flex gap-2 items-center">
+                  <div className="flex-1">
+                    <Input
+                      value={form.telefono}
+                      onChange={(e) => setForm({ ...form, telefono: e.target.value })}
+                      placeholder="+56 9 1234 5678"
+                    />
+                  </div>
+                  {usuarioEditando && form.telefono && (
+                    <div className={`flex items-center gap-1 text-xs px-2 py-1 rounded-full shrink-0 ${
+                      usuarioEditando.fono_verificado
+                        ? 'bg-green-50 text-green-700'
+                        : 'bg-yellow-50 text-yellow-700'
+                    }`}>
+                      {usuarioEditando.fono_verificado
+                        ? <><Phone size={12} /> Verificado</>
+                        : <><PhoneOff size={12} /> Sin verificar</>
+                      }
+                    </div>
+                  )}
+                </div>
+                {usuarioEditando && form.telefono !== (usuarioEditando.telefono || '') && (
+                  <p className="text-xs text-yellow-600">Al guardar, se requerirá verificar el nuevo teléfono</p>
+                )}
+              </div>
+
+              {/* Rol principal — solo roles ya asignados al usuario */}
               <div className="flex flex-col gap-1.5">
                 <label className="text-sm font-medium text-texto">Rol principal</label>
                 <select
                   value={form.rol_principal}
                   onChange={(e) => setForm({ ...form, rol_principal: e.target.value })}
-                  className="w-full rounded-lg border border-borde bg-surface px-3 py-2 text-sm text-texto focus:outline-none focus:ring-2 focus:ring-primario"
+                  className={selectClass}
                 >
                   <option value="">Sin rol asignado</option>
                   {usuarioEditando
@@ -482,6 +523,76 @@ export default function PaginaUsuarios() {
                 )}
               </div>
 
+              {/* ── Defaults de preferencia (solo edición) ─────────────────── */}
+              {usuarioEditando && (
+                <>
+                  <div className="border-t border-borde pt-3 mt-1">
+                    <p className="text-xs font-semibold text-texto-muted uppercase tracking-wide mb-3">
+                      Preferencias de inicio de sesión
+                    </p>
+
+                    {/* Grupo por defecto — solo grupos asignados al usuario */}
+                    <div className="flex flex-col gap-1.5">
+                      <label className="text-sm font-medium text-texto">Grupo por defecto</label>
+                      <select
+                        value={form.grupo_por_defecto}
+                        onChange={handleGrupoDefaultChange}
+                        className={selectClass}
+                      >
+                        <option value="">Sin grupo seleccionado</option>
+                        {gruposUsuario.map((g) => (
+                          <option key={g.codigo_grupo} value={g.codigo_grupo}>
+                            {g.grupos_entidades?.nombre || g.codigo_grupo}
+                          </option>
+                        ))}
+                      </select>
+                      {gruposUsuario.length === 0 && (
+                        <p className="text-xs text-texto-muted">Asigne grupos en la pestaña &quot;Entidades&quot; primero</p>
+                      )}
+                    </div>
+
+                    {/* Entidad por defecto — solo entidades del usuario en su grupo */}
+                    <div className="flex flex-col gap-1.5 mt-3">
+                      <label className="text-sm font-medium text-texto">Entidad por defecto</label>
+                      <select
+                        value={form.entidad_por_defecto}
+                        onChange={handleEntidadDefaultChange}
+                        disabled={!form.grupo_por_defecto}
+                        className={selectClass}
+                      >
+                        <option value="">Sin entidad seleccionada</option>
+                        {entidadesParaDefault.map((ea) => (
+                          <option key={ea.codigo_entidad} value={ea.codigo_entidad}>
+                            {ea.entidades?.nombre || ea.codigo_entidad}
+                          </option>
+                        ))}
+                      </select>
+                      {form.grupo_por_defecto && entidadesParaDefault.length === 0 && (
+                        <p className="text-xs text-texto-muted">Asigne entidades en la pestaña &quot;Entidades&quot; primero</p>
+                      )}
+                    </div>
+
+                    {/* Área por defecto — solo áreas de la entidad seleccionada */}
+                    {form.entidad_por_defecto && (
+                      <div className="flex flex-col gap-1.5 mt-3">
+                        <label className="text-sm font-medium text-texto">Área por defecto <span className="text-texto-muted font-normal">(opcional)</span></label>
+                        <select
+                          value={form.codigo_area_por_defecto}
+                          onChange={(e) => setForm({ ...form, codigo_area_por_defecto: e.target.value })}
+                          disabled={cargandoAreasDefault}
+                          className={selectClass}
+                        >
+                          <option value="">Sin área</option>
+                          {areasParaDefault.map((a) => (
+                            <option key={a.codigo_area} value={a.codigo_area}>{a.nombre}</option>
+                          ))}
+                        </select>
+                      </div>
+                    )}
+                  </div>
+                </>
+              )}
+
               {error && (
                 <div className="bg-red-50 border border-red-200 rounded-lg px-4 py-3">
                   <p className="text-sm text-error">{error}</p>
@@ -489,9 +600,7 @@ export default function PaginaUsuarios() {
               )}
 
               <div className="flex gap-3 justify-end pt-2">
-                <Boton variante="contorno" onClick={() => setModalAbierto(false)}>
-                  Cancelar
-                </Boton>
+                <Boton variante="contorno" onClick={() => setModalAbierto(false)}>Cancelar</Boton>
                 <Boton variante="primario" onClick={guardar} cargando={guardando}>
                   {usuarioEditando ? 'Guardar cambios' : 'Crear usuario'}
                 </Boton>
@@ -499,7 +608,7 @@ export default function PaginaUsuarios() {
             </>
           )}
 
-          {/* Tab Roles del usuario */}
+          {/* ── Tab Roles del usuario ─────────────────────────────────────── */}
           {tabActiva === 'roles' && usuarioEditando && (
             <div className="flex flex-col gap-4">
               {/* Asignar nuevo rol */}
@@ -508,7 +617,7 @@ export default function PaginaUsuarios() {
                   <select
                     value={rolNuevo}
                     onChange={(e) => setRolNuevo(e.target.value)}
-                    className="w-full rounded-lg border border-borde bg-surface px-3 py-2 text-sm text-texto focus:outline-none focus:ring-2 focus:ring-primario"
+                    className={selectClass}
                   >
                     <option value="">Seleccionar rol...</option>
                     {rolesDisponibles.map((r) => (
@@ -516,28 +625,18 @@ export default function PaginaUsuarios() {
                     ))}
                   </select>
                 </div>
-                <Boton
-                  variante="primario"
-                  onClick={asignarRol}
-                  cargando={asignandoRol}
-                  disabled={!rolNuevo}
-                >
-                  <Plus size={14} />
-                  Asignar
+                <Boton variante="primario" onClick={asignarRol} cargando={asignandoRol} disabled={!rolNuevo}>
+                  <Plus size={14} /> Asignar
                 </Boton>
               </div>
 
               {/* Lista de roles asignados */}
               {cargandoRoles ? (
                 <div className="flex flex-col gap-2">
-                  {[1, 2].map((i) => (
-                    <div key={i} className="h-10 bg-surface rounded-lg border border-borde animate-pulse" />
-                  ))}
+                  {[1, 2].map((i) => <div key={i} className="h-10 bg-surface rounded-lg border border-borde animate-pulse" />)}
                 </div>
               ) : rolesUsuario.length === 0 ? (
-                <p className="text-sm text-texto-muted text-center py-4">
-                  No tiene roles adicionales asignados
-                </p>
+                <p className="text-sm text-texto-muted text-center py-4">No tiene roles adicionales asignados</p>
               ) : (
                 <div className="flex flex-col gap-2">
                   {rolesUsuario.map((ra) => {
@@ -550,9 +649,7 @@ export default function PaginaUsuarios() {
                         }`}
                       >
                         <div className="flex items-center gap-2">
-                          <span className="text-sm font-medium text-texto">
-                            {ra.roles?.nombre || ra.codigo_rol}
-                          </span>
+                          <span className="text-sm font-medium text-texto">{ra.roles?.nombre || ra.codigo_rol}</span>
                           <span className="text-xs text-texto-muted">{ra.codigo_rol}</span>
                           {esPrincipal && (
                             <span className="text-xs bg-primario text-white px-1.5 py-0.5 rounded">Principal</span>
@@ -587,16 +684,13 @@ export default function PaginaUsuarios() {
                   <p className="text-sm text-error">{error}</p>
                 </div>
               )}
-
               <div className="flex justify-end pt-2">
-                <Boton variante="contorno" onClick={() => setModalAbierto(false)}>
-                  Cerrar
-                </Boton>
+                <Boton variante="contorno" onClick={() => setModalAbierto(false)}>Cerrar</Boton>
               </div>
             </div>
           )}
 
-          {/* Tab Entidades */}
+          {/* ── Tab Entidades ─────────────────────────────────────────────── */}
           {tabActiva === 'entidades' && usuarioEditando && (
             <div className="flex flex-col gap-4">
               {/* Asignar nueva entidad */}
@@ -606,7 +700,7 @@ export default function PaginaUsuarios() {
                     <select
                       value={entidadNueva}
                       onChange={(e) => setEntidadNueva(e.target.value)}
-                      className="w-full rounded-lg border border-borde bg-surface px-3 py-2 text-sm text-texto focus:outline-none focus:ring-2 focus:ring-primario"
+                      className={selectClass}
                     >
                       <option value="">Seleccionar entidad...</option>
                       {entidadesDisponibles.map((e) => (
@@ -620,8 +714,7 @@ export default function PaginaUsuarios() {
                     cargando={asignandoEntidad}
                     disabled={!entidadNueva}
                   >
-                    <Plus size={14} />
-                    Asignar
+                    <Plus size={14} /> Asignar
                   </Boton>
                 </div>
                 {/* Selector de área (opcional) */}
@@ -630,7 +723,7 @@ export default function PaginaUsuarios() {
                     value={areaNueva}
                     onChange={(e) => setAreaNueva(e.target.value)}
                     disabled={cargandoAreas}
-                    className="w-full rounded-lg border border-borde bg-surface px-3 py-2 text-sm text-texto focus:outline-none focus:ring-2 focus:ring-primario disabled:opacity-50"
+                    className={selectClass}
                   >
                     <option value="">Área (opcional)...</option>
                     {areasParaEntidad.map((a) => (
@@ -643,14 +736,10 @@ export default function PaginaUsuarios() {
               {/* Lista de entidades asignadas */}
               {cargandoEntidades ? (
                 <div className="flex flex-col gap-2">
-                  {[1, 2].map((i) => (
-                    <div key={i} className="h-10 bg-surface rounded-lg border border-borde animate-pulse" />
-                  ))}
+                  {[1, 2].map((i) => <div key={i} className="h-10 bg-surface rounded-lg border border-borde animate-pulse" />)}
                 </div>
               ) : entidadesUsuario.length === 0 ? (
-                <p className="text-sm text-texto-muted text-center py-4">
-                  No tiene entidades asignadas
-                </p>
+                <p className="text-sm text-texto-muted text-center py-4">No tiene entidades asignadas</p>
               ) : (
                 <div className="flex flex-col gap-2">
                   {entidadesUsuario.map((ea) => (
@@ -686,11 +775,8 @@ export default function PaginaUsuarios() {
                   <p className="text-sm text-error">{error}</p>
                 </div>
               )}
-
               <div className="flex justify-end pt-2">
-                <Boton variante="contorno" onClick={() => setModalAbierto(false)}>
-                  Cerrar
-                </Boton>
+                <Boton variante="contorno" onClick={() => setModalAbierto(false)}>Cerrar</Boton>
               </div>
             </div>
           )}

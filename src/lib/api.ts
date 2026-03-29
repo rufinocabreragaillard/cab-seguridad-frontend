@@ -83,12 +83,12 @@ export const usuariosApi = {
       codigo_grupo: codigoGrupo,
       ...(codigoArea ? { codigo_area: codigoArea } : {}),
     }),
-  quitarEntidad: (id: string, codigoEntidad: string) =>
-    api.delete(`/usuarios/${id}/entidades/${codigoEntidad}`),
   listarGrupos: (id: string) =>
     api.get<{ codigo_grupo: string; grupos_entidades: { nombre: string; activo: boolean } }[]>(
       `/usuarios/${id}/grupos`
     ).then((r) => r.data),
+  quitarEntidad: (id: string, codigoEntidad: string) =>
+    api.delete(`/usuarios/${id}/entidades/${codigoEntidad}`),
   asignarGrupo: (id: string, codigoGrupo: string) =>
     api.post(`/usuarios/${id}/grupos`, { codigo_grupo: codigoGrupo }),
   quitarGrupo: (id: string, codigoGrupo: string) =>

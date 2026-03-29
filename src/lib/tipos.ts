@@ -72,10 +72,12 @@ export interface Usuario {
   codigo_usuario: string   // email
   nombre: string
   telefono?: string
+  fono_verificado?: boolean
   activo: boolean
   rol_principal?: string
   entidad_por_defecto?: string
   grupo_por_defecto?: string
+  codigo_area_por_defecto?: string
   fecha_creacion?: string
   ultimo_acceso?: string
 }
@@ -87,6 +89,8 @@ export interface CrearUsuarioRequest {
   telefono?: string
   rol_principal?: string
   entidad_por_defecto?: string
+  grupo_por_defecto?: string
+  codigo_area_por_defecto?: string
   invitar?: boolean
 }
 
