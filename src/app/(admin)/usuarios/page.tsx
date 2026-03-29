@@ -162,6 +162,7 @@ export default function PaginaUsuarios() {
     setForm({ codigo_usuario: '', nombre: '', telefono: '', rol_principal: '',
       grupo_por_defecto: '', entidad_por_defecto: '', codigo_area_por_defecto: '', invitar: true })
     setError('')
+    setGuardando(false)
     setTabActiva('datos')
     setRolesUsuario([])
     setGruposUsuario([])
@@ -183,6 +184,7 @@ export default function PaginaUsuarios() {
       invitar: false,
     })
     setError('')
+    setGuardando(false)
     setTabActiva('datos')
     setRolNuevo('')
     setEntidadNueva('')
