@@ -112,6 +112,8 @@ export interface Funcion {
   codigo_grupo?: string
   descripcion?: string
   url_funcion?: string
+  alias_de_funcion?: string
+  icono_de_funcion?: string
   activo: boolean
 }
 

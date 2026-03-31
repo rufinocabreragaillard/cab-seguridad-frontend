@@ -36,7 +36,7 @@ export default function PaginaRoles() {
   // Modal función
   const [modalFuncion, setModalFuncion] = useState(false)
   const [funcionEditando, setFuncionEditando] = useState<Funcion | null>(null)
-  const [formFuncion, setFormFuncion] = useState({ codigo_funcion: '', nombre: '', descripcion: '', url_funcion: '' })
+  const [formFuncion, setFormFuncion] = useState({ codigo_funcion: '', nombre: '', descripcion: '', url_funcion: '', alias_de_funcion: '', icono_de_funcion: '' })
 
   const [guardando, setGuardando] = useState(false)
   const [error, setError] = useState('')
@@ -140,14 +140,14 @@ export default function PaginaRoles() {
 
   const abrirNuevaFuncion = () => {
     setFuncionEditando(null)
-    setFormFuncion({ codigo_funcion: '', nombre: '', descripcion: '', url_funcion: '' })
+    setFormFuncion({ codigo_funcion: '', nombre: '', descripcion: '', url_funcion: '', alias_de_funcion: '', icono_de_funcion: '' })
     setError('')
     setModalFuncion(true)
   }
 
   const abrirEditarFuncion = (f: Funcion) => {
     setFuncionEditando(f)
-    setFormFuncion({ codigo_funcion: f.codigo_funcion, nombre: f.nombre, descripcion: f.descripcion || '', url_funcion: f.url_funcion || '' })
+    setFormFuncion({ codigo_funcion: f.codigo_funcion, nombre: f.nombre, descripcion: f.descripcion || '', url_funcion: f.url_funcion || '', alias_de_funcion: f.alias_de_funcion || '', icono_de_funcion: f.icono_de_funcion || '' })
     setError('')
     setModalFuncion(true)
   }
@@ -157,7 +157,7 @@ export default function PaginaRoles() {
     setGuardando(true)
     try {
       if (funcionEditando) {
-        await funcionesApi.actualizar(funcionEditando.codigo_funcion, { nombre: formFuncion.nombre, descripcion: formFuncion.descripcion, url_funcion: formFuncion.url_funcion })
+        await funcionesApi.actualizar(funcionEditando.codigo_funcion, { nombre: formFuncion.nombre, descripcion: formFuncion.descripcion, url_funcion: formFuncion.url_funcion, alias_de_funcion: formFuncion.alias_de_funcion, icono_de_funcion: formFuncion.icono_de_funcion || undefined })
       } else {
         await funcionesApi.crear({ ...formFuncion, codigo_grupo: grupoActivo || 'ADMIN' })
       }
@@ -249,7 +249,9 @@ export default function PaginaRoles() {
             <TablaCabecera>
               <tr>
                 <TablaTh>Código</TablaTh>
+                <TablaTh>Alias</TablaTh>
                 <TablaTh>Nombre</TablaTh>
+                <TablaTh>Icono</TablaTh>
                 <TablaTh>URL función</TablaTh>
                 <TablaTh>Estado</TablaTh>
                 <TablaTh className="text-right">Acciones</TablaTh>
@@ -257,11 +259,13 @@ export default function PaginaRoles() {
             </TablaCabecera>
             <TablaCuerpo>
               {cargando ? (
-                <TablaFila><TablaTd className="py-8 text-center text-texto-muted" colSpan={5 as never}>Cargando...</TablaTd></TablaFila>
+                <TablaFila><TablaTd className="py-8 text-center text-texto-muted" colSpan={7 as never}>Cargando...</TablaTd></TablaFila>
               ) : funciones.map((f) => (
                 <TablaFila key={f.codigo_funcion}>
                   <TablaTd><code className="text-xs bg-fondo px-2 py-1 rounded font-mono">{f.codigo_funcion}</code></TablaTd>
+                  <TablaTd className="text-sm">{f.alias_de_funcion || '—'}</TablaTd>
                   <TablaTd className="font-medium">{f.nombre}</TablaTd>
+                  <TablaTd className="text-texto-muted text-xs">{f.icono_de_funcion || '—'}</TablaTd>
                   <TablaTd className="text-texto-muted text-xs">{f.url_funcion || '—'}</TablaTd>
                   <TablaTd><Insignia variante={f.activo ? 'exito' : 'error'}>{f.activo ? 'Activa' : 'Inactiva'}</Insignia></TablaTd>
                   <TablaTd>
@@ -423,7 +427,9 @@ export default function PaginaRoles() {
       <Modal abierto={modalFuncion} alCerrar={() => setModalFuncion(false)} titulo={funcionEditando ? 'Editar función' : 'Nueva función'}>
         <div className="flex flex-col gap-4">
           <Input etiqueta="Código *" value={formFuncion.codigo_funcion} onChange={(e) => setFormFuncion({ ...formFuncion, codigo_funcion: e.target.value.toUpperCase() })} disabled={!!funcionEditando} placeholder="GEST_USUARIOS" />
+          <Input etiqueta="Alias *" value={formFuncion.alias_de_funcion} onChange={(e) => setFormFuncion({ ...formFuncion, alias_de_funcion: e.target.value.substring(0, 40) })} placeholder="Usuarios" />
           <Input etiqueta="Nombre *" value={formFuncion.nombre} onChange={(e) => setFormFuncion({ ...formFuncion, nombre: e.target.value })} placeholder="Gestión de usuarios" />
+          <Input etiqueta="Icono" value={formFuncion.icono_de_funcion} onChange={(e) => setFormFuncion({ ...formFuncion, icono_de_funcion: e.target.value })} placeholder="Users, Shield, Settings..." />
           <Input etiqueta="Descripción" value={formFuncion.descripcion} onChange={(e) => setFormFuncion({ ...formFuncion, descripcion: e.target.value })} />
           <Input etiqueta="URL función" value={formFuncion.url_funcion} onChange={(e) => setFormFuncion({ ...formFuncion, url_funcion: e.target.value })} placeholder="/usuarios" />
           {error && <div className="bg-red-50 border border-red-200 rounded-lg px-4 py-3"><p className="text-sm text-error">{error}</p></div>}
