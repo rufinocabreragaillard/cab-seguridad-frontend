@@ -105,11 +105,13 @@ export const rolesApi = {
     api.put<Rol>(`/roles/${id}`, datos).then((r) => r.data),
   eliminar: (id: string) => api.delete(`/roles/${id}`),
   listarFunciones: (id: string) =>
-    api.get<{ codigo_funcion: string; funciones: { nombre_funcion: string; activo: boolean } }[]>(
+    api.get<{ codigo_funcion: string; orden: number; funciones: { nombre_funcion: string; activo: boolean } }[]>(
       `/roles/${id}/funciones`
     ).then((r) => r.data),
   asignarFuncion: (id: string, codigoFuncion: string) =>
     api.post(`/roles/${id}/funciones`, { codigo_funcion: codigoFuncion }),
+  reordenarFunciones: (id: string, orden: { codigo_funcion: string; orden: number }[]) =>
+    api.put(`/roles/${id}/funciones/orden`, orden),
   quitarFuncion: (id: string, codigoFuncion: string) =>
     api.delete(`/roles/${id}/funciones/${codigoFuncion}`),
 }

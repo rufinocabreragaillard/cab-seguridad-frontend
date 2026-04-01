@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState, useCallback } from 'react'
-import { Plus, Pencil, Trash2, ChevronDown, ChevronRight, X, Download } from 'lucide-react'
+import { Plus, Pencil, Trash2, ChevronUp, ChevronDown, X, Download } from 'lucide-react'
 import { Boton } from '@/components/ui/boton'
 import { Input } from '@/components/ui/input'
 import { Insignia } from '@/components/ui/insignia'
@@ -14,7 +14,7 @@ import { useAuth } from '@/context/AuthContext'
 import type { Rol, Funcion } from '@/lib/tipos'
 import { exportarExcel } from '@/lib/exportar-excel'
 
-type FuncionAsignada = { codigo_funcion: string; funciones: { nombre_funcion: string; activo: boolean } }
+type FuncionAsignada = { codigo_funcion: string; orden: number; funciones: { nombre_funcion: string; activo: boolean } }
 
 export default function PaginaRoles() {
   const { grupoActivo } = useAuth()
@@ -150,6 +150,30 @@ export default function PaginaRoles() {
       cargarFuncionesRol(rolEditando.codigo_rol)
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Error al quitar función')
+    }
+  }
+
+  const moverFuncion = async (index: number, direccion: 'arriba' | 'abajo') => {
+    if (!rolEditando) return
+    const lista = [...funcionesRol]
+    const swapIndex = direccion === 'arriba' ? index - 1 : index + 1
+    if (swapIndex < 0 || swapIndex >= lista.length) return
+    // Intercambiar órdenes
+    const ordenA = lista[index].orden
+    const ordenB = lista[swapIndex].orden
+    lista[index].orden = ordenB
+    lista[swapIndex].orden = ordenA
+    // Intercambiar posiciones en el array
+    ;[lista[index], lista[swapIndex]] = [lista[swapIndex], lista[index]]
+    setFuncionesRol(lista)
+    try {
+      await rolesApi.reordenarFunciones(rolEditando.codigo_rol, lista.map((f) => ({
+        codigo_funcion: f.codigo_funcion,
+        orden: f.orden,
+      })))
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Error al reordenar')
+      cargarFuncionesRol(rolEditando.codigo_rol)
     }
   }
 
@@ -436,12 +460,31 @@ export default function PaginaRoles() {
                 </p>
               ) : (
                 <div className="flex flex-col gap-2">
-                  {funcionesRol.map((fa) => (
+                  {funcionesRol.map((fa, idx) => (
                     <div
                       key={fa.codigo_funcion}
-                      className="flex items-center justify-between px-3 py-2 rounded-lg border border-borde bg-surface"
+                      className="flex items-center gap-2 px-3 py-2 rounded-lg border border-borde bg-surface"
                     >
-                      <div>
+                      <div className="flex flex-col">
+                        <button
+                          onClick={() => moverFuncion(idx, 'arriba')}
+                          disabled={idx === 0}
+                          className="p-0.5 rounded hover:bg-primario-muy-claro text-texto-muted hover:text-primario transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                          title="Subir"
+                        >
+                          <ChevronUp size={14} />
+                        </button>
+                        <button
+                          onClick={() => moverFuncion(idx, 'abajo')}
+                          disabled={idx === funcionesRol.length - 1}
+                          className="p-0.5 rounded hover:bg-primario-muy-claro text-texto-muted hover:text-primario transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                          title="Bajar"
+                        >
+                          <ChevronDown size={14} />
+                        </button>
+                      </div>
+                      <span className="text-xs text-texto-muted w-5 text-center">{fa.orden}</span>
+                      <div className="flex-1 min-w-0">
                         <span className="text-sm font-medium text-texto">
                           {fa.funciones?.nombre_funcion || fa.codigo_funcion}
                         </span>
