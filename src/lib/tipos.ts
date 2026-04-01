@@ -100,6 +100,7 @@ export interface Rol {
   codigo_rol: string
   nombre: string
   codigo_grupo?: string
+  alias_de_rol?: string
   descripcion?: string
   url_inicio?: string
   funcion_por_defecto?: string
