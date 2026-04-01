@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from 'react'
 import { Save, SlidersHorizontal, Layers, Building2, User, Trash2 } from 'lucide-react'
 import { Boton } from '@/components/ui/boton'
+import { ModalConfirmar } from '@/components/ui/modal-confirmar'
 import { Tarjeta, TarjetaCabecera, TarjetaTitulo, TarjetaDescripcion, TarjetaContenido } from '@/components/ui/tarjeta'
 import { useAuth } from '@/context/AuthContext'
 import { parametrosApi, entidadesApi, datosBasicosApi } from '@/lib/api'
@@ -160,8 +161,10 @@ export default function PaginaParametros() {
   }
 
   // ── Eliminar parámetro ────────────────────────────────────────────────────
+  const [paramAEliminar, setParamAEliminar] = useState<{ cat: string; tipo: string } | null>(null)
+  const [eliminandoParam, setEliminandoParam] = useState(false)
+
   const eliminarParam = async (cat: string, tipo: string) => {
-    if (!confirm(`¿Eliminar el parámetro ${cat} / ${tipo}?\nEsta acción no se puede deshacer.`)) return
     setError('')
     try {
       if (tabActiva === 'generales') {
@@ -334,7 +337,7 @@ export default function PaginaParametros() {
                     </button>
                     {/* Eliminar */}
                     <button
-                      onClick={() => eliminarParam(p.categoria_parametro, p.tipo_parametro)}
+                      onClick={() => setParamAEliminar({ cat: p.categoria_parametro, tipo: p.tipo_parametro })}
                       className="p-1.5 rounded-lg hover:bg-red-50 text-texto-muted hover:text-error transition-colors shrink-0"
                       title="Eliminar parámetro"
                     >
@@ -407,6 +410,23 @@ export default function PaginaParametros() {
           )}
         </TarjetaContenido>
       </Tarjeta>
+
+      {/* Modal Confirmar Eliminación */}
+      <ModalConfirmar
+        abierto={!!paramAEliminar}
+        alCerrar={() => setParamAEliminar(null)}
+        alConfirmar={async () => {
+          if (!paramAEliminar) return
+          setEliminandoParam(true)
+          await eliminarParam(paramAEliminar.cat, paramAEliminar.tipo)
+          setEliminandoParam(false)
+          setParamAEliminar(null)
+        }}
+        titulo="Eliminar parámetro"
+        mensaje={`¿Estás seguro de eliminar el parámetro ${paramAEliminar?.cat} / ${paramAEliminar?.tipo}? Esta acción no se puede deshacer.`}
+        textoConfirmar="Eliminar"
+        cargando={eliminandoParam}
+      />
     </div>
   )
 }

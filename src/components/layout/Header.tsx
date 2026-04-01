@@ -45,7 +45,7 @@ export function Header({ titulo }: { titulo?: string }) {
     setCambiando(true)
     try {
       await cambiarGrupo(codigoGrupo)
-      window.location.reload()
+      // El reload se hace en AuthContext.cambiarGrupo
     } catch {
       setCambiando(false)
     }

@@ -6,6 +6,7 @@ import { Boton } from '@/components/ui/boton'
 import { Input } from '@/components/ui/input'
 import { Insignia } from '@/components/ui/insignia'
 import { Modal } from '@/components/ui/modal'
+import { ModalConfirmar } from '@/components/ui/modal-confirmar'
 import { Tabla, TablaCabecera, TablaCuerpo, TablaFila, TablaTh, TablaTd } from '@/components/ui/tabla'
 import { datosBasicosApi } from '@/lib/api'
 import type { CategoriaParametro, TipoParametro } from '@/lib/tipos'
@@ -100,13 +101,27 @@ export default function PaginaDatosBasicos() {
     }
   }
 
-  const eliminarCategoria = async (c: CategoriaParametro) => {
-    if (!confirm(`¿Eliminar la categoría "${c.nombre}"?\nSolo es posible si no tiene tipos asociados.`)) return
+  const [itemAEliminar, setItemAEliminar] = useState<{ tipo: 'categoria' | 'tipo'; item: CategoriaParametro | TipoParametro } | null>(null)
+  const [eliminandoItem, setEliminandoItem] = useState(false)
+
+  const ejecutarEliminacionDB = async () => {
+    if (!itemAEliminar) return
+    setEliminandoItem(true)
     try {
-      await datosBasicosApi.eliminarCategoria(c.categoria_parametro)
-      cargarCategorias()
+      if (itemAEliminar.tipo === 'categoria') {
+        await datosBasicosApi.eliminarCategoria((itemAEliminar.item as CategoriaParametro).categoria_parametro)
+        cargarCategorias()
+      } else {
+        const t = itemAEliminar.item as TipoParametro
+        await datosBasicosApi.eliminarTipo(t.categoria_parametro, t.tipo_parametro)
+        cargarTipos()
+      }
+      setItemAEliminar(null)
     } catch (e) {
-      alert(e instanceof Error ? e.message : 'Error al eliminar')
+      setErrorCat(e instanceof Error ? e.message : 'Error al eliminar')
+      setItemAEliminar(null)
+    } finally {
+      setEliminandoItem(false)
     }
   }
 
@@ -165,15 +180,7 @@ export default function PaginaDatosBasicos() {
     }
   }
 
-  const eliminarTipo = async (t: TipoParametro) => {
-    if (!confirm(`¿Eliminar el tipo "${t.nombre}"?`)) return
-    try {
-      await datosBasicosApi.eliminarTipo(t.categoria_parametro, t.tipo_parametro)
-      cargarTipos()
-    } catch (e) {
-      alert(e instanceof Error ? e.message : 'Error al eliminar')
-    }
-  }
+  // eliminarTipo y eliminarCategoria ahora usan el modal de confirmación
 
   const toggleActivoTipo = async (t: TipoParametro) => {
     try {
@@ -287,7 +294,7 @@ export default function PaginaDatosBasicos() {
                             <Pencil size={14} />
                           </button>
                           <button
-                            onClick={() => eliminarCategoria(c)}
+                            onClick={() => setItemAEliminar({ tipo: 'categoria', item: c })}
                             className="p-1.5 rounded-lg hover:bg-red-50 text-texto-muted hover:text-error transition-colors"
                             title="Eliminar"
                           >
@@ -388,7 +395,7 @@ export default function PaginaDatosBasicos() {
                             <Pencil size={14} />
                           </button>
                           <button
-                            onClick={() => eliminarTipo(t)}
+                            onClick={() => setItemAEliminar({ tipo: 'tipo', item: t })}
                             className="p-1.5 rounded-lg hover:bg-red-50 text-texto-muted hover:text-error transition-colors"
                             title="Eliminar"
                           >
@@ -508,6 +515,21 @@ export default function PaginaDatosBasicos() {
           </div>
         </div>
       </Modal>
+
+      {/* Modal Confirmar Eliminación */}
+      <ModalConfirmar
+        abierto={!!itemAEliminar}
+        alCerrar={() => setItemAEliminar(null)}
+        alConfirmar={ejecutarEliminacionDB}
+        titulo={itemAEliminar?.tipo === 'categoria' ? 'Eliminar categoría' : 'Eliminar tipo'}
+        mensaje={
+          itemAEliminar?.tipo === 'categoria'
+            ? `¿Estás seguro de eliminar la categoría "${(itemAEliminar.item as CategoriaParametro).nombre}"? Solo es posible si no tiene tipos asociados.`
+            : `¿Estás seguro de eliminar el tipo "${(itemAEliminar?.item as TipoParametro)?.nombre}"?`
+        }
+        textoConfirmar="Eliminar"
+        cargando={eliminandoItem}
+      />
     </div>
   )
 }

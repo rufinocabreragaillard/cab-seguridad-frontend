@@ -6,6 +6,7 @@ import { Boton } from '@/components/ui/boton'
 import { Input } from '@/components/ui/input'
 import { Insignia } from '@/components/ui/insignia'
 import { Modal } from '@/components/ui/modal'
+import { ModalConfirmar } from '@/components/ui/modal-confirmar'
 import { Tabla, TablaCabecera, TablaCuerpo, TablaFila, TablaTh, TablaTd } from '@/components/ui/tabla'
 import { usuariosApi, rolesApi, entidadesApi } from '@/lib/api'
 import { useAuth } from '@/context/AuthContext'
@@ -293,12 +294,22 @@ export default function PaginaUsuarios() {
     } catch (e) { setError(e instanceof Error ? e.message : 'Error al quitar entidad') }
   }
 
-  const desactivar = async (u: Usuario) => {
-    if (!confirm(`¿Desactivar al usuario ${u.nombre}?`)) return
+  const [usuarioADesactivar, setUsuarioADesactivar] = useState<Usuario | null>(null)
+  const [desactivando, setDesactivando] = useState(false)
+
+  const ejecutarDesactivar = async () => {
+    if (!usuarioADesactivar) return
+    setDesactivando(true)
     try {
-      await usuariosApi.desactivar(u.codigo_usuario)
+      await usuariosApi.desactivar(usuarioADesactivar.codigo_usuario)
+      setUsuarioADesactivar(null)
       cargar()
-    } catch (e) { alert(e instanceof Error ? e.message : 'Error al desactivar') }
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Error al desactivar')
+      setUsuarioADesactivar(null)
+    } finally {
+      setDesactivando(false)
+    }
   }
 
   // ── Listas derivadas ───────────────────────────────────────────────────────
@@ -435,7 +446,7 @@ export default function PaginaUsuarios() {
                         <Pencil size={14} />
                       </button>
                       <button
-                        onClick={() => desactivar(u)}
+                        onClick={() => setUsuarioADesactivar(u)}
                         className={`p-1.5 rounded-lg transition-colors ${
                           u.activo
                             ? 'hover:bg-red-50 text-texto-muted hover:text-error'
@@ -812,6 +823,17 @@ export default function PaginaUsuarios() {
           )}
         </div>
       </Modal>
+
+      {/* Modal Confirmar Desactivación */}
+      <ModalConfirmar
+        abierto={!!usuarioADesactivar}
+        alCerrar={() => setUsuarioADesactivar(null)}
+        alConfirmar={ejecutarDesactivar}
+        titulo="Desactivar usuario"
+        mensaje={`¿Estás seguro de desactivar al usuario "${usuarioADesactivar?.nombre}"? El usuario no podrá acceder al sistema.`}
+        textoConfirmar="Desactivar"
+        cargando={desactivando}
+      />
     </div>
   )
 }

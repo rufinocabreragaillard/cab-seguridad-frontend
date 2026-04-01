@@ -6,6 +6,7 @@ import { Boton } from '@/components/ui/boton'
 import { Input } from '@/components/ui/input'
 import { Insignia } from '@/components/ui/insignia'
 import { Modal } from '@/components/ui/modal'
+import { ModalConfirmar } from '@/components/ui/modal-confirmar'
 import { Tabla, TablaCabecera, TablaCuerpo, TablaFila, TablaTh, TablaTd } from '@/components/ui/tabla'
 import { Tarjeta, TarjetaCabecera, TarjetaTitulo, TarjetaContenido } from '@/components/ui/tarjeta'
 import { rolesApi, funcionesApi } from '@/lib/api'
@@ -37,6 +38,10 @@ export default function PaginaRoles() {
   const [modalFuncion, setModalFuncion] = useState(false)
   const [funcionEditando, setFuncionEditando] = useState<Funcion | null>(null)
   const [formFuncion, setFormFuncion] = useState({ codigo_funcion: '', nombre: '', descripcion: '', url_funcion: '', alias_de_funcion: '', icono_de_funcion: '' })
+
+  // Modal confirmar eliminación
+  const [confirmacion, setConfirmacion] = useState<{ tipo: 'rol' | 'funcion'; item: Rol | Funcion } | null>(null)
+  const [eliminando, setEliminando] = useState(false)
 
   const [guardando, setGuardando] = useState(false)
   const [error, setError] = useState('')
@@ -102,10 +107,25 @@ export default function PaginaRoles() {
     }
   }
 
-  const eliminarRol = async (r: Rol) => {
-    if (!confirm(`¿Eliminar el rol "${r.nombre}"?`)) return
-    try { await rolesApi.eliminar(r.codigo_rol); cargar() }
-    catch (e) { alert(e instanceof Error ? e.message : 'Error') }
+  const confirmarEliminarRol = (r: Rol) => setConfirmacion({ tipo: 'rol', item: r })
+
+  const ejecutarEliminacion = async () => {
+    if (!confirmacion) return
+    setEliminando(true)
+    try {
+      if (confirmacion.tipo === 'rol') {
+        await rolesApi.eliminar((confirmacion.item as Rol).codigo_rol)
+      } else {
+        await funcionesApi.eliminar((confirmacion.item as Funcion).codigo_funcion)
+      }
+      setConfirmacion(null)
+      cargar()
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Error al eliminar')
+      setConfirmacion(null)
+    } finally {
+      setEliminando(false)
+    }
   }
 
   const asignarFuncion = async () => {
@@ -170,11 +190,7 @@ export default function PaginaRoles() {
     }
   }
 
-  const eliminarFuncion = async (f: Funcion) => {
-    if (!confirm(`¿Eliminar la función "${f.nombre}"?`)) return
-    try { await funcionesApi.eliminar(f.codigo_funcion); cargar() }
-    catch (e) { alert(e instanceof Error ? e.message : 'Error') }
-  }
+  const confirmarEliminarFuncion = (f: Funcion) => setConfirmacion({ tipo: 'funcion', item: f })
 
   return (
     <div className="flex flex-col gap-6 max-w-6xl">
@@ -230,7 +246,7 @@ export default function PaginaRoles() {
                   <TablaTd>
                     <div className="flex items-center justify-end gap-1">
                       <button onClick={() => abrirEditarRol(r)} className="p-1.5 rounded-lg hover:bg-primario-muy-claro text-texto-muted hover:text-primario transition-colors" title="Editar"><Pencil size={14} /></button>
-                      <button onClick={() => eliminarRol(r)} className="p-1.5 rounded-lg hover:bg-red-50 text-texto-muted hover:text-error transition-colors" title="Eliminar"><Trash2 size={14} /></button>
+                      <button onClick={() => confirmarEliminarRol(r)} className="p-1.5 rounded-lg hover:bg-red-50 text-texto-muted hover:text-error transition-colors" title="Eliminar"><Trash2 size={14} /></button>
                     </div>
                   </TablaTd>
                 </TablaFila>
@@ -271,7 +287,7 @@ export default function PaginaRoles() {
                   <TablaTd>
                     <div className="flex items-center justify-end gap-1">
                       <button onClick={() => abrirEditarFuncion(f)} className="p-1.5 rounded-lg hover:bg-primario-muy-claro text-texto-muted hover:text-primario transition-colors" title="Editar"><Pencil size={14} /></button>
-                      <button onClick={() => eliminarFuncion(f)} className="p-1.5 rounded-lg hover:bg-red-50 text-texto-muted hover:text-error transition-colors" title="Eliminar"><Trash2 size={14} /></button>
+                      <button onClick={() => confirmarEliminarFuncion(f)} className="p-1.5 rounded-lg hover:bg-red-50 text-texto-muted hover:text-error transition-colors" title="Eliminar"><Trash2 size={14} /></button>
                     </div>
                   </TablaTd>
                 </TablaFila>
@@ -439,6 +455,21 @@ export default function PaginaRoles() {
           </div>
         </div>
       </Modal>
+
+      {/* Modal Confirmar Eliminación */}
+      <ModalConfirmar
+        abierto={!!confirmacion}
+        alCerrar={() => setConfirmacion(null)}
+        alConfirmar={ejecutarEliminacion}
+        titulo={confirmacion?.tipo === 'rol' ? 'Eliminar rol' : 'Eliminar función'}
+        mensaje={
+          confirmacion?.tipo === 'rol'
+            ? `¿Estás seguro de eliminar el rol "${confirmacion.item.nombre}"? Esta acción no se puede deshacer.`
+            : `¿Estás seguro de eliminar la función "${confirmacion?.item.nombre}"? Se eliminarán todas las asignaciones a roles.`
+        }
+        textoConfirmar="Eliminar"
+        cargando={eliminando}
+      />
     </div>
   )
 }
