@@ -19,6 +19,21 @@ export interface EntidadResumen {
   es_default: boolean
 }
 
+export interface FuncionMenu {
+  codigo_funcion: string
+  alias: string
+  icono: string | null
+  url: string | null
+  orden: number
+}
+
+export interface RolMenu {
+  codigo_rol: string
+  alias: string
+  orden: number
+  funciones: FuncionMenu[]
+}
+
 export interface UsuarioContexto {
   codigo_usuario: string   // email
   nombre: string
@@ -33,6 +48,8 @@ export interface UsuarioContexto {
   entidad_activa: string
   url_inicio: string
   sesion_duracion_minutos?: number
+  menu?: RolMenu[]
+  tema?: Record<string, unknown> | null
 }
 
 export interface LoginRequest {
