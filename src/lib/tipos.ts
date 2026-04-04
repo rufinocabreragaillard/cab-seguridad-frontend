@@ -98,6 +98,7 @@ export interface Usuario {
   entidad_por_defecto?: string
   grupo_por_defecto?: string
   codigo_area_por_defecto?: string
+  aplicacion_por_defecto?: string
   fecha_creacion?: string
   ultimo_acceso?: string
 }
@@ -310,6 +311,18 @@ export interface Compromiso {
   fecha_creacion?: string
   fecha_esperada?: string
   fecha_cierre?: string
+}
+
+// ─── Documentos ─────────────────────────────────────────────────────────────
+
+export interface Documento {
+  codigo_documento: number
+  codigo_grupo: string
+  codigo_entidad?: string | null
+  nombre_documento: string
+  ubicacion_documento?: string | null
+  resumen_documento?: string | null
+  activo: boolean
 }
 
 // ─── Utilitarios ─────────────────────────────────────────────────────────────

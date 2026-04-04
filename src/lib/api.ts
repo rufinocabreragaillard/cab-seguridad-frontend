@@ -15,6 +15,7 @@ import type {
   CategoriaParametro,
   TipoParametro,
   Aplicacion,
+  Documento,
   EstadoCanonicoConversacion,
   EstadoCanonicoCompromiso,
   TipoConversacion,
@@ -155,7 +156,8 @@ export const funcionesApi = {
 // ─── Aplicaciones ─────────────────────────────────────────────────────────────
 
 export const aplicacionesApi = {
-  listar: () => api.get<Aplicacion[]>('/aplicaciones').then((r) => r.data),
+  listar: (codigoGrupo?: string) =>
+    api.get<Aplicacion[]>('/aplicaciones', { params: codigoGrupo ? { codigo_grupo: codigoGrupo } : {} }).then((r) => r.data),
   crear: (datos: Partial<Aplicacion>) => api.post<Aplicacion>('/aplicaciones', datos).then((r) => r.data),
   actualizar: (id: string, datos: Partial<Aplicacion>) =>
     api.put<Aplicacion>(`/aplicaciones/${id}`, datos).then((r) => r.data),

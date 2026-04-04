@@ -8,9 +8,9 @@ import { Insignia } from '@/components/ui/insignia'
 import { Modal } from '@/components/ui/modal'
 import { ModalConfirmar } from '@/components/ui/modal-confirmar'
 import { Tabla, TablaCabecera, TablaCuerpo, TablaFila, TablaTh, TablaTd } from '@/components/ui/tabla'
-import { usuariosApi, rolesApi, entidadesApi } from '@/lib/api'
+import { usuariosApi, rolesApi, entidadesApi, aplicacionesApi } from '@/lib/api'
 import { useAuth } from '@/context/AuthContext'
-import type { Usuario, Rol, Entidad, Area } from '@/lib/tipos'
+import type { Usuario, Rol, Entidad, Area, Aplicacion } from '@/lib/tipos'
 import { exportarExcel } from '@/lib/exportar-excel'
 
 type RolAsignado = { codigo_grupo: string; codigo_rol: string; orden: number; roles: { nombre: string; activo: boolean } }
@@ -74,8 +74,12 @@ export default function PaginaUsuarios() {
     grupo_por_defecto: '',
     entidad_por_defecto: '',
     codigo_area_por_defecto: '',
+    aplicacion_por_defecto: '',
     invitar: true,
   })
+
+  // Apps disponibles para el grupo del usuario editado
+  const [appsGrupoUsuario, setAppsGrupoUsuario] = useState<Aplicacion[]>([])
 
   // ── Carga inicial ──────────────────────────────────────────────────────────
   const cargar = useCallback(async () => {
@@ -127,6 +131,17 @@ export default function PaginaUsuarios() {
     cargarAreasDefault(form.entidad_por_defecto)
   }, [form.entidad_por_defecto, cargarAreasDefault])
 
+  // Cargar apps del grupo_por_defecto del usuario editado
+  useEffect(() => {
+    if (form.grupo_por_defecto) {
+      aplicacionesApi.listar(form.grupo_por_defecto)
+        .then(setAppsGrupoUsuario)
+        .catch(() => setAppsGrupoUsuario([]))
+    } else {
+      setAppsGrupoUsuario([])
+    }
+  }, [form.grupo_por_defecto])
+
   // Re-cargar entidades cuando cambie el grupo activo del admin
   useEffect(() => {
     if (grupoActivo && grupoActivo !== grupoAnteriorRef.current) {
@@ -166,7 +181,7 @@ export default function PaginaUsuarios() {
   const abrirNuevo = () => {
     setUsuarioEditando(null)
     setForm({ codigo_usuario: '', nombre: '', telefono: '', rol_principal: '',
-      grupo_por_defecto: '', entidad_por_defecto: '', codigo_area_por_defecto: '', invitar: true })
+      grupo_por_defecto: '', entidad_por_defecto: '', codigo_area_por_defecto: '', aplicacion_por_defecto: '', invitar: true })
     setError('')
     setGuardando(false)
     setTabActiva('datos')
@@ -187,6 +202,7 @@ export default function PaginaUsuarios() {
       grupo_por_defecto: u.grupo_por_defecto || '',
       entidad_por_defecto: u.entidad_por_defecto || '',
       codigo_area_por_defecto: u.codigo_area_por_defecto || '',
+      aplicacion_por_defecto: u.aplicacion_por_defecto || '',
       invitar: false,
     })
     setError('')
@@ -221,6 +237,7 @@ export default function PaginaUsuarios() {
           grupo_por_defecto: form.grupo_por_defecto || undefined,
           entidad_por_defecto: form.entidad_por_defecto || undefined,
           codigo_area_por_defecto: form.codigo_area_por_defecto || undefined,
+          aplicacion_por_defecto: form.aplicacion_por_defecto || undefined,
         })
       } else {
         await usuariosApi.crear({
@@ -374,7 +391,7 @@ export default function PaginaUsuarios() {
 
   // ── Handlers de cascada en Datos ──────────────────────────────────────────
   const handleGrupoDefaultChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    setForm({ ...form, grupo_por_defecto: e.target.value, rol_principal: '', entidad_por_defecto: '', codigo_area_por_defecto: '' })
+    setForm({ ...form, grupo_por_defecto: e.target.value, rol_principal: '', entidad_por_defecto: '', codigo_area_por_defecto: '', aplicacion_por_defecto: '' })
     setAreasParaDefault([])
   }
 
@@ -634,6 +651,24 @@ export default function PaginaUsuarios() {
                       {form.grupo_por_defecto && rolesUsuario.filter((ra) => ra.codigo_grupo === form.grupo_por_defecto).length === 0 && (
                         <p className="text-xs text-texto-muted">No hay roles asignados en este grupo</p>
                       )}
+                    </div>
+
+                    {/* Aplicación por defecto — solo apps del grupo por defecto */}
+                    <div className="flex flex-col gap-1.5 mt-3">
+                      <label className="text-sm font-medium text-texto">Aplicación por defecto</label>
+                      <select
+                        value={form.aplicacion_por_defecto}
+                        onChange={(e) => setForm({ ...form, aplicacion_por_defecto: e.target.value })}
+                        disabled={!form.grupo_por_defecto}
+                        className={selectClass}
+                      >
+                        <option value="">Sin aplicación seleccionada</option>
+                        {appsGrupoUsuario.map((a) => (
+                          <option key={a.codigo_aplicacion} value={a.codigo_aplicacion}>
+                            {a.nombre} ({a.codigo_aplicacion})
+                          </option>
+                        ))}
+                      </select>
                     </div>
 
                     {/* Entidad por defecto — solo entidades del usuario en su grupo */}
