@@ -172,7 +172,7 @@ export default function PaginaGrupos() {
     // Cargar usuarios de la entidad
     setCargandoUsuariosEntidad(true)
     try {
-      setUsuariosEntidad(await entidadesApi.listarUsuarios(e.codigo_entidad))
+      setUsuariosEntidad(await entidadesApi.listarUsuarios(e.codigo_entidad, grupoSeleccionado?.codigo_grupo))
     } finally {
       setCargandoUsuariosEntidad(false)
     }
@@ -214,7 +214,7 @@ export default function PaginaGrupos() {
       await usuariosApi.asignarEntidad(usuarioNuevoEnt, entidadEditando.codigo_entidad, grupoSeleccionado.codigo_grupo)
       setUsuarioNuevoEnt('')
       setBusquedaUsuarioEnt('')
-      setUsuariosEntidad(await entidadesApi.listarUsuarios(entidadEditando.codigo_entidad))
+      setUsuariosEntidad(await entidadesApi.listarUsuarios(entidadEditando.codigo_entidad, grupoSeleccionado?.codigo_grupo))
     } catch (e) {
       setErrorEntidad(e instanceof Error ? e.message : 'Error al asignar')
     } finally {
@@ -226,7 +226,7 @@ export default function PaginaGrupos() {
     if (!entidadEditando) return
     try {
       await usuariosApi.quitarEntidad(codigoUsuario, entidadEditando.codigo_entidad)
-      setUsuariosEntidad(await entidadesApi.listarUsuarios(entidadEditando.codigo_entidad))
+      setUsuariosEntidad(await entidadesApi.listarUsuarios(entidadEditando.codigo_entidad, grupoSeleccionado?.codigo_grupo))
     } catch (e) {
       setErrorEntidad(e instanceof Error ? e.message : 'Error al quitar')
     }

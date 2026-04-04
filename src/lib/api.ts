@@ -207,9 +207,9 @@ export const entidadesApi = {
   eliminarParametro: (idEntidad: string, categoria: string, tipo: string) =>
     api.delete(`/entidades/${idEntidad}/parametros/${categoria}/${tipo}`),
   desactivar: (id: string) => api.delete(`/entidades/${id}`),
-  listarUsuarios: (id: string) =>
+  listarUsuarios: (id: string, codigoGrupo?: string) =>
     api.get<{ codigo_usuario: string; usuarios: { nombre_usuario: string; activo: boolean } }[]>(
-      `/entidades/${id}/usuarios`
+      `/entidades/${id}/usuarios`, { params: codigoGrupo ? { codigo_grupo: codigoGrupo } : {} }
     ).then((r) => r.data),
 }
 
