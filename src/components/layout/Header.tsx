@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { ChevronDown, Building2, Layers, Check, Bell, Settings, LogOut, User, Save, AppWindow } from 'lucide-react'
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu'
 import * as Avatar from '@radix-ui/react-avatar'
+import { useRouter } from 'next/navigation'
 import { cn } from '@/lib/utils'
 import { useAuth } from '@/context/AuthContext'
 import { Modal } from '@/components/ui/modal'
@@ -13,6 +14,7 @@ import { Boton } from '@/components/ui/boton'
 import { usuariosApi, parametrosApi, aplicacionesApi } from '@/lib/api'
 
 export function Header({ titulo }: { titulo?: string }) {
+  const router = useRouter()
   const { usuario, cambiarEntidad, cambiarGrupo, cambiarAplicacion, logout } = useAuth()
   const [cambiando, setCambiando] = useState(false)
 
@@ -70,28 +72,22 @@ export function Header({ titulo }: { titulo?: string }) {
     try {
       await cambiarAplicacion(codigoApp)
       setModalAplicacion(false)
-      // Navegar a la URL base de la app seleccionada
+      // Verificar si la app destino está en otro dominio (cross-app real)
       const urlBase = usuario?.aplicaciones_url?.[codigoApp]
       if (urlBase) {
         try {
           const destino = new URL(urlBase)
           const actual = window.location.origin
-          // Si el destino es el mismo host, solo recargar
-          if (destino.origin === actual) {
-            window.location.reload()
-          } else if (destino.hostname === 'localhost' || destino.hostname === '127.0.0.1') {
-            // Estamos en producción pero url_base apunta a localhost: solo recargar
-            window.location.reload()
-          } else {
+          // Solo navegar si es un dominio diferente y no es localhost
+          if (destino.origin !== actual && destino.hostname !== 'localhost' && destino.hostname !== '127.0.0.1') {
             window.location.href = urlBase
+            return
           }
-        } catch {
-          window.location.href = urlBase
-        }
-      } else {
-        // Sin url_base configurada: recargar para aplicar el cambio de contexto
-        window.location.reload()
+        } catch { /* URL inválida, ignorar */ }
       }
+      // Misma app/dominio o sin url_base: el estado ya se actualizó en AuthContext,
+      // React re-renderiza el sidebar. Navegar a dashboard.
+      router.push('/dashboard')
     } catch {
       // error manejado en AuthContext
     } finally {
