@@ -26,6 +26,7 @@ export function Header({ titulo }: { titulo?: string }) {
   const [guardandoCuenta, setGuardandoCuenta] = useState(false)
   const [errorCuenta, setErrorCuenta] = useState('')
   const [exitoCuenta, setExitoCuenta] = useState('')
+  const [datosOriginales, setDatosOriginales] = useState<Record<string, string>>({})  // para detectar cambios reales
   // Datos para cascada en Mi Cuenta
   const [gruposCuenta, setGruposCuenta] = useState<{ codigo_grupo: string; nombre: string }[]>([])
   const [entidadesCuenta, setEntidadesCuenta] = useState<{ codigo_entidad: string; codigo_grupo: string; nombre: string }[]>([])
@@ -116,7 +117,7 @@ export function Header({ titulo }: { titulo?: string }) {
     if (usuario) {
       // Cargar datos del usuario
       usuariosApi.obtener(usuario.codigo_usuario).then((u) => {
-        setFormCuenta({
+        const datos = {
           nombre: u.nombre,
           telefono: u.telefono || '',
           rol_principal: u.rol_principal || '',
@@ -125,7 +126,9 @@ export function Header({ titulo }: { titulo?: string }) {
           aplicacion_por_defecto: u.aplicacion_por_defecto || '',
           grupo_por_defecto: u.grupo_por_defecto || '',
           entidad_por_defecto: u.entidad_por_defecto || '',
-        })
+        }
+        setFormCuenta(datos)
+        setDatosOriginales(datos)
         // Cargar apps del grupo por defecto
         if (u.grupo_por_defecto) {
           aplicacionesApi.listar(u.grupo_por_defecto).then(apps =>
@@ -155,17 +158,30 @@ export function Header({ titulo }: { titulo?: string }) {
     setErrorCuenta('')
     setExitoCuenta('')
     try {
-      await usuariosApi.actualizar(usuario.codigo_usuario, {
-        nombre: formCuenta.nombre,
-        telefono: formCuenta.telefono || undefined,
-        rol_principal: formCuenta.rol_principal || undefined,
-        alias: formCuenta.alias || undefined,
-        descripcion: formCuenta.descripcion || undefined,
-        aplicacion_por_defecto: formCuenta.aplicacion_por_defecto || null,
-        grupo_por_defecto: formCuenta.grupo_por_defecto || undefined,
-        entidad_por_defecto: formCuenta.entidad_por_defecto || undefined,
-      })
+      // Solo enviar campos que realmente cambiaron
+      const cambios: Record<string, string | null | undefined> = {}
+      // nombre siempre se envía
+      cambios.nombre = formCuenta.nombre
+      if (formCuenta.telefono !== datosOriginales.telefono) cambios.telefono = formCuenta.telefono || undefined
+      if (formCuenta.alias !== datosOriginales.alias) cambios.alias = formCuenta.alias || undefined
+      if (formCuenta.descripcion !== datosOriginales.descripcion) cambios.descripcion = formCuenta.descripcion || undefined
+      // Preferencias de inicio: solo enviar si cambiaron
+      if (formCuenta.grupo_por_defecto !== datosOriginales.grupo_por_defecto) {
+        cambios.grupo_por_defecto = formCuenta.grupo_por_defecto || undefined
+      }
+      if (formCuenta.rol_principal !== datosOriginales.rol_principal) {
+        cambios.rol_principal = formCuenta.rol_principal || undefined
+      }
+      if (formCuenta.entidad_por_defecto !== datosOriginales.entidad_por_defecto) {
+        cambios.entidad_por_defecto = formCuenta.entidad_por_defecto || undefined
+      }
+      if (formCuenta.aplicacion_por_defecto !== datosOriginales.aplicacion_por_defecto) {
+        cambios.aplicacion_por_defecto = formCuenta.aplicacion_por_defecto || null
+      }
+      await usuariosApi.actualizar(usuario.codigo_usuario, cambios)
       setExitoCuenta('Datos actualizados correctamente')
+      // Actualizar datos originales para futuras comparaciones
+      setDatosOriginales({ ...formCuenta })
     } catch (e) {
       setErrorCuenta(e instanceof Error ? e.message : 'Error al guardar')
     } finally {
