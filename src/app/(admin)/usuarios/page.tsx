@@ -249,10 +249,6 @@ export default function PaginaUsuarios() {
           telefono: form.telefono || undefined,
           descripcion: form.descripcion || undefined,
           rol_principal: form.rol_principal || undefined,
-          grupo_por_defecto: form.grupo_por_defecto || undefined,
-          entidad_por_defecto: form.entidad_por_defecto || undefined,
-          codigo_area_por_defecto: form.codigo_area_por_defecto || undefined,
-          aplicacion_por_defecto: form.aplicacion_por_defecto || undefined,
         })
       } else {
         await usuariosApi.crear({
@@ -582,7 +578,7 @@ export default function PaginaUsuarios() {
       <Modal
         abierto={modalAbierto}
         alCerrar={() => setModalAbierto(false)}
-        titulo={usuarioEditando ? `Editar usuario : ${usuarioEditando.codigo_usuario}` : 'Nuevo usuario'}
+        titulo={usuarioEditando ? `Mi cuenta: ${usuarioEditando.codigo_usuario}` : 'Nuevo usuario'}
         descripcion={usuarioEditando ? undefined : 'El usuario recibirá una invitación por correo'}
       >
         <div className="flex flex-col gap-4">
