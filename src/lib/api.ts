@@ -82,12 +82,42 @@ function resolverFuncion(): string | null {
   return null
 }
 
-// Interceptor: agrega el token JWT de Supabase y el codigo_funcion en cada request
+// ── Overrides de sesión (grupo/entidad/app) persistidos en localStorage ─────
+const OVERRIDE_KEYS = {
+  grupo: 'cab_override_grupo',
+  entidad: 'cab_override_entidad',
+  aplicacion: 'cab_override_aplicacion',
+} as const
+
+export function setOverrideSesion(tipo: 'grupo' | 'entidad' | 'aplicacion', valor: string | null) {
+  if (typeof window === 'undefined') return
+  if (valor) {
+    localStorage.setItem(OVERRIDE_KEYS[tipo], valor)
+  } else {
+    localStorage.removeItem(OVERRIDE_KEYS[tipo])
+  }
+}
+
+export function clearOverridesSesion() {
+  if (typeof window === 'undefined') return
+  Object.values(OVERRIDE_KEYS).forEach((k) => localStorage.removeItem(k))
+}
+
+// Interceptor: agrega el token JWT de Supabase, codigo_funcion y overrides en cada request
 api.interceptors.request.use(async (config) => {
   const token = await obtenerToken()
   if (token) config.headers.Authorization = `Bearer ${token}`
   const funcion = resolverFuncion()
   if (funcion) config.headers['X-Codigo-Funcion'] = funcion
+  // Enviar overrides de sesión como headers
+  if (typeof window !== 'undefined') {
+    const og = localStorage.getItem(OVERRIDE_KEYS.grupo)
+    const oe = localStorage.getItem(OVERRIDE_KEYS.entidad)
+    const oa = localStorage.getItem(OVERRIDE_KEYS.aplicacion)
+    if (og) config.headers['X-Override-Grupo'] = og
+    if (oe) config.headers['X-Override-Entidad'] = oe
+    if (oa) config.headers['X-Override-Aplicacion'] = oa
+  }
   return config
 })
 

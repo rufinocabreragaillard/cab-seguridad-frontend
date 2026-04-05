@@ -12,7 +12,7 @@ import {
 } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
-import { authApi, actualizarMapaFunciones } from '@/lib/api'
+import { authApi, actualizarMapaFunciones, setOverrideSesion, clearOverridesSesion } from '@/lib/api'
 import type { UsuarioContexto } from '@/lib/tipos'
 
 const PUBLIC_ROUTES = ['/login', '/auth/callback', '/auth/reset-password']
@@ -99,6 +99,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           // Solo redirigir si fue un login explícito del usuario
           if (loginExplicito.current) {
             loginExplicito.current = false
+            clearOverridesSesion()  // Limpiar overrides de sesión anterior al hacer login
             const ctx = await cargarContexto()
             if (isMounted) {
               setCargando(false)
@@ -193,6 +194,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   const logout = async () => {
+    clearOverridesSesion()
     await supabase.auth.signOut()
     setUsuario(null)
     actualizarMapaFunciones()
@@ -201,6 +203,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const cambiarEntidad = async (codigoEntidad: string) => {
     try {
+      setOverrideSesion('entidad', codigoEntidad)
       const ctx = await authApi.cambiarEntidad(codigoEntidad)
       setUsuario(ctx)
       actualizarMapaFunciones(ctx.menu)
@@ -212,9 +215,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const cambiarGrupo = async (codigoGrupo: string) => {
     try {
+      setOverrideSesion('grupo', codigoGrupo)
+      setOverrideSesion('entidad', null)  // reset entidad al cambiar grupo
+      setOverrideSesion('aplicacion', null)  // reset app al cambiar grupo
       const ctx = await authApi.cambiarGrupo(codigoGrupo)
       setUsuario(ctx)
       actualizarMapaFunciones(ctx.menu)
+      // Guardar la entidad que el backend seleccionó para el nuevo grupo
+      if (ctx.entidad_activa) setOverrideSesion('entidad', ctx.entidad_activa)
       router.push('/dashboard')
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Error al cambiar grupo')
@@ -224,6 +232,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const cambiarAplicacion = async (codigoAplicacion: string) => {
     try {
+      setOverrideSesion('aplicacion', codigoAplicacion)
       const ctx = await authApi.cambiarAplicacion(codigoAplicacion)
       setUsuario(ctx)
       actualizarMapaFunciones(ctx.menu)
