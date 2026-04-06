@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState, useCallback } from 'react'
-import { Plus, Pencil, Trash2, Download, Search, ExternalLink } from 'lucide-react'
+import { Plus, Pencil, Trash2, Download, Search } from 'lucide-react'
 import { Boton } from '@/components/ui/boton'
 import { Input } from '@/components/ui/input'
 import { Insignia } from '@/components/ui/insignia'
@@ -320,11 +320,7 @@ export default function PaginaDocumentos() {
           <tr>
             <TablaTh>ID</TablaTh>
             <TablaTh>Nombre</TablaTh>
-            <TablaTh>Ubicacion</TablaTh>
-            <TablaTh>Resumen</TablaTh>
-            <TablaTh>Modificación</TablaTh>
-            <TablaTh>KB</TablaTh>
-            <TablaTh>Estado Doc</TablaTh>
+            <TablaTh>Ubicación</TablaTh>
             <TablaTh>Estado</TablaTh>
             <TablaTh className="text-right">Acciones</TablaTh>
           </tr>
@@ -332,13 +328,13 @@ export default function PaginaDocumentos() {
         <TablaCuerpo>
           {cargando ? (
             <TablaFila>
-              <TablaTd className="py-8 text-center text-texto-muted" colSpan={9 as never}>
+              <TablaTd className="py-8 text-center text-texto-muted" colSpan={5 as never}>
                 Cargando...
               </TablaTd>
             </TablaFila>
           ) : filtrados.length === 0 ? (
             <TablaFila>
-              <TablaTd className="py-8 text-center text-texto-muted" colSpan={9 as never}>
+              <TablaTd className="py-8 text-center text-texto-muted" colSpan={5 as never}>
                 No se encontraron documentos
               </TablaTd>
             </TablaFila>
@@ -351,39 +347,14 @@ export default function PaginaDocumentos() {
                   </code>
                 </TablaTd>
                 <TablaTd className="font-medium">{d.nombre_documento}</TablaTd>
-                <TablaTd className="text-sm text-texto-muted max-w-[200px] truncate">
+                <TablaTd className="text-sm text-texto-muted max-w-[250px] truncate">
                   {d.ubicacion_documento ? (
-                    <a
-                      href={d.ubicacion_documento.startsWith('http') ? d.ubicacion_documento : undefined}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex items-center gap-1 text-primario hover:underline"
-                      title={d.ubicacion_documento}
-                    >
-                      <ExternalLink size={12} />
-                      {d.ubicacion_documento.length > 40
-                        ? d.ubicacion_documento.slice(0, 40) + '...'
+                    <span title={d.ubicacion_documento}>
+                      {d.ubicacion_documento.length > 50
+                        ? '...' + d.ubicacion_documento.slice(-47)
                         : d.ubicacion_documento}
-                    </a>
-                  ) : (
-                    '—'
-                  )}
-                </TablaTd>
-                <TablaTd className="text-texto-muted text-sm max-w-[250px] truncate">
-                  {d.resumen_documento || '—'}
-                </TablaTd>
-                <TablaTd className="text-texto-muted text-xs whitespace-nowrap">
-                  {d.fecha_modificacion
-                    ? new Date(d.fecha_modificacion).toLocaleDateString('es-CL', { day: '2-digit', month: '2-digit', year: 'numeric' })
-                    : '—'}
-                </TablaTd>
-                <TablaTd className="text-texto-muted text-sm text-right">
-                  {d.tamano_kb != null ? d.tamano_kb.toLocaleString('es-CL') : '—'}
-                </TablaTd>
-                <TablaTd className="text-sm">
-                  {d.codigo_estado_doc
-                    ? (estados.find((e) => e.codigo_estado_doc === d.codigo_estado_doc)?.nombre_estado || d.codigo_estado_doc)
-                    : '—'}
+                    </span>
+                  ) : '—'}
                 </TablaTd>
                 <TablaTd>
                   <Insignia variante={d.activo ? 'exito' : 'error'}>
