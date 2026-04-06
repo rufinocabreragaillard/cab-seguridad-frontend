@@ -111,39 +111,37 @@ export function Header({ titulo }: { titulo?: string }) {
     setErrorCuenta('')
     setExitoCuenta('')
     if (usuario) {
-      // Cargar datos del usuario
-      usuariosApi.obtener(usuario.codigo_usuario).then((u) => {
-        const datos = {
-          nombre: u.nombre,
-          telefono: u.telefono || '',
-          rol_principal: u.rol_principal || '',
-          alias: u.alias || '',
-          descripcion: u.descripcion || '',
-          aplicacion_por_defecto: u.aplicacion_por_defecto || '',
-          grupo_por_defecto: u.grupo_por_defecto || '',
-          entidad_por_defecto: u.entidad_por_defecto || '',
+      // Cargar todos los datos en paralelo
+      Promise.all([
+        usuariosApi.obtener(usuario.codigo_usuario).catch(() => null),
+        usuariosApi.listarGrupos(usuario.codigo_usuario).catch(() => []),
+        usuariosApi.listarEntidades(usuario.codigo_usuario).catch(() => []),
+        usuariosApi.listarRoles(usuario.codigo_usuario).catch(() => []),
+      ]).then(async ([u, gs, es, rs]: [any, any[], any[], any[]]) => {
+        if (u) {
+          const datos = {
+            nombre: u.nombre,
+            telefono: u.telefono || '',
+            rol_principal: u.rol_principal || '',
+            alias: u.alias || '',
+            descripcion: u.descripcion || '',
+            aplicacion_por_defecto: u.aplicacion_por_defecto || '',
+            grupo_por_defecto: u.grupo_por_defecto || '',
+            entidad_por_defecto: u.entidad_por_defecto || '',
+          }
+          setFormCuenta(datos)
+          setDatosOriginales(datos)
+          if (u.grupo_por_defecto) {
+            try {
+              const apps = await aplicacionesApi.listar(u.grupo_por_defecto)
+              setAppsCuenta(apps.map((a: any) => ({ codigo_aplicacion: a.codigo_aplicacion, nombre: a.nombre })))
+            } catch { setAppsCuenta([]) }
+          }
         }
-        setFormCuenta(datos)
-        setDatosOriginales(datos)
-        // Cargar apps del grupo por defecto
-        if (u.grupo_por_defecto) {
-          aplicacionesApi.listar(u.grupo_por_defecto).then(apps =>
-            setAppsCuenta(apps.map(a => ({ codigo_aplicacion: a.codigo_aplicacion, nombre: a.nombre })))
-          ).catch(() => setAppsCuenta([]))
-        }
-      }).catch(() => {})
-      // Cargar grupos del usuario
-      usuariosApi.listarGrupos(usuario.codigo_usuario).then(gs =>
-        setGruposCuenta(gs.map(g => ({ codigo_grupo: g.codigo_grupo, nombre: g.grupos_entidades?.nombre || g.codigo_grupo })))
-      ).catch(() => setGruposCuenta([]))
-      // Cargar entidades del usuario (todas)
-      usuariosApi.listarEntidades(usuario.codigo_usuario).then(es =>
-        setEntidadesCuenta(es.map(e => ({ codigo_entidad: e.codigo_entidad, codigo_grupo: e.codigo_grupo, nombre: e.entidades?.nombre || e.codigo_entidad })))
-      ).catch(() => setEntidadesCuenta([]))
-      // Cargar roles del usuario (todos)
-      usuariosApi.listarRoles(usuario.codigo_usuario).then(rs =>
-        setRolesCuenta(rs.map(r => ({ codigo_rol: r.codigo_rol, codigo_grupo: r.codigo_grupo, nombre: r.roles?.nombre || r.codigo_rol })))
-      ).catch(() => setRolesCuenta([]))
+        setGruposCuenta(gs.map((g: any) => ({ codigo_grupo: g.codigo_grupo, nombre: g.grupos_entidades?.nombre || g.codigo_grupo })))
+        setEntidadesCuenta(es.map((e: any) => ({ codigo_entidad: e.codigo_entidad, codigo_grupo: e.codigo_grupo, nombre: e.entidades?.nombre || e.codigo_entidad })))
+        setRolesCuenta(rs.map((r: any) => ({ codigo_rol: r.codigo_rol, codigo_grupo: r.codigo_grupo, nombre: r.roles?.nombre || r.codigo_rol })))
+      })
     }
     setModalCuenta(true)
   }
