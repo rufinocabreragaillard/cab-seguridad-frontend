@@ -340,7 +340,7 @@ export interface Documento {
   resumen_documento?: string | null
   fecha_modificacion?: string | null
   tamano_kb?: number | null
-  codigo_estado?: string | null
+  codigo_estado_doc?: string | null
   activo: boolean
 }
 
@@ -454,8 +454,7 @@ export interface CategoriaConCaracteristicasDocs {
 // ─── Estados Docs ──────────────────────────────────────────────────────────
 
 export interface EstadoDoc {
-  codigo_grupo: string
-  codigo_estado: string
+  codigo_estado_doc: string
   nombre_estado: string
   descripcion?: string | null
   orden: number
@@ -468,8 +467,8 @@ export interface ColaEstadoDoc {
   id_cola: number
   codigo_grupo: string
   codigo_documento: number
-  codigo_estado_origen?: string | null
-  codigo_estado_destino: string
+  codigo_estado_doc_origen?: string | null
+  codigo_estado_doc_destino: string
   estado_cola: string
   prioridad: number
   fecha_cola: string
@@ -479,7 +478,7 @@ export interface ColaEstadoDoc {
   resultado?: string | null
   intentos: number
   max_intentos: number
-  documentos?: { codigo_documento: number; nombre_documento: string; codigo_estado: string | null } | null
+  documentos?: { codigo_documento: number; nombre_documento: string; codigo_estado_doc: string | null } | null
 }
 
 // ─── Ubicaciones Docs ──────────────────────────────────────────────────────

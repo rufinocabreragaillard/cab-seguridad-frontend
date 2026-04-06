@@ -34,7 +34,7 @@ export default function PaginaDocumentos() {
     resumen_documento: '',
     fecha_modificacion: '',
     tamano_kb: '',
-    codigo_estado: '',
+    codigo_estado_doc: '',
   })
   const [guardando, setGuardando] = useState(false)
   const [error, setError] = useState('')
@@ -98,7 +98,7 @@ export default function PaginaDocumentos() {
   // ── CRUD ──────────────────────────────────────────────────────────────────
   const abrirNuevo = () => {
     setEditando(null)
-    setForm({ nombre_documento: '', ubicacion_documento: '', resumen_documento: '', fecha_modificacion: '', tamano_kb: '', codigo_estado: '' })
+    setForm({ nombre_documento: '', ubicacion_documento: '', resumen_documento: '', fecha_modificacion: '', tamano_kb: '', codigo_estado_doc: '' })
     setError('')
     setTabModal('datos')
     setCategoriasConCaract([])
@@ -113,7 +113,7 @@ export default function PaginaDocumentos() {
       resumen_documento: d.resumen_documento || '',
       fecha_modificacion: d.fecha_modificacion ? d.fecha_modificacion.slice(0, 16) : '',
       tamano_kb: d.tamano_kb != null ? String(d.tamano_kb) : '',
-      codigo_estado: d.codigo_estado || '',
+      codigo_estado_doc: d.codigo_estado_doc || '',
     })
     setError('')
     setTabModal('datos')
@@ -135,7 +135,7 @@ export default function PaginaDocumentos() {
           resumen_documento: form.resumen_documento || undefined,
           fecha_modificacion: form.fecha_modificacion || undefined,
           tamano_kb: form.tamano_kb ? parseFloat(form.tamano_kb) : undefined,
-          codigo_estado: form.codigo_estado || undefined,
+          codigo_estado_doc: form.codigo_estado_doc || undefined,
         })
       } else {
         await documentosApi.crear({
@@ -145,7 +145,7 @@ export default function PaginaDocumentos() {
           resumen_documento: form.resumen_documento || undefined,
           fecha_modificacion: form.fecha_modificacion || undefined,
           tamano_kb: form.tamano_kb ? parseFloat(form.tamano_kb) : undefined,
-          codigo_estado: form.codigo_estado || undefined,
+          codigo_estado_doc: form.codigo_estado_doc || undefined,
         })
       }
       setModal(false)
@@ -239,7 +239,7 @@ export default function PaginaDocumentos() {
                   { titulo: 'Resumen', campo: 'resumen_documento' },
                   { titulo: 'Fecha Modificación', campo: 'fecha_modificacion' },
                   { titulo: 'Tamaño KB', campo: 'tamano_kb' },
-                  { titulo: 'Estado Doc', campo: 'codigo_estado' },
+                  { titulo: 'Estado Doc', campo: 'codigo_estado_doc' },
                   { titulo: 'Estado', campo: 'activo', formato: (v: unknown) => (v ? 'Activo' : 'Inactivo') },
                 ],
                 'documentos'
@@ -324,8 +324,8 @@ export default function PaginaDocumentos() {
                   {d.tamano_kb != null ? d.tamano_kb.toLocaleString('es-CL') : '—'}
                 </TablaTd>
                 <TablaTd className="text-sm">
-                  {d.codigo_estado
-                    ? (estados.find((e) => e.codigo_estado === d.codigo_estado)?.nombre_estado || d.codigo_estado)
+                  {d.codigo_estado_doc
+                    ? (estados.find((e) => e.codigo_estado_doc === d.codigo_estado_doc)?.nombre_estado || d.codigo_estado_doc)
                     : '—'}
                 </TablaTd>
                 <TablaTd>
@@ -429,12 +429,12 @@ export default function PaginaDocumentos() {
                 <label className="block text-sm font-medium text-texto mb-1.5">Estado del documento</label>
                 <select
                   className="w-full rounded-lg border border-borde bg-fondo-tarjeta px-3 py-2 text-sm text-texto focus:border-primario focus:ring-1 focus:ring-primario outline-none"
-                  value={form.codigo_estado}
-                  onChange={(e) => setForm({ ...form, codigo_estado: e.target.value })}
+                  value={form.codigo_estado_doc}
+                  onChange={(e) => setForm({ ...form, codigo_estado_doc: e.target.value })}
                 >
                   <option value="">— Sin estado —</option>
                   {estados.filter((e) => e.activo).map((e) => (
-                    <option key={e.codigo_estado} value={e.codigo_estado}>
+                    <option key={e.codigo_estado_doc} value={e.codigo_estado_doc}>
                       {e.nombre_estado}
                     </option>
                   ))}

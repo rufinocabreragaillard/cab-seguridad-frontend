@@ -10,16 +10,11 @@ import { TablaCrud, columnaCodigo, columnaNombre, columnaDescripcion, columnaEst
 import { estadosDocsApi } from '@/lib/api'
 import type { EstadoDoc } from '@/lib/tipos'
 import { useCrudPage } from '@/hooks/useCrudPage'
-import { useAuth } from '@/context/AuthContext'
-
 export default function PaginaEstadosDocs() {
-  const { grupoActivo } = useAuth()
-
-  const crud = useCrudPage<EstadoDoc, { codigo_estado: string; nombre_estado: string; descripcion: string }>({
+  const crud = useCrudPage<EstadoDoc, { codigo_estado_doc: string; nombre_estado: string; descripcion: string }>({
     cargarFn: estadosDocsApi.listar,
     crearFn: (f) => estadosDocsApi.crear({
-      codigo_estado: f.codigo_estado.toUpperCase().replace(/\s+/g, '_'),
-      codigo_grupo: grupoActivo!,
+      codigo_estado_doc: f.codigo_estado_doc.toUpperCase().replace(/\s+/g, '_'),
       nombre_estado: f.nombre_estado,
       descripcion: f.descripcion || undefined,
     }),
@@ -28,10 +23,10 @@ export default function PaginaEstadosDocs() {
       descripcion: f.descripcion || undefined,
     }),
     eliminarFn: estadosDocsApi.desactivar,
-    getId: (e) => e.codigo_estado,
-    camposBusqueda: (e) => [e.codigo_estado, e.nombre_estado],
-    formInicial: { codigo_estado: '', nombre_estado: '', descripcion: '' },
-    itemToForm: (e) => ({ codigo_estado: e.codigo_estado, nombre_estado: e.nombre_estado, descripcion: e.descripcion || '' }),
+    getId: (e) => e.codigo_estado_doc,
+    camposBusqueda: (e) => [e.codigo_estado_doc, e.nombre_estado],
+    formInicial: { codigo_estado_doc: '', nombre_estado: '', descripcion: '' },
+    itemToForm: (e) => ({ codigo_estado_doc: e.codigo_estado_doc, nombre_estado: e.nombre_estado, descripcion: e.descripcion || '' }),
   })
 
   const filtradosOrdenados = [...crud.filtrados].sort((a, b) => a.orden - b.orden || a.nombre_estado.localeCompare(b.nombre_estado))
@@ -40,7 +35,7 @@ export default function PaginaEstadosDocs() {
     <div className="flex flex-col gap-6 max-w-5xl">
       <div>
         <h2 className="text-2xl font-bold text-texto">Estados de Documentos</h2>
-        <p className="text-sm text-texto-muted mt-1">Estados posibles para los documentos del grupo</p>
+        <p className="text-sm text-texto-muted mt-1">Estados globales para los documentos del sistema</p>
       </div>
 
       <BarraHerramientas
@@ -51,7 +46,7 @@ export default function PaginaEstadosDocs() {
         textoNuevo="Nuevo estado"
         excelDatos={filtradosOrdenados as unknown as Record<string, unknown>[]}
         excelColumnas={[
-          { titulo: 'Código', campo: 'codigo_estado' },
+          { titulo: 'Código', campo: 'codigo_estado_doc' },
           { titulo: 'Nombre', campo: 'nombre_estado' },
           { titulo: 'Descripción', campo: 'descripcion' },
           { titulo: 'Estado', campo: 'activo', formato: (v: unknown) => (v ? 'Activo' : 'Inactivo') },
@@ -61,14 +56,14 @@ export default function PaginaEstadosDocs() {
 
       <TablaCrud
         columnas={[
-          columnaCodigo('Código', (e) => e.codigo_estado),
+          columnaCodigo('Código', (e) => e.codigo_estado_doc),
           columnaNombre('Nombre', (e) => e.nombre_estado),
           columnaDescripcion('Descripción', (e) => e.descripcion),
           columnaEstado((e) => e.activo),
         ]}
         items={filtradosOrdenados}
         cargando={crud.cargando}
-        getId={(e) => e.codigo_estado}
+        getId={(e) => e.codigo_estado_doc}
         onEditar={crud.abrirEditar}
         onEliminar={crud.setConfirmacion}
         textoVacio="No se encontraron estados"
@@ -78,8 +73,8 @@ export default function PaginaEstadosDocs() {
         <div className="flex flex-col gap-4 min-w-[400px]">
           <Input
             etiqueta="Código *"
-            value={crud.form.codigo_estado}
-            onChange={(e) => crud.updateForm('codigo_estado', e.target.value)}
+            value={crud.form.codigo_estado_doc}
+            onChange={(e) => crud.updateForm('codigo_estado_doc', e.target.value)}
             placeholder="BORRADOR, EN_REVISION, APROBADO"
             disabled={!!crud.editando}
           />
@@ -106,7 +101,7 @@ export default function PaginaEstadosDocs() {
             <Boton
               variante="primario"
               onClick={() => {
-                if (!crud.form.codigo_estado.trim() || !crud.form.nombre_estado.trim()) {
+                if (!crud.form.codigo_estado_doc.trim() || !crud.form.nombre_estado.trim()) {
                   crud.setError('Código y nombre son obligatorios')
                   return
                 }

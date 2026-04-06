@@ -68,7 +68,7 @@ export default function PaginaColaEstadosDocs() {
   // ── Helpers ───────────────────────────────────────────────────────────────
   const estadosActivos = useMemo(() => estados.filter((e) => e.activo), [estados])
   const nombreEstado = (codigo: string | null | undefined) =>
-    codigo ? (estados.find((e) => e.codigo_estado === codigo)?.nombre_estado || codigo) : '—'
+    codigo ? (estados.find((e) => e.codigo_estado_doc === codigo)?.nombre_estado || codigo) : '—'
 
   const completados = useMemo(() => cola.filter((c) => c.estado_cola === 'COMPLETADO').length, [cola])
 
@@ -104,7 +104,7 @@ export default function PaginaColaEstadosDocs() {
       const res = await colaEstadosDocsApi.inicializar(
         Array.from(docsSeleccionados).map((id) => ({
           codigo_documento: id,
-          codigo_estado_destino: estadoDestino,
+          codigo_estado_doc_destino: estadoDestino,
         }))
       )
       setResultadoInit(res)
@@ -166,7 +166,7 @@ export default function PaginaColaEstadosDocs() {
         return (
           nombre.toLowerCase().includes(busqueda.toLowerCase()) ||
           String(c.codigo_documento).includes(busqueda) ||
-          c.codigo_estado_destino.toLowerCase().includes(busqueda.toLowerCase())
+          c.codigo_estado_doc_destino.toLowerCase().includes(busqueda.toLowerCase())
         )
       }
       return true
@@ -217,8 +217,8 @@ export default function PaginaColaEstadosDocs() {
                 [
                   { titulo: 'ID', campo: 'id_cola' },
                   { titulo: 'Documento', campo: 'nombre_documento' },
-                  { titulo: 'Estado Origen', campo: 'codigo_estado_origen' },
-                  { titulo: 'Estado Destino', campo: 'codigo_estado_destino' },
+                  { titulo: 'Estado Origen', campo: 'codigo_estado_doc_origen' },
+                  { titulo: 'Estado Destino', campo: 'codigo_estado_doc_destino' },
                   { titulo: 'Estado Cola', campo: 'estado_cola' },
                   { titulo: 'Fecha Cola', campo: 'fecha_cola' },
                   { titulo: 'Intentos', campo: 'intentos' },
@@ -287,10 +287,10 @@ export default function PaginaColaEstadosDocs() {
                     {c.documentos?.nombre_documento || `Doc #${c.codigo_documento}`}
                   </TablaTd>
                   <TablaTd className="text-sm text-texto-muted">
-                    {nombreEstado(c.codigo_estado_origen)}
+                    {nombreEstado(c.codigo_estado_doc_origen)}
                   </TablaTd>
                   <TablaTd className="text-sm font-medium">
-                    {nombreEstado(c.codigo_estado_destino)}
+                    {nombreEstado(c.codigo_estado_doc_destino)}
                   </TablaTd>
                   <TablaTd>
                     <Insignia variante={config.variante}>
@@ -341,7 +341,7 @@ export default function PaginaColaEstadosDocs() {
                 >
                   <option value="">Seleccionar estado...</option>
                   {estadosActivos.map((e) => (
-                    <option key={e.codigo_estado} value={e.codigo_estado}>
+                    <option key={e.codigo_estado_doc} value={e.codigo_estado_doc}>
                       {e.nombre_estado}
                     </option>
                   ))}
@@ -381,7 +381,7 @@ export default function PaginaColaEstadosDocs() {
                         />
                         <span className="flex-1">{d.nombre_documento}</span>
                         <span className="text-xs text-texto-muted">
-                          {d.codigo_estado ? nombreEstado(d.codigo_estado) : 'Sin estado'}
+                          {d.codigo_estado_doc ? nombreEstado(d.codigo_estado_doc) : 'Sin estado'}
                         </span>
                       </label>
                     ))
