@@ -279,13 +279,30 @@ export default function PaginaCategoriasCaracteristica() {
     }
   }
 
+  // ── Mover categoría (orden) ────────────────────────────────────────────────
+  const moverCategoria = async (index: number, dir: 'arriba' | 'abajo') => {
+    const lista = [...categorias]
+    const swap = dir === 'arriba' ? index - 1 : index + 1
+    if (swap < 0 || swap >= lista.length) return
+    const oA = lista[index].orden ?? index
+    const oB = lista[swap].orden ?? swap
+    lista[index] = { ...lista[index], orden: oB }
+    lista[swap] = { ...lista[swap], orden: oA }
+    ;[lista[index], lista[swap]] = [lista[swap], lista[index]]
+    setCategorias(lista)
+    try {
+      await categoriasCaractPersApi.reordenar(lista.map((c, i) => ({ codigo: c.codigo_cat_pers, orden: c.orden ?? i })))
+    } catch {
+      cargarCategorias()
+    }
+  }
+
   // ── Filtro categorías ─────────────────────────────────────────────────────
   const catsFiltradas = categorias
     .filter((c) =>
       c.codigo_cat_pers.toLowerCase().includes(busquedaCat.toLowerCase()) ||
       c.nombre_cat_pers.toLowerCase().includes(busquedaCat.toLowerCase())
     )
-    .sort((a, b) => a.nombre_cat_pers.localeCompare(b.nombre_cat_pers))
 
   // ── Selector de categoría (para Tipos y Roles) ───────────────────────────
   const selectorCategoria = (
@@ -363,6 +380,7 @@ export default function PaginaCategoriasCaracteristica() {
           <Tabla>
             <TablaCabecera>
               <tr>
+                <TablaTh>Orden</TablaTh>
                 <TablaTh>Código</TablaTh>
                 <TablaTh>Nombre</TablaTh>
                 <TablaTh>Única</TablaTh>
@@ -373,11 +391,20 @@ export default function PaginaCategoriasCaracteristica() {
             </TablaCabecera>
             <TablaCuerpo>
               {cargandoCat ? (
-                <TablaFila><TablaTd className="py-8 text-center text-texto-muted" colSpan={6 as never}>Cargando...</TablaTd></TablaFila>
+                <TablaFila><TablaTd className="py-8 text-center text-texto-muted" colSpan={7 as never}>Cargando...</TablaTd></TablaFila>
               ) : catsFiltradas.length === 0 ? (
-                <TablaFila><TablaTd className="py-8 text-center text-texto-muted" colSpan={6 as never}>Sin categorías</TablaTd></TablaFila>
-              ) : catsFiltradas.map((c) => (
+                <TablaFila><TablaTd className="py-8 text-center text-texto-muted" colSpan={7 as never}>Sin categorías</TablaTd></TablaFila>
+              ) : catsFiltradas.map((c, idx) => (
                 <TablaFila key={c.codigo_cat_pers}>
+                  <TablaTd>
+                    <div className="flex items-center gap-1">
+                      <div className="flex flex-col">
+                        <button onClick={() => moverCategoria(idx, 'arriba')} disabled={idx === 0 || !!busquedaCat} className="p-0.5 rounded hover:bg-primario-muy-claro text-texto-muted hover:text-primario transition-colors disabled:opacity-30 disabled:cursor-not-allowed"><ChevronUp size={14} /></button>
+                        <button onClick={() => moverCategoria(idx, 'abajo')} disabled={idx === catsFiltradas.length - 1 || !!busquedaCat} className="p-0.5 rounded hover:bg-primario-muy-claro text-texto-muted hover:text-primario transition-colors disabled:opacity-30 disabled:cursor-not-allowed"><ChevronDown size={14} /></button>
+                      </div>
+                      <span className="text-xs text-texto-muted w-5 text-center">{c.orden ?? idx}</span>
+                    </div>
+                  </TablaTd>
                   <TablaTd><code className="text-xs bg-fondo px-2 py-1 rounded font-mono">{c.codigo_cat_pers}</code></TablaTd>
                   <TablaTd className="font-medium">{c.nombre_cat_pers}</TablaTd>
                   <TablaTd><Insignia variante={c.es_unica_pers ? 'advertencia' : 'neutro'}>{c.es_unica_pers ? 'Sí' : 'No'}</Insignia></TablaTd>

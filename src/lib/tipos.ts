@@ -372,6 +372,7 @@ export interface CategoriaCaractPers {
   descripcion_cat_pers?: string | null
   es_unica_pers: boolean
   editable_en_detalle_pers: boolean
+  orden?: number
   activo: boolean
 }
 
@@ -416,6 +417,7 @@ export interface CategoriaCaractDocs {
   descripcion_cat_docs?: string | null
   es_unica_docs: boolean
   editable_en_detalle_docs: boolean
+  orden?: number
   activo: boolean
 }
 
@@ -460,6 +462,7 @@ export interface CategoriaCaractGeneDocs {
   descripcion_cat_gene_docs?: string | null
   es_unica_gene_docs: boolean
   editable_en_detalle_gene_docs: boolean
+  orden?: number
   activo: boolean
 }
 

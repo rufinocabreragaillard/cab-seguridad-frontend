@@ -421,6 +421,8 @@ export const categoriasCaractPersApi = {
   actualizar: (codigo: string, datos: Partial<CategoriaCaractPers>) =>
     api.put<CategoriaCaractPers>(`/categorias-caracteristica/${codigo}`, datos).then((r) => r.data),
   desactivar: (codigo: string) => api.delete(`/categorias-caracteristica/${codigo}`),
+  reordenar: (orden: { codigo: string; orden: number }[]) =>
+    api.put('/categorias-caracteristica/orden', orden),
   // Tipos
   listarTipos: (codigo: string) =>
     api.get<TipoCaractPers[]>(`/categorias-caracteristica/${codigo}/tipos`).then((r) => r.data),
@@ -450,6 +452,8 @@ export const categoriasCaractDocsApi = {
   actualizar: (codigo: string, datos: Partial<CategoriaCaractDocs>) =>
     api.put<CategoriaCaractDocs>(`/categorias-caracteristica-docs/${codigo}`, datos).then((r) => r.data),
   desactivar: (codigo: string) => api.delete(`/categorias-caracteristica-docs/${codigo}`),
+  reordenar: (orden: { codigo: string; orden: number }[]) =>
+    api.put('/categorias-caracteristica-docs/orden', orden),
   // Tipos
   listarTipos: (codigo: string) =>
     api.get<TipoCaractDocs[]>(`/categorias-caracteristica-docs/${codigo}/tipos`).then((r) => r.data),
@@ -479,6 +483,8 @@ export const categoriasCaractGeneDocsApi = {
   actualizar: (codigo: string, datos: Partial<CategoriaCaractGeneDocs>) =>
     api.put<CategoriaCaractGeneDocs>(`/categorias-caracteristica-gene-docs/${codigo}`, datos).then((r) => r.data),
   desactivar: (codigo: string) => api.delete(`/categorias-caracteristica-gene-docs/${codigo}`),
+  reordenar: (orden: { codigo: string; orden: number }[]) =>
+    api.put('/categorias-caracteristica-gene-docs/orden', orden),
   // Tipos
   listarTipos: (codigo: string) =>
     api.get<TipoCaractGeneDocs[]>(`/categorias-caracteristica-gene-docs/${codigo}/tipos`).then((r) => r.data),
