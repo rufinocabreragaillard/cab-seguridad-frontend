@@ -31,6 +31,7 @@ export default function PaginaUbicacionesDocs() {
     nombre_ubicacion: '',
     descripcion: '',
     codigo_ubicacion_superior: '',
+    ubicacion_habilitada: true,
   })
   const [guardando, setGuardando] = useState(false)
   const [error, setError] = useState('')
@@ -113,6 +114,7 @@ export default function PaginaUbicacionesDocs() {
       nombre_ubicacion: '',
       descripcion: '',
       codigo_ubicacion_superior: padre || '',
+      ubicacion_habilitada: true,
     })
     setError('')
     setModal(true)
@@ -125,6 +127,7 @@ export default function PaginaUbicacionesDocs() {
       nombre_ubicacion: u.nombre_ubicacion,
       descripcion: u.descripcion || '',
       codigo_ubicacion_superior: u.codigo_ubicacion_superior || '',
+      ubicacion_habilitada: u.ubicacion_habilitada,
     })
     setError('')
     setModal(true)
@@ -146,6 +149,7 @@ export default function PaginaUbicacionesDocs() {
           nombre_ubicacion: form.nombre_ubicacion,
           descripcion: form.descripcion || undefined,
           codigo_ubicacion_superior: form.codigo_ubicacion_superior || undefined,
+          ubicacion_habilitada: form.ubicacion_habilitada,
         })
       } else {
         await ubicacionesDocsApi.crear({
@@ -497,7 +501,7 @@ export default function PaginaUbicacionesDocs() {
       <Modal
         abierto={modal}
         alCerrar={() => setModal(false)}
-        titulo={editando ? `Ubicación: ${editando.nombre_ubicacion}` : 'Nueva ubicación'}
+        titulo={editando ? `Ubicación Docs.: ${editando.nombre_ubicacion}` : 'Nueva ubicación'}
       >
         <div className="flex flex-col gap-4 min-w-[450px]">
           <Input
@@ -536,6 +540,19 @@ export default function PaginaUbicacionesDocs() {
               ))}
             </select>
           </div>
+
+          {editando && (
+            <label className="flex items-center gap-3 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={form.ubicacion_habilitada}
+                onChange={(e) => setForm({ ...form, ubicacion_habilitada: e.target.checked })}
+                className="w-4 h-4 rounded border-borde text-primario focus:ring-primario"
+              />
+              <span className="text-sm font-medium text-texto">Ubicación habilitada</span>
+              <span className="text-xs text-texto-muted">(se aplica a todas las ubicaciones hijas)</span>
+            </label>
+          )}
 
           {error && (
             <div className="bg-red-50 border border-red-200 rounded-lg px-4 py-3">
