@@ -451,6 +451,40 @@ export interface CategoriaConCaracteristicasDocs {
   caracteristicas: CaracteristicaDocumento[]
 }
 
+// ─── Categorías Genéricas Características Documento ────────────────────────
+
+export interface CategoriaCaractGeneDocs {
+  codigo_cat_gene_docs: string
+  nombre_cat_gene_docs: string
+  descripcion_cat_gene_docs?: string | null
+  es_unica_gene_docs: boolean
+  editable_en_detalle_gene_docs: boolean
+  activo: boolean
+}
+
+export interface TipoCaractGeneDocs {
+  codigo_cat_gene_docs: string
+  codigo_tipo_gene_docs: string
+  nombre_tipo_gene_docs: string
+  activo: boolean
+}
+
+export interface CaracteristicaGeneDocumento {
+  id_caracteristica_gene_docs: number
+  codigo_documento: number
+  codigo_cat_gene_docs: string
+  codigo_tipo_gene_docs: string
+  valor_texto_gene_docs?: string | null
+  valor_numerico_gene_docs?: number | null
+  valor_fecha_gene_docs?: string | null
+  tipos_caract_gene_docs?: { nombre_tipo_gene_docs: string } | null
+}
+
+export interface CategoriaConCaracteristicasGeneDocs {
+  categoria: CategoriaCaractGeneDocs
+  caracteristicas: CaracteristicaGeneDocumento[]
+}
+
 // ─── Estados Docs ──────────────────────────────────────────────────────────
 
 export interface EstadoDoc {

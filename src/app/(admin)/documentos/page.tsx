@@ -8,12 +8,12 @@ import { Insignia } from '@/components/ui/insignia'
 import { Modal } from '@/components/ui/modal'
 import { ModalConfirmar } from '@/components/ui/modal-confirmar'
 import { Tabla, TablaCabecera, TablaCuerpo, TablaFila, TablaTh, TablaTd } from '@/components/ui/tabla'
-import { documentosApi, categoriasCaractDocsApi, estadosDocsApi } from '@/lib/api'
-import type { Documento, CategoriaConCaracteristicasDocs, CaracteristicaDocumento, TipoCaractDocs, EstadoDoc } from '@/lib/tipos'
+import { documentosApi, categoriasCaractDocsApi, categoriasCaractGeneDocsApi, estadosDocsApi } from '@/lib/api'
+import type { Documento, CategoriaConCaracteristicasDocs, CaracteristicaDocumento, TipoCaractDocs, CategoriaConCaracteristicasGeneDocs, CaracteristicaGeneDocumento, TipoCaractGeneDocs, EstadoDoc } from '@/lib/tipos'
 import { exportarExcel } from '@/lib/exportar-excel'
 import { useAuth } from '@/context/AuthContext'
 
-type TabModal = 'datos' | 'caracteristicas'
+type TabModal = 'datos' | 'caracteristicas' | 'caracteristicas_genericas'
 
 export default function PaginaDocumentos() {
   const { grupoActivo } = useAuth()
@@ -47,6 +47,19 @@ export default function PaginaDocumentos() {
   const [categoriasConCaract, setCategoriasConCaract] = useState<CategoriaConCaracteristicasDocs[]>([])
   const [cargandoCaract, setCargandoCaract] = useState(false)
   const [tiposPorCat, setTiposPorCat] = useState<Record<string, TipoCaractDocs[]>>({})
+
+  // ── Caracteristicas Genericas ──────────────────────────────────────────────
+  const [categoriasGene, setCategoriasGene] = useState<CategoriaConCaracteristicasGeneDocs[]>([])
+  const [cargandoGene, setCargandoGene] = useState(false)
+  const [tiposPorCatGene, setTiposPorCatGene] = useState<Record<string, TipoCaractGeneDocs[]>>({})
+  const [formGene, setFormGene] = useState<{
+    codigo_cat_gene_docs: string
+    codigo_tipo_gene_docs: string
+    valor_texto_gene_docs: string
+    valor_numerico_gene_docs: string
+    valor_fecha_gene_docs: string
+  }>({ codigo_cat_gene_docs: '', codigo_tipo_gene_docs: '', valor_texto_gene_docs: '', valor_numerico_gene_docs: '', valor_fecha_gene_docs: '' })
+  const [guardandoGene, setGuardandoGene] = useState(false)
 
   // ── Formulario nueva caracteristica ───────────────────────────────────────
   const [formCaract, setFormCaract] = useState<{
@@ -119,6 +132,7 @@ export default function PaginaDocumentos() {
     setTabModal('datos')
     setModal(true)
     cargarCaracteristicas(d.codigo_documento)
+    cargarCaracteristicasGenericas(d.codigo_documento)
   }
 
   const guardar = async () => {
@@ -196,6 +210,49 @@ export default function PaginaDocumentos() {
     if (!editando) return
     await documentosApi.eliminarCaracteristica(editando.codigo_documento, idCar)
     cargarCaracteristicas(editando.codigo_documento)
+  }
+
+  // ── Cargar caracteristicas genericas ────────────────────────────────────
+  const cargarCaracteristicasGenericas = useCallback(async (idDocumento: number) => {
+    setCargandoGene(true)
+    try {
+      const data = await documentosApi.listarCaracteristicasGenericas(idDocumento)
+      setCategoriasGene(data)
+      const tiposMap: Record<string, TipoCaractGeneDocs[]> = {}
+      for (const cc of data) {
+        const cod = cc.categoria.codigo_cat_gene_docs
+        if (!tiposMap[cod]) {
+          tiposMap[cod] = await categoriasCaractGeneDocsApi.listarTipos(cod)
+        }
+      }
+      setTiposPorCatGene(tiposMap)
+    } finally {
+      setCargandoGene(false)
+    }
+  }, [])
+
+  const agregarCaracteristicaGene = async (codigoCat: string) => {
+    if (!editando || !formGene.codigo_tipo_gene_docs) return
+    setGuardandoGene(true)
+    try {
+      await documentosApi.crearCaracteristicaGenerica(editando.codigo_documento, {
+        codigo_cat_gene_docs: codigoCat,
+        codigo_tipo_gene_docs: formGene.codigo_tipo_gene_docs,
+        valor_texto_gene_docs: formGene.valor_texto_gene_docs || undefined,
+        valor_numerico_gene_docs: formGene.valor_numerico_gene_docs ? parseInt(formGene.valor_numerico_gene_docs) : undefined,
+        valor_fecha_gene_docs: formGene.valor_fecha_gene_docs || undefined,
+      } as Partial<CaracteristicaGeneDocumento>)
+      setFormGene({ codigo_cat_gene_docs: '', codigo_tipo_gene_docs: '', valor_texto_gene_docs: '', valor_numerico_gene_docs: '', valor_fecha_gene_docs: '' })
+      cargarCaracteristicasGenericas(editando.codigo_documento)
+    } catch { /* error silencioso */ } finally {
+      setGuardandoGene(false)
+    }
+  }
+
+  const eliminarCaracteristicaGene = async (idCar: number) => {
+    if (!editando) return
+    await documentosApi.eliminarCaracteristicaGenerica(editando.codigo_documento, idCar)
+    cargarCaracteristicasGenericas(editando.codigo_documento)
   }
 
   // ── Filtro ────────────────────────────────────────────────────────────────
@@ -367,12 +424,12 @@ export default function PaginaDocumentos() {
           {/* Tabs dentro del modal */}
           {editando && (
             <div className="flex gap-1 border-b border-borde -mt-2">
-              {(['datos', 'caracteristicas'] as TabModal[]).map((t) => (
+              {(['datos', 'caracteristicas', 'caracteristicas_genericas'] as TabModal[]).map((t) => (
                 <button key={t} onClick={() => setTabModal(t)}
                   className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
                     tabModal === t ? 'border-primario text-primario' : 'border-transparent text-texto-muted hover:text-texto'
                   }`}>
-                  {t === 'datos' ? 'Datos' : 'Caracteristicas'}
+                  {t === 'datos' ? 'Datos' : t === 'caracteristicas' ? 'Características' : 'Caract. Genéricas'}
                 </button>
               ))}
             </div>
@@ -538,6 +595,94 @@ export default function PaginaDocumentos() {
                             onClick={() => agregarCaracteristica(cat.codigo_cat_docs)}
                             cargando={guardandoCaract}
                             disabled={formCaract.codigo_cat_docs !== cat.codigo_cat_docs || !formCaract.codigo_tipo_docs}>
+                            <Plus size={14} />
+                          </Boton>
+                        </div>
+                      )}
+                    </div>
+                  )
+                })
+              )}
+            </div>
+          )}
+
+          {/* Tab Caracteristicas Genericas */}
+          {tabModal === 'caracteristicas_genericas' && editando && (
+            <div className="flex flex-col gap-4">
+              {cargandoGene ? (
+                <p className="text-sm text-texto-muted py-4 text-center">Cargando características genéricas...</p>
+              ) : categoriasGene.length === 0 ? (
+                <p className="text-sm text-texto-muted py-4 text-center">No hay categorías genéricas configuradas.</p>
+              ) : (
+                categoriasGene.map((cc) => {
+                  const cat = cc.categoria
+                  const tiposDisponibles = (tiposPorCatGene[cat.codigo_cat_gene_docs] || []).filter((t) => t.activo)
+                  const puedeAgregar = cat.editable_en_detalle_gene_docs && (!cat.es_unica_gene_docs || cc.caracteristicas.length === 0)
+
+                  return (
+                    <div key={cat.codigo_cat_gene_docs} className="border border-borde rounded-lg">
+                      <div className="bg-fondo px-4 py-2 flex items-center justify-between rounded-t-lg">
+                        <div className="flex items-center gap-2">
+                          <span className="font-medium text-sm">{cat.nombre_cat_gene_docs}</span>
+                          {cat.es_unica_gene_docs && <Insignia variante="advertencia">Única</Insignia>}
+                          {!cat.editable_en_detalle_gene_docs && <Insignia variante="neutro">Solo lectura</Insignia>}
+                        </div>
+                        <span className="text-xs text-texto-muted">{cc.caracteristicas.length} registro(s)</span>
+                      </div>
+
+                      <div className="divide-y divide-borde">
+                        {cc.caracteristicas.map((c) => (
+                          <div key={c.id_caracteristica_gene_docs} className="px-4 py-2 flex items-center gap-3 text-sm">
+                            <span className="text-texto-muted min-w-[120px]">
+                              {c.tipos_caract_gene_docs?.nombre_tipo_gene_docs || c.codigo_tipo_gene_docs}
+                            </span>
+                            <span className="flex-1">
+                              {c.valor_texto_gene_docs || c.valor_numerico_gene_docs || c.valor_fecha_gene_docs || '—'}
+                            </span>
+                            {cat.editable_en_detalle_gene_docs && (
+                              <button onClick={() => eliminarCaracteristicaGene(c.id_caracteristica_gene_docs)}
+                                className="p-1 rounded hover:bg-red-50 text-texto-muted hover:text-error transition-colors">
+                                <Trash2 size={13} />
+                              </button>
+                            )}
+                          </div>
+                        ))}
+
+                        {cc.caracteristicas.length === 0 && (
+                          <p className="px-4 py-3 text-sm text-texto-muted">Sin características en esta categoría</p>
+                        )}
+                      </div>
+
+                      {puedeAgregar && (
+                        <div className="border-t border-borde px-4 py-3 flex items-end gap-2">
+                          <div className="flex-1">
+                            <select
+                              className="w-full rounded-lg border border-borde bg-fondo-tarjeta px-3 py-1.5 text-sm"
+                              value={formGene.codigo_cat_gene_docs === cat.codigo_cat_gene_docs ? formGene.codigo_tipo_gene_docs : ''}
+                              onChange={(e) => setFormGene({ ...formGene, codigo_cat_gene_docs: cat.codigo_cat_gene_docs, codigo_tipo_gene_docs: e.target.value })}
+                            >
+                              <option value="">Tipo...</option>
+                              {tiposDisponibles.map((t) => (
+                                <option key={t.codigo_tipo_gene_docs} value={t.codigo_tipo_gene_docs}>{t.nombre_tipo_gene_docs}</option>
+                              ))}
+                            </select>
+                          </div>
+                          <input className="flex-1 rounded-lg border border-borde bg-fondo-tarjeta px-3 py-1.5 text-sm"
+                            placeholder="Valor texto"
+                            value={formGene.codigo_cat_gene_docs === cat.codigo_cat_gene_docs ? formGene.valor_texto_gene_docs : ''}
+                            onChange={(e) => setFormGene({ ...formGene, codigo_cat_gene_docs: cat.codigo_cat_gene_docs, valor_texto_gene_docs: e.target.value })} />
+                          <input className="w-24 rounded-lg border border-borde bg-fondo-tarjeta px-3 py-1.5 text-sm"
+                            placeholder="Número" type="number"
+                            value={formGene.codigo_cat_gene_docs === cat.codigo_cat_gene_docs ? formGene.valor_numerico_gene_docs : ''}
+                            onChange={(e) => setFormGene({ ...formGene, codigo_cat_gene_docs: cat.codigo_cat_gene_docs, valor_numerico_gene_docs: e.target.value })} />
+                          <input className="w-36 rounded-lg border border-borde bg-fondo-tarjeta px-3 py-1.5 text-sm"
+                            type="date"
+                            value={formGene.codigo_cat_gene_docs === cat.codigo_cat_gene_docs ? formGene.valor_fecha_gene_docs : ''}
+                            onChange={(e) => setFormGene({ ...formGene, codigo_cat_gene_docs: cat.codigo_cat_gene_docs, valor_fecha_gene_docs: e.target.value })} />
+                          <Boton variante="primario" tamano="sm"
+                            onClick={() => agregarCaracteristicaGene(cat.codigo_cat_gene_docs)}
+                            cargando={guardandoGene}
+                            disabled={formGene.codigo_cat_gene_docs !== cat.codigo_cat_gene_docs || !formGene.codigo_tipo_gene_docs}>
                             <Plus size={14} />
                           </Boton>
                         </div>
