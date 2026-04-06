@@ -52,6 +52,7 @@ export default function PaginaUbicacionesDocs() {
     eliminadas: number
     actualizadas: number
     total: number
+    excluidas: number
   } | null>(null)
 
   // ── Carga ─────────────────────────────────────────────────────────────────
@@ -271,14 +272,43 @@ export default function PaginaUbicacionesDocs() {
   }
 
   // ── Preview: calcular diferencias ─────────────────────────────────────────
+  // ── Filtrar directorios escaneados: excluir hijos de inhabilitadas ────────
+  const filtrarPorInhabilitadas = (directorios: DirectorioEscaneado[]) => {
+    const inhabilitadas = new Set(
+      ubicaciones.filter((u) => !u.ubicacion_habilitada).map((u) => u.codigo_ubicacion)
+    )
+    if (inhabilitadas.size === 0) return { filtrados: directorios, excluidos: 0 }
+
+    const padres: Record<string, string | undefined> = {}
+    for (const d of directorios) {
+      padres[d.codigo_ubicacion] = d.codigo_ubicacion_superior || undefined
+    }
+
+    const esDescendienteInhabilitada = (codigo: string): boolean => {
+      const visitados = new Set<string>()
+      let actual = padres[codigo] || ubicaciones.find((u) => u.codigo_ubicacion === codigo)?.codigo_ubicacion_superior
+      while (actual) {
+        if (inhabilitadas.has(actual)) return true
+        if (visitados.has(actual)) break
+        visitados.add(actual)
+        actual = padres[actual] || ubicaciones.find((u) => u.codigo_ubicacion === actual)?.codigo_ubicacion_superior || undefined
+      }
+      return false
+    }
+
+    const filtrados = directorios.filter((d) => !esDescendienteInhabilitada(d.codigo_ubicacion))
+    return { filtrados, excluidos: directorios.length - filtrados.length }
+  }
+
   const calcularDiferencias = () => {
-    if (!datosEscaneo) return { nuevas: 0, aEliminar: 0, sinCambio: 0 }
+    if (!datosEscaneo) return { nuevas: 0, aEliminar: 0, sinCambio: 0, excluidas: 0 }
+    const { filtrados: dirsFiltrados, excluidos } = filtrarPorInhabilitadas(datosEscaneo.directorios)
     const codigosActuales = new Set(ubicaciones.map((u) => u.codigo_ubicacion))
-    const codigosEscaneados = new Set(datosEscaneo.directorios.map((d) => d.codigo_ubicacion))
-    const nuevas = datosEscaneo.directorios.filter((d) => !codigosActuales.has(d.codigo_ubicacion)).length
+    const codigosEscaneados = new Set(dirsFiltrados.map((d) => d.codigo_ubicacion))
+    const nuevas = dirsFiltrados.filter((d) => !codigosActuales.has(d.codigo_ubicacion)).length
     const aEliminar = ubicaciones.filter((u) => !codigosEscaneados.has(u.codigo_ubicacion)).length
-    const sinCambio = datosEscaneo.directorios.length - nuevas
-    return { nuevas, aEliminar, sinCambio }
+    const sinCambio = dirsFiltrados.length - nuevas
+    return { nuevas, aEliminar, sinCambio, excluidas: excluidos }
   }
 
   // ── Filtro ────────────────────────────────────────────────────────────────
@@ -565,7 +595,7 @@ export default function PaginaUbicacionesDocs() {
 
               {/* Resumen de cambios */}
               {diff && (
-                <div className="grid grid-cols-3 gap-3">
+                <div className={`grid ${diff.excluidas > 0 ? 'grid-cols-4' : 'grid-cols-3'} gap-3`}>
                   <div className="border border-borde rounded-lg p-3 text-center">
                     <p className="text-2xl font-bold text-green-600">{diff.nuevas}</p>
                     <p className="text-xs text-texto-muted">Nuevas</p>
@@ -578,30 +608,44 @@ export default function PaginaUbicacionesDocs() {
                     <p className="text-2xl font-bold text-texto-muted">{diff.sinCambio}</p>
                     <p className="text-xs text-texto-muted">Sin cambio</p>
                   </div>
+                  {diff.excluidas > 0 && (
+                    <div className="border border-amber-200 bg-amber-50 rounded-lg p-3 text-center">
+                      <p className="text-2xl font-bold text-amber-600">{diff.excluidas}</p>
+                      <p className="text-xs text-amber-700">Excluidas</p>
+                    </div>
+                  )}
                 </div>
               )}
 
-              {/* Preview del árbol escaneado (max 20 items) */}
+              {/* Preview del árbol escaneado */}
               <div className="border border-borde rounded-lg max-h-[300px] overflow-y-auto">
                 <div className="py-1">
-                  {datosEscaneo.directorios.slice(0, 30).map((d) => {
-                    const esNueva = !ubicaciones.some((u) => u.codigo_ubicacion === d.codigo_ubicacion)
-                    return (
-                      <div
-                        key={d.codigo_ubicacion}
-                        className="flex items-center gap-2 px-3 py-1.5 text-sm"
-                        style={{ paddingLeft: `${d.nivel * 20 + 12}px` }}
-                      >
-                        <Folder size={14} className="text-texto-muted shrink-0" />
-                        <span className={esNueva ? 'text-green-700 font-medium' : 'text-texto'}>
-                          {d.nombre_ubicacion}
-                        </span>
-                        {esNueva && (
-                          <Insignia variante="exito">Nueva</Insignia>
-                        )}
-                      </div>
-                    )
-                  })}
+                  {(() => {
+                    const { filtrados: dirsFiltrados } = filtrarPorInhabilitadas(datosEscaneo.directorios)
+                    const codsFiltrados = new Set(dirsFiltrados.map((d) => d.codigo_ubicacion))
+                    return datosEscaneo.directorios.slice(0, 30).map((d) => {
+                      const esNueva = !ubicaciones.some((u) => u.codigo_ubicacion === d.codigo_ubicacion)
+                      const esExcluida = !codsFiltrados.has(d.codigo_ubicacion)
+                      return (
+                        <div
+                          key={d.codigo_ubicacion}
+                          className={`flex items-center gap-2 px-3 py-1.5 text-sm ${esExcluida ? 'opacity-40' : ''}`}
+                          style={{ paddingLeft: `${d.nivel * 20 + 12}px` }}
+                        >
+                          <Folder size={14} className="text-texto-muted shrink-0" />
+                          <span className={esExcluida ? 'text-texto-muted line-through' : esNueva ? 'text-green-700 font-medium' : 'text-texto'}>
+                            {d.nombre_ubicacion}
+                          </span>
+                          {esExcluida && (
+                            <Insignia variante="advertencia">Excluida</Insignia>
+                          )}
+                          {!esExcluida && esNueva && (
+                            <Insignia variante="exito">Nueva</Insignia>
+                          )}
+                        </div>
+                      )
+                    })
+                  })()}
                   {datosEscaneo.directorios.length > 30 && (
                     <p className="px-4 py-2 text-xs text-texto-muted text-center">
                       ...y {datosEscaneo.directorios.length - 30} directorio(s) más
@@ -609,6 +653,14 @@ export default function PaginaUbicacionesDocs() {
                   )}
                 </div>
               </div>
+
+              {diff && diff.excluidas > 0 && (
+                <div className="bg-amber-50 border border-amber-200 rounded-lg px-4 py-3">
+                  <p className="text-sm text-amber-700">
+                    {diff.excluidas} directorio(s) excluido(s) por estar bajo una ubicación inhabilitada.
+                  </p>
+                </div>
+              )}
 
               {diff && diff.aEliminar > 0 && (
                 <div className="bg-red-50 border border-red-200 rounded-lg px-4 py-3">
@@ -637,7 +689,7 @@ export default function PaginaUbicacionesDocs() {
                 <p className="text-lg font-medium text-green-800">Sincronización completada</p>
               </div>
 
-              <div className="grid grid-cols-3 gap-3">
+              <div className={`grid ${resultadoSync.excluidas > 0 ? 'grid-cols-4' : 'grid-cols-3'} gap-3`}>
                 <div className="border border-borde rounded-lg p-3 text-center">
                   <p className="text-2xl font-bold text-green-600">{resultadoSync.insertadas}</p>
                   <p className="text-xs text-texto-muted">Insertadas</p>
@@ -650,6 +702,12 @@ export default function PaginaUbicacionesDocs() {
                   <p className="text-2xl font-bold text-primario">{resultadoSync.actualizadas}</p>
                   <p className="text-xs text-texto-muted">Actualizadas</p>
                 </div>
+                {resultadoSync.excluidas > 0 && (
+                  <div className="border border-amber-200 bg-amber-50 rounded-lg p-3 text-center">
+                    <p className="text-2xl font-bold text-amber-600">{resultadoSync.excluidas}</p>
+                    <p className="text-xs text-amber-700">Excluidas</p>
+                  </div>
+                )}
               </div>
 
               <div className="flex justify-end pt-2">
