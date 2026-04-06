@@ -61,7 +61,7 @@ export function Header({ titulo }: { titulo?: string }) {
     setCambiando(true)
     try {
       await cambiarGrupo(codigoGrupo)
-    } catch {
+    } finally {
       setCambiando(false)
     }
   }
