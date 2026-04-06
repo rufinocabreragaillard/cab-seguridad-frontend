@@ -499,6 +499,8 @@ export const registroLLMApi = {
   actualizar: (id: number, datos: Partial<RegistroLLM>) =>
     api.put<RegistroLLM>(`/registro-llm/${id}`, datos).then((r) => r.data),
   desactivar: (id: number) => api.delete(`/registro-llm/${id}`),
+  probar: (id: number, mensaje: string) =>
+    api.post<{ respuesta: string; tiempo_ms: number; modelo: string }>(`/registro-llm/${id}/probar`, { mensaje }).then((r) => r.data),
 }
 
 // ─── Personas ────────────────────────────────────────────────────────────────
