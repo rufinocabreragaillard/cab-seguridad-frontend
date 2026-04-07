@@ -207,6 +207,7 @@ export default function PaginaProcesarDocumentos() {
         } finally {
           setEscaneandoDir(false)
         }
+        cargarDocumentos()
       } catch { /* ignore */ }
     })()
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -300,6 +301,7 @@ export default function PaginaProcesarDocumentos() {
       } finally {
         setEscaneandoDir(false)
       }
+      cargarDocumentos()
     } catch { /* cancelado */ }
   }
 
