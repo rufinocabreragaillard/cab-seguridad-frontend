@@ -385,21 +385,14 @@ export default function PaginaProcesarDocumentos() {
               <span className="text-sm text-texto-muted">
                 {seleccionados.size}/{documentos.length} seleccionados
               </span>
-              {ejecutando ? (
-                <>
-                  <Boton variante="primario" disabled>
-                    <Loader2 size={16} className="animate-spin" />Procesando...
-                  </Boton>
-                  <Boton variante="contorno" tamano="sm" onClick={detener}>
-                    <Square size={14} />Detener
-                  </Boton>
-                </>
-              ) : (
-                <Boton variante="primario" onClick={ejecutar}
-                  disabled={seleccionados.size === 0 || !modeloId}>
-                  <Play size={16} />Ejecutar
-                </Boton>
-              )}
+              <Boton variante="primario" onClick={ejecutar}
+                disabled={ejecutando || seleccionados.size === 0 || !modeloId}>
+                {ejecutando ? <Loader2 size={16} className="animate-spin" /> : <Play size={16} />}
+                {ejecutando ? 'Procesando...' : 'Ejecutar'}
+              </Boton>
+              <Boton variante="contorno" onClick={detener} disabled={!ejecutando}>
+                <Square size={14} />Detener
+              </Boton>
             </div>
           </div>
         </TarjetaContenido>
