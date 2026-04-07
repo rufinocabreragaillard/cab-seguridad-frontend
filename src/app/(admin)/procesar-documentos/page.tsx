@@ -13,6 +13,39 @@ import { useAuth } from '@/context/AuthContext'
 import type { Documento, RegistroLLM, ColaEstadoDoc, EstadoDoc } from '@/lib/tipos'
 import { extraerTextoDeArchivo, abrirArchivoPorRuta } from '@/lib/extraer-texto'
 
+// ── Persistencia de FileSystemDirectoryHandle en IndexedDB ──
+const IDB_NAME = 'cab-procesar-docs'
+const IDB_STORE = 'handles'
+const IDB_KEY = 'dirHandle'
+
+function idbOpen(): Promise<IDBDatabase> {
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open(IDB_NAME, 1)
+    req.onupgradeneeded = () => req.result.createObjectStore(IDB_STORE)
+    req.onsuccess = () => resolve(req.result)
+    req.onerror = () => reject(req.error)
+  })
+}
+async function idbGetHandle(): Promise<FileSystemDirectoryHandle | null> {
+  try {
+    const db = await idbOpen()
+    return await new Promise((resolve) => {
+      const tx = db.transaction(IDB_STORE, 'readonly')
+      const req = tx.objectStore(IDB_STORE).get(IDB_KEY)
+      req.onsuccess = () => resolve((req.result as FileSystemDirectoryHandle) || null)
+      req.onerror = () => resolve(null)
+    })
+  } catch { return null }
+}
+async function idbSetHandle(handle: FileSystemDirectoryHandle | null) {
+  try {
+    const db = await idbOpen()
+    const tx = db.transaction(IDB_STORE, 'readwrite')
+    if (handle) tx.objectStore(IDB_STORE).put(handle, IDB_KEY)
+    else tx.objectStore(IDB_STORE).delete(IDB_KEY)
+  } catch { /* ignore */ }
+}
+
 const ESTADO_COLA_CONFIG: Record<string, { variante: 'exito' | 'error' | 'advertencia' | 'neutro'; icono: typeof Clock }> = {
   PENDIENTE: { variante: 'neutro', icono: Clock },
   EN_PROCESO: { variante: 'advertencia', icono: Play },
@@ -157,6 +190,28 @@ export default function PaginaProcesarDocumentos() {
     init()
   }, [])
 
+  // Restaurar dirHandle persistido al entrar
+  useEffect(() => {
+    (async () => {
+      const h = await idbGetHandle()
+      if (!h) return
+      try {
+        // Verificar permisos; si los perdió, ignorar (el usuario re-pickeará manualmente)
+        const perm = await (h as unknown as { queryPermission: (opts: { mode: string }) => Promise<PermissionState> }).queryPermission({ mode: 'read' })
+        if (perm !== 'granted') return
+        setDirHandle(h)
+        setEscaneandoDir(true)
+        try {
+          const archivos = await escanearDirectorio(h)
+          setArchivosEnDir(archivos)
+        } finally {
+          setEscaneandoDir(false)
+        }
+      } catch { /* ignore */ }
+    })()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
   // Cargar documentos candidatos
   const cargarDocumentos = useCallback(async () => {
     setCargando(true)
@@ -233,8 +288,11 @@ export default function PaginaProcesarDocumentos() {
 
   const seleccionarDirectorio = async () => {
     try {
-      const handle = await (window as unknown as { showDirectoryPicker: (opts?: Record<string, string>) => Promise<FileSystemDirectoryHandle> }).showDirectoryPicker({ mode: 'read' })
+      const opts: Record<string, unknown> = { mode: 'read', id: 'cab-procesar-docs' }
+      if (dirHandle) opts.startIn = dirHandle
+      const handle = await (window as unknown as { showDirectoryPicker: (opts?: Record<string, unknown>) => Promise<FileSystemDirectoryHandle> }).showDirectoryPicker(opts)
       setDirHandle(handle)
+      idbSetHandle(handle)
       setEscaneandoDir(true)
       try {
         const archivos = await escanearDirectorio(handle)
@@ -248,6 +306,7 @@ export default function PaginaProcesarDocumentos() {
   const limpiarDirectorio = () => {
     setDirHandle(null)
     setArchivosEnDir(null)
+    idbSetHandle(null)
   }
 
   // Ejecutar: encolar + procesar
