@@ -1,16 +1,24 @@
 'use client'
 
-import { useEffect, useState, useCallback, useRef } from 'react'
-import { Play, FileText, CheckCircle, XCircle, Loader2, FolderOpen, Clock, Square, Search, CheckSquare, SquareIcon } from 'lucide-react'
+import { useEffect, useState, useCallback, useRef, useMemo } from 'react'
+import { Play, FileText, CheckCircle, XCircle, Loader2, FolderOpen, Clock, Square, Search, CheckSquare, SquareIcon, Trash2, AlertTriangle, ListOrdered, Cpu } from 'lucide-react'
 import { Boton } from '@/components/ui/boton'
 import { Input } from '@/components/ui/input'
 import { Insignia } from '@/components/ui/insignia'
 import { Tarjeta, TarjetaContenido } from '@/components/ui/tarjeta'
 import { Tabla, TablaCabecera, TablaCuerpo, TablaFila, TablaTh, TablaTd } from '@/components/ui/tabla'
-import { documentosApi, registroLLMApi, ubicacionesDocsApi, colaEstadosDocsApi } from '@/lib/api'
+import { ModalConfirmar } from '@/components/ui/modal-confirmar'
+import { documentosApi, registroLLMApi, ubicacionesDocsApi, colaEstadosDocsApi, estadosDocsApi } from '@/lib/api'
 import { useAuth } from '@/context/AuthContext'
-import type { Documento, RegistroLLM } from '@/lib/tipos'
+import type { Documento, RegistroLLM, ColaEstadoDoc, EstadoDoc } from '@/lib/tipos'
 import { extraerTextoDeArchivo, abrirArchivoPorRuta } from '@/lib/extraer-texto'
+
+const ESTADO_COLA_CONFIG: Record<string, { variante: 'exito' | 'error' | 'advertencia' | 'neutro'; icono: typeof Clock }> = {
+  PENDIENTE: { variante: 'neutro', icono: Clock },
+  EN_PROCESO: { variante: 'advertencia', icono: Play },
+  COMPLETADO: { variante: 'exito', icono: CheckCircle },
+  ERROR: { variante: 'error', icono: AlertTriangle },
+}
 
 type Proceso = 'resumir' | 'escanear'
 type Alcance = 'pendientes' | 'ubicacion'
@@ -35,6 +43,9 @@ interface ItemCola {
 export default function PaginaProcesarDocumentos() {
   const { grupoActivo } = useAuth()
 
+  // Tabs
+  const [tab, setTab] = useState<'procesar' | 'cola'>('procesar')
+
   // Config
   const [proceso, setProceso] = useState<Proceso>('resumir')
   const [alcance, setAlcance] = useState<Alcance>('pendientes')
@@ -55,6 +66,74 @@ export default function PaginaProcesarDocumentos() {
   const [procesados, setProcesados] = useState(0)
   const [dirHandle, setDirHandle] = useState<FileSystemDirectoryHandle | null>(null)
   const abortRef = useRef(false)
+
+  // Tab Cola (datos persistidos)
+  const [colaBackend, setColaBackend] = useState<ColaEstadoDoc[]>([])
+  const [estadosDocs, setEstadosDocs] = useState<EstadoDoc[]>([])
+  const [cargandoCola, setCargandoCola] = useState(false)
+  const [busquedaCola, setBusquedaCola] = useState('')
+  const [filtroEstadoCola, setFiltroEstadoCola] = useState('')
+  const [confirmCerrar, setConfirmCerrar] = useState(false)
+  const [cerrando, setCerrando] = useState(false)
+  const [confirmEliminar, setConfirmEliminar] = useState<ColaEstadoDoc | null>(null)
+  const [eliminando, setEliminando] = useState(false)
+
+  const cargarCola = useCallback(async () => {
+    setCargandoCola(true)
+    try {
+      const [c, e] = await Promise.all([
+        colaEstadosDocsApi.listar(),
+        estadosDocsApi.listar(),
+      ])
+      setColaBackend(c)
+      setEstadosDocs(e)
+    } finally {
+      setCargandoCola(false)
+    }
+  }, [])
+
+  useEffect(() => { if (tab === 'cola') cargarCola() }, [tab, cargarCola])
+
+  const nombreEstadoDoc = (codigo: string | null | undefined) =>
+    codigo ? (estadosDocs.find((e) => e.codigo_estado_doc === codigo)?.nombre_estado || codigo) : '—'
+
+  const completadosCola = useMemo(() => colaBackend.filter((c) => c.estado_cola === 'COMPLETADO').length, [colaBackend])
+
+  const colaFiltrada = useMemo(() => colaBackend.filter((c) => {
+    if (filtroEstadoCola && c.estado_cola !== filtroEstadoCola) return false
+    if (busquedaCola) {
+      const nombre = c.documentos?.nombre_documento || ''
+      return (
+        nombre.toLowerCase().includes(busquedaCola.toLowerCase()) ||
+        String(c.codigo_documento).includes(busquedaCola) ||
+        c.codigo_estado_doc_destino.toLowerCase().includes(busquedaCola.toLowerCase())
+      )
+    }
+    return true
+  }), [colaBackend, filtroEstadoCola, busquedaCola])
+
+  const ejecutarCerrarCola = async () => {
+    setCerrando(true)
+    try {
+      await colaEstadosDocsApi.cerrar()
+      setConfirmCerrar(false)
+      cargarCola()
+    } finally {
+      setCerrando(false)
+    }
+  }
+
+  const ejecutarEliminarItem = async () => {
+    if (!confirmEliminar) return
+    setEliminando(true)
+    try {
+      await colaEstadosDocsApi.eliminar(confirmEliminar.id_cola)
+      setConfirmEliminar(null)
+      cargarCola()
+    } finally {
+      setEliminando(false)
+    }
+  }
 
   // Cargar modelos y ubicaciones
   useEffect(() => {
@@ -231,6 +310,23 @@ export default function PaginaProcesarDocumentos() {
         <p className="text-sm text-texto-muted mt-1">Ejecuta procesos LLM sobre documentos del grupo</p>
       </div>
 
+      {/* Tabs */}
+      <div className="flex gap-1 border-b border-borde">
+        <button
+          onClick={() => setTab('procesar')}
+          className={`flex items-center gap-1.5 px-4 py-2 text-sm font-medium border-b-2 transition-colors ${tab === 'procesar' ? 'border-primario text-primario' : 'border-transparent text-texto-muted hover:text-texto'}`}
+        >
+          <Cpu size={15} />Procesar
+        </button>
+        <button
+          onClick={() => setTab('cola')}
+          className={`flex items-center gap-1.5 px-4 py-2 text-sm font-medium border-b-2 transition-colors ${tab === 'cola' ? 'border-primario text-primario' : 'border-transparent text-texto-muted hover:text-texto'}`}
+        >
+          <ListOrdered size={15} />Cola{colaBackend.length > 0 && ` (${colaBackend.length})`}
+        </button>
+      </div>
+
+      {tab === 'procesar' && (<>
       {/* Configuración */}
       <Tarjeta>
         <TarjetaContenido>
@@ -414,6 +510,114 @@ export default function PaginaProcesarDocumentos() {
           </Tabla>
         </>
       )}
+      </>)}
+
+      {tab === 'cola' && (
+        <>
+          <div className="flex items-center gap-3 flex-wrap">
+            <div className="max-w-sm flex-1">
+              <Input
+                placeholder="Buscar por documento o estado..."
+                value={busquedaCola}
+                onChange={(e) => setBusquedaCola(e.target.value)}
+                icono={<Search size={15} />}
+              />
+            </div>
+            <select
+              className="rounded-lg border border-borde bg-fondo-tarjeta px-3 py-2 text-sm text-texto focus:border-primario outline-none"
+              value={filtroEstadoCola}
+              onChange={(e) => setFiltroEstadoCola(e.target.value)}
+            >
+              <option value="">Todos los estados</option>
+              <option value="PENDIENTE">Pendiente</option>
+              <option value="EN_PROCESO">En proceso</option>
+              <option value="COMPLETADO">Completado</option>
+              <option value="ERROR">Error</option>
+            </select>
+            <div className="flex gap-2 ml-auto">
+              <Boton variante="contorno" tamano="sm" onClick={cargarCola} disabled={cargandoCola}>
+                <Loader2 size={14} className={cargandoCola ? 'animate-spin' : ''} />Refrescar
+              </Boton>
+              <Boton variante="contorno" onClick={() => setConfirmCerrar(true)} disabled={completadosCola === 0}>
+                <XCircle size={16} />Cerrar cola ({completadosCola})
+              </Boton>
+            </div>
+          </div>
+
+          <Tabla>
+            <TablaCabecera>
+              <tr>
+                <TablaTh>ID</TablaTh>
+                <TablaTh>Documento</TablaTh>
+                <TablaTh>Origen</TablaTh>
+                <TablaTh>Destino</TablaTh>
+                <TablaTh>Estado</TablaTh>
+                <TablaTh>Fecha</TablaTh>
+                <TablaTh>Intentos</TablaTh>
+                <TablaTh className="text-right">Acciones</TablaTh>
+              </tr>
+            </TablaCabecera>
+            <TablaCuerpo>
+              {cargandoCola ? (
+                <TablaFila><TablaTd className="py-8 text-center text-texto-muted" colSpan={8 as never}>Cargando...</TablaTd></TablaFila>
+              ) : colaFiltrada.length === 0 ? (
+                <TablaFila><TablaTd className="py-8 text-center text-texto-muted" colSpan={8 as never}>Cola vacía</TablaTd></TablaFila>
+              ) : colaFiltrada.map((c) => {
+                const cfg = ESTADO_COLA_CONFIG[c.estado_cola] || ESTADO_COLA_CONFIG.PENDIENTE
+                const Icono = cfg.icono
+                return (
+                  <TablaFila key={c.id_cola}>
+                    <TablaTd><code className="text-xs bg-fondo px-2 py-1 rounded font-mono">{c.id_cola}</code></TablaTd>
+                    <TablaTd className="font-medium text-sm">{c.documentos?.nombre_documento || `Doc #${c.codigo_documento}`}</TablaTd>
+                    <TablaTd className="text-sm text-texto-muted">{nombreEstadoDoc(c.codigo_estado_doc_origen)}</TablaTd>
+                    <TablaTd className="text-sm font-medium">{nombreEstadoDoc(c.codigo_estado_doc_destino)}</TablaTd>
+                    <TablaTd>
+                      <Insignia variante={cfg.variante}>
+                        <Icono size={12} className="mr-1" />
+                        {c.estado_cola}
+                      </Insignia>
+                    </TablaTd>
+                    <TablaTd className="text-xs text-texto-muted whitespace-nowrap">
+                      {new Date(c.fecha_cola).toLocaleString('es-CL', { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' })}
+                    </TablaTd>
+                    <TablaTd className="text-sm text-center">{c.intentos}/{c.max_intentos}</TablaTd>
+                    <TablaTd>
+                      <div className="flex items-center justify-end gap-1">
+                        <button
+                          onClick={() => setConfirmEliminar(c)}
+                          className="p-1.5 rounded-lg hover:bg-red-50 text-texto-muted hover:text-error transition-colors"
+                          title="Eliminar"
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      </div>
+                    </TablaTd>
+                  </TablaFila>
+                )
+              })}
+            </TablaCuerpo>
+          </Tabla>
+        </>
+      )}
+
+      <ModalConfirmar
+        abierto={confirmCerrar}
+        alCerrar={() => setConfirmCerrar(false)}
+        alConfirmar={ejecutarCerrarCola}
+        titulo="Cerrar cola"
+        mensaje={`¿Eliminar los ${completadosCola} ítem(s) completados de la cola?`}
+        textoConfirmar="Eliminar completados"
+        cargando={cerrando}
+      />
+      <ModalConfirmar
+        abierto={!!confirmEliminar}
+        alCerrar={() => setConfirmEliminar(null)}
+        alConfirmar={ejecutarEliminarItem}
+        titulo="Eliminar ítem de la cola"
+        mensaje={confirmEliminar ? `¿Eliminar el ítem #${confirmEliminar.id_cola}?` : ''}
+        textoConfirmar="Eliminar"
+        cargando={eliminando}
+      />
     </div>
   )
 }

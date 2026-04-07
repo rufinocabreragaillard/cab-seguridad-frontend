@@ -63,7 +63,10 @@ import {
   Files,
   Copy,
   Tag,
+  Tags,
   ListOrdered,
+  Brain,
+  Cpu,
 } from 'lucide-react'
 
 const iconMap: Record<string, LucideIcon> = {
@@ -130,6 +133,11 @@ const iconMap: Record<string, LucideIcon> = {
 
   // Etiquetas
   Tag,
+  Tags,
+
+  // IA / Procesamiento
+  Brain,
+  Cpu,
 
   // Varios
   Calendar,
