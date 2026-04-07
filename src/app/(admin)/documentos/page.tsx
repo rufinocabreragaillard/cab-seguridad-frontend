@@ -346,7 +346,11 @@ export default function PaginaDocumentos() {
                     {d.codigo_documento}
                   </code>
                 </TablaTd>
-                <TablaTd className="font-medium">{d.nombre_documento}</TablaTd>
+                <TablaTd>
+                  <button onClick={() => abrirEditar(d)} className="font-medium text-primario hover:underline text-left">
+                    {d.nombre_documento}
+                  </button>
+                </TablaTd>
                 <TablaTd className="text-sm text-texto-muted max-w-[250px] truncate">
                   {d.ubicacion_documento ? (
                     <span title={d.ubicacion_documento}>
