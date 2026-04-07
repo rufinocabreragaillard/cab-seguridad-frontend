@@ -401,6 +401,9 @@ export default function PaginaProcesarDocumentos() {
     }
 
     setEjecutando(false)
+    // Refrescar candidatos: los procesados ya cambiaron de estado y no deben aparecer
+    setCola([])
+    cargarDocumentos()
   }
 
   const detener = () => { abortRef.current = true }
