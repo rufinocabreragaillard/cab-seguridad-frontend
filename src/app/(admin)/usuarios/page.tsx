@@ -395,11 +395,13 @@ export default function PaginaUsuarios() {
   // Roles disponibles para asignar al usuario en el grupo activo:
   // - Roles del grupo activo + roles globales (codigo_grupo NULL)
   // - Excluyendo los que ya tiene asignados en el grupo activo
-  const rolesDisponibles = roles.filter((r) =>
-    r.activo &&
-    (r.codigo_grupo === grupoActivo || r.codigo_grupo == null) &&
-    !rolesUsuario.some((ra) => ra.codigo_grupo === grupoActivo && ra.id_rol === r.id_rol)
-  )
+  const rolesDisponibles = roles
+    .filter((r) =>
+      r.activo &&
+      (r.codigo_grupo === grupoActivo || r.codigo_grupo == null) &&
+      !rolesUsuario.some((ra) => ra.codigo_grupo === grupoActivo && ra.id_rol === r.id_rol)
+    )
+    .sort((a, b) => a.nombre.localeCompare(b.nombre, 'es'))
   const rolesDisponiblesFiltrados = rolesDisponibles.filter((r) =>
     busquedaRol.length === 0 ||
     r.nombre.toLowerCase().includes(busquedaRol.toLowerCase()) ||
