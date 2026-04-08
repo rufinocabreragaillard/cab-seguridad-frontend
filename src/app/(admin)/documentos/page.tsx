@@ -282,8 +282,7 @@ export default function PaginaDocumentos() {
                   { titulo: 'Resumen', campo: 'resumen_documento' },
                   { titulo: 'Fecha Modificación', campo: 'fecha_modificacion' },
                   { titulo: 'Tamaño KB', campo: 'tamano_kb' },
-                  { titulo: 'Estado Doc', campo: 'codigo_estado_doc' },
-                  { titulo: 'Estado', campo: 'activo', formato: (v: unknown) => (v ? 'Activo' : 'Inactivo') },
+                  { titulo: 'Estado', campo: 'codigo_estado_doc' },
                 ],
                 'documentos'
               )
@@ -347,9 +346,11 @@ export default function PaginaDocumentos() {
                   ) : '—'}
                 </TablaTd>
                 <TablaTd>
-                  <Insignia variante={d.activo ? 'exito' : 'error'}>
-                    {d.activo ? 'Activo' : 'Inactivo'}
-                  </Insignia>
+                  {d.codigo_estado_doc ? (
+                    <Insignia variante="primario">{d.codigo_estado_doc}</Insignia>
+                  ) : (
+                    <span className="text-xs text-texto-muted">—</span>
+                  )}
                 </TablaTd>
                 <TablaTd>
                   <div className="flex items-center justify-end gap-1">
