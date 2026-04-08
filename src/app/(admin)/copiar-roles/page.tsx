@@ -1,15 +1,17 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
-import { Copy, Pencil, Plus, Trash2 } from 'lucide-react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
+import { ArrowDown, ArrowUp, Copy, Pencil, Plus, Search, Trash2, X } from 'lucide-react'
 import { Boton } from '@/components/ui/boton'
 import { Tarjeta, TarjetaCabecera, TarjetaTitulo, TarjetaContenido } from '@/components/ui/tarjeta'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Modal } from '@/components/ui/modal'
 import { ModalConfirmar } from '@/components/ui/modal-confirmar'
-import { rolesApi, gruposApi } from '@/lib/api'
-import type { Rol, Grupo } from '@/lib/tipos'
+import { rolesApi, gruposApi, funcionesApi } from '@/lib/api'
+import type { Rol, Grupo, Funcion } from '@/lib/tipos'
+
+type FuncionAsignada = { codigo_funcion: string; orden: number; funciones: { nombre_funcion: string; activo: boolean } }
 
 type Tab = 'globales' | 'copiar'
 
@@ -74,6 +76,86 @@ function TabRolesGlobales() {
   const [confirmacion, setConfirmacion] = useState<Rol | null>(null)
   const [eliminando, setEliminando] = useState(false)
 
+  // Tab dentro del modal de edición: datos | funciones
+  const [tabModal, setTabModal] = useState<'datos' | 'funciones'>('datos')
+  const [todasFunciones, setTodasFunciones] = useState<Funcion[]>([])
+  const [funcionesRol, setFuncionesRol] = useState<FuncionAsignada[]>([])
+  const [cargandoFunciones, setCargandoFunciones] = useState(false)
+  const [busquedaFuncion, setBusquedaFuncion] = useState('')
+  const [funcionNueva, setFuncionNueva] = useState('')
+  const [asignandoFuncion, setAsignandoFuncion] = useState(false)
+
+  const cargarFuncionesRol = useCallback(async (idRol: number) => {
+    setCargandoFunciones(true)
+    try {
+      setFuncionesRol(await rolesApi.listarFunciones(idRol))
+    } catch {
+      setFuncionesRol([])
+    } finally {
+      setCargandoFunciones(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    funcionesApi.listar().then(setTodasFunciones).catch(() => setTodasFunciones([]))
+  }, [])
+
+  const asignarFuncion = async () => {
+    if (!funcionNueva || !editando) return
+    setAsignandoFuncion(true)
+    try {
+      await rolesApi.asignarFuncion(editando.id_rol, funcionNueva)
+      setFuncionNueva('')
+      setBusquedaFuncion('')
+      cargarFuncionesRol(editando.id_rol)
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Error al asignar función')
+    } finally {
+      setAsignandoFuncion(false)
+    }
+  }
+
+  const quitarFuncion = async (codigoFuncion: string) => {
+    if (!editando) return
+    try {
+      await rolesApi.quitarFuncion(editando.id_rol, codigoFuncion)
+      cargarFuncionesRol(editando.id_rol)
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Error al quitar función')
+    }
+  }
+
+  const moverFuncion = async (index: number, direccion: 'arriba' | 'abajo') => {
+    if (!editando) return
+    const lista = [...funcionesRol]
+    const swap = direccion === 'arriba' ? index - 1 : index + 1
+    if (swap < 0 || swap >= lista.length) return
+    const a = lista[index].orden
+    const b = lista[swap].orden
+    lista[index].orden = b
+    lista[swap].orden = a
+    ;[lista[index], lista[swap]] = [lista[swap], lista[index]]
+    setFuncionesRol(lista)
+    try {
+      await rolesApi.reordenarFunciones(
+        editando.id_rol,
+        lista.map((f) => ({ codigo_funcion: f.codigo_funcion, orden: f.orden })),
+      )
+    } catch {
+      cargarFuncionesRol(editando.id_rol)
+    }
+  }
+
+  const funcionesDisponibles = todasFunciones.filter(
+    (f) => f.activo && !funcionesRol.some((fa) => fa.codigo_funcion === f.codigo_funcion),
+  )
+  const funcionesRolFiltradas = funcionesDisponibles.filter(
+    (f) =>
+      busquedaFuncion.length === 0 ||
+      f.nombre.toLowerCase().includes(busquedaFuncion.toLowerCase()) ||
+      f.codigo_funcion.toLowerCase().includes(busquedaFuncion.toLowerCase()),
+  )
+
   const cargar = async () => {
     setCargando(true)
     try {
@@ -94,6 +176,8 @@ function TabRolesGlobales() {
     setEditando(null)
     setForm({ codigo_rol: '', nombre: '', alias_de_rol: '', descripcion: '', url_inicio: '' })
     setError('')
+    setTabModal('datos')
+    setFuncionesRol([])
     setModalAbierto(true)
   }
 
@@ -107,6 +191,8 @@ function TabRolesGlobales() {
       url_inicio: r.url_inicio || '',
     })
     setError('')
+    setTabModal('datos')
+    cargarFuncionesRol(r.id_rol)
     setModalAbierto(true)
   }
 
@@ -221,9 +307,6 @@ function TabRolesGlobales() {
             </table>
           </div>
         )}
-        <p className="mt-4 text-xs text-texto-muted">
-          Las funciones de cada rol se gestionan desde la página <strong>Aplicaciones y Funciones</strong>.
-        </p>
       </TarjetaContenido>
 
       <Modal
@@ -231,62 +314,202 @@ function TabRolesGlobales() {
         alCerrar={() => setModalAbierto(false)}
         titulo={editando ? `Editar rol general "${editando.codigo_rol}"` : 'Nuevo rol general'}
       >
-        <div className="flex flex-col gap-3 min-w-[420px]">
+        <div className="flex flex-col gap-3 min-w-[520px]">
+          {/* Tabs (solo si editando) */}
+          {editando && (
+            <div className="flex gap-1 border-b border-borde -mt-2">
+              <button
+                type="button"
+                onClick={() => setTabModal('datos')}
+                className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors ${
+                  tabModal === 'datos'
+                    ? 'border-primario text-primario'
+                    : 'border-transparent text-texto-muted hover:text-texto'
+                }`}
+              >
+                Datos
+              </button>
+              <button
+                type="button"
+                onClick={() => setTabModal('funciones')}
+                className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors ${
+                  tabModal === 'funciones'
+                    ? 'border-primario text-primario'
+                    : 'border-transparent text-texto-muted hover:text-texto'
+                }`}
+              >
+                Funciones ({funcionesRol.length})
+              </button>
+            </div>
+          )}
+
           {error && (
             <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-error">
               {error}
             </div>
           )}
-          <div>
-            <label className="text-sm font-medium text-texto">Código *</label>
-            <Input
-              value={form.codigo_rol}
-              onChange={(e) => setForm({ ...form, codigo_rol: e.target.value.toUpperCase() })}
-              placeholder="Ej: SEG-USUARIOS"
-              disabled={!!editando}
-            />
-          </div>
-          <div>
-            <label className="text-sm font-medium text-texto">Nombre *</label>
-            <Input
-              value={form.nombre}
-              onChange={(e) => setForm({ ...form, nombre: e.target.value })}
-              placeholder="Nombre descriptivo del rol"
-            />
-          </div>
-          <div>
-            <label className="text-sm font-medium text-texto">Alias</label>
-            <Input
-              value={form.alias_de_rol}
-              onChange={(e) => setForm({ ...form, alias_de_rol: e.target.value })}
-              placeholder="Alias corto"
-              maxLength={40}
-            />
-          </div>
-          <div>
-            <label className="text-sm font-medium text-texto">URL de inicio</label>
-            <Input
-              value={form.url_inicio}
-              onChange={(e) => setForm({ ...form, url_inicio: e.target.value })}
-              placeholder="/dashboard"
-            />
-          </div>
-          <div>
-            <label className="text-sm font-medium text-texto">Descripción</label>
-            <Textarea
-              value={form.descripcion}
-              onChange={(e) => setForm({ ...form, descripcion: e.target.value })}
-              rows={3}
-            />
-          </div>
-          <div className="flex justify-end gap-2 pt-2">
-            <Boton variante="contorno" onClick={() => setModalAbierto(false)} disabled={guardando}>
-              Cancelar
-            </Boton>
-            <Boton variante="primario" onClick={guardar} cargando={guardando}>
-              {editando ? 'Guardar cambios' : 'Crear rol general'}
-            </Boton>
-          </div>
+
+          {tabModal === 'datos' && (
+            <>
+              <div>
+                <label className="text-sm font-medium text-texto">Código *</label>
+                <Input
+                  value={form.codigo_rol}
+                  onChange={(e) => setForm({ ...form, codigo_rol: e.target.value.toUpperCase() })}
+                  placeholder="Ej: SEG-USUARIOS"
+                  disabled={!!editando}
+                />
+              </div>
+              <div>
+                <label className="text-sm font-medium text-texto">Nombre *</label>
+                <Input
+                  value={form.nombre}
+                  onChange={(e) => setForm({ ...form, nombre: e.target.value })}
+                  placeholder="Nombre descriptivo del rol"
+                />
+              </div>
+              <div>
+                <label className="text-sm font-medium text-texto">Alias</label>
+                <Input
+                  value={form.alias_de_rol}
+                  onChange={(e) => setForm({ ...form, alias_de_rol: e.target.value })}
+                  placeholder="Alias corto"
+                  maxLength={40}
+                />
+              </div>
+              <div>
+                <label className="text-sm font-medium text-texto">URL de inicio</label>
+                <Input
+                  value={form.url_inicio}
+                  onChange={(e) => setForm({ ...form, url_inicio: e.target.value })}
+                  placeholder="/dashboard"
+                />
+              </div>
+              <div>
+                <label className="text-sm font-medium text-texto">Descripción</label>
+                <Textarea
+                  value={form.descripcion}
+                  onChange={(e) => setForm({ ...form, descripcion: e.target.value })}
+                  rows={3}
+                />
+              </div>
+              <div className="flex justify-end gap-2 pt-2">
+                <Boton variante="contorno" onClick={() => setModalAbierto(false)} disabled={guardando}>
+                  Cancelar
+                </Boton>
+                <Boton variante="primario" onClick={guardar} cargando={guardando}>
+                  {editando ? 'Guardar cambios' : 'Crear rol general'}
+                </Boton>
+              </div>
+            </>
+          )}
+
+          {tabModal === 'funciones' && editando && (
+            <div className="flex flex-col gap-3">
+              {/* Asignar nueva */}
+              <div>
+                <label className="text-sm font-medium text-texto">Asignar función</label>
+                <div className="flex gap-2 mt-1">
+                  <div className="flex-1 relative">
+                    <Input
+                      placeholder="Buscar función por nombre o código..."
+                      value={busquedaFuncion}
+                      onChange={(e) => setBusquedaFuncion(e.target.value)}
+                      icono={<Search size={14} />}
+                    />
+                    {busquedaFuncion.length > 0 && (
+                      <div className="absolute z-10 mt-1 w-full max-h-52 overflow-y-auto rounded-lg border border-borde bg-surface shadow-lg">
+                        {funcionesRolFiltradas.length === 0 ? (
+                          <div className="p-2 text-xs text-texto-muted">Sin resultados</div>
+                        ) : (
+                          funcionesRolFiltradas.slice(0, 20).map((f) => (
+                            <button
+                              key={f.codigo_funcion}
+                              type="button"
+                              onClick={() => {
+                                setFuncionNueva(f.codigo_funcion)
+                                setBusquedaFuncion(f.nombre)
+                              }}
+                              className="w-full text-left px-3 py-2 text-sm hover:bg-primario-muy-claro border-b border-borde/50 last:border-0"
+                            >
+                              <div className="font-medium">{f.nombre}</div>
+                              <div className="text-xs text-texto-muted font-mono">{f.codigo_funcion}</div>
+                            </button>
+                          ))
+                        )}
+                      </div>
+                    )}
+                  </div>
+                  <Boton
+                    variante="primario"
+                    tamano="sm"
+                    onClick={asignarFuncion}
+                    disabled={!funcionNueva || asignandoFuncion}
+                  >
+                    <Plus size={14} />
+                    Agregar
+                  </Boton>
+                </div>
+              </div>
+
+              {/* Listado actual */}
+              <div className="border border-borde rounded-lg overflow-hidden">
+                {cargandoFunciones ? (
+                  <div className="p-4 text-sm text-texto-muted text-center">Cargando...</div>
+                ) : funcionesRol.length === 0 ? (
+                  <div className="p-4 text-sm text-texto-muted text-center">
+                    Este rol no tiene funciones asignadas.
+                  </div>
+                ) : (
+                  <ul className="divide-y divide-borde">
+                    {funcionesRol.map((fa, idx) => (
+                      <li
+                        key={fa.codigo_funcion}
+                        className="flex items-center gap-2 px-3 py-2 text-sm hover:bg-fondo"
+                      >
+                        <div className="flex flex-col gap-0.5 items-center">
+                          <button
+                            type="button"
+                            onClick={() => moverFuncion(idx, 'arriba')}
+                            disabled={idx === 0}
+                            className="text-texto-muted hover:text-primario disabled:opacity-30"
+                          >
+                            <ArrowUp size={12} />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => moverFuncion(idx, 'abajo')}
+                            disabled={idx === funcionesRol.length - 1}
+                            className="text-texto-muted hover:text-primario disabled:opacity-30"
+                          >
+                            <ArrowDown size={12} />
+                          </button>
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="font-medium truncate">{fa.funciones?.nombre_funcion}</div>
+                          <div className="text-xs text-texto-muted font-mono">{fa.codigo_funcion}</div>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => quitarFuncion(fa.codigo_funcion)}
+                          className="p-1 rounded text-texto-muted hover:text-error hover:bg-red-50"
+                          title="Quitar"
+                        >
+                          <X size={16} />
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+
+              <div className="flex justify-end pt-2">
+                <Boton variante="contorno" onClick={() => setModalAbierto(false)}>
+                  Cerrar
+                </Boton>
+              </div>
+            </div>
+          )}
         </div>
       </Modal>
 
