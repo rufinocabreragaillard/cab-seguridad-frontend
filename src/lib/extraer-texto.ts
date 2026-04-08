@@ -1,6 +1,6 @@
 /**
  * Utilidad para extraer texto de archivos usando File System Access API.
- * Soporta: PDF, TXT, CSV, MD, JSON, XML, HTML
+ * Soporta: PDF, DOCX, XLSX, XLS, TXT, CSV, MD, JSON, XML, HTML
  */
 
 const EXTENSIONES_TEXTO = new Set([
@@ -19,6 +19,16 @@ export async function extraerTextoDeArchivo(fileHandle: FileSystemFileHandle): P
   // PDF
   if (ext === 'pdf') {
     return extraerTextoPDF(file)
+  }
+
+  // Word (.docx). Nota: .doc binario antiguo NO soportado.
+  if (ext === 'docx') {
+    return extraerTextoDOCX(file)
+  }
+
+  // Excel (.xlsx / .xls / .xlsm)
+  if (ext === 'xlsx' || ext === 'xls' || ext === 'xlsm') {
+    return extraerTextoExcel(file)
   }
 
   // Archivos de texto plano
@@ -52,6 +62,35 @@ async function extraerTextoPDF(file: File): Promise<string> {
   }
 
   return paginas.join('\n\n')
+}
+
+/**
+ * Extrae texto de un .docx usando mammoth.
+ */
+async function extraerTextoDOCX(file: File): Promise<string> {
+  const mammoth = await import('mammoth')
+  const arrayBuffer = await file.arrayBuffer()
+  const result = await mammoth.extractRawText({ arrayBuffer })
+  return result.value
+}
+
+/**
+ * Extrae texto de un Excel (.xlsx/.xls/.xlsm) usando SheetJS.
+ * Cada hoja se serializa como CSV; las hojas se separan por encabezado.
+ */
+async function extraerTextoExcel(file: File): Promise<string> {
+  const XLSX = await import('xlsx')
+  const arrayBuffer = await file.arrayBuffer()
+  const workbook = XLSX.read(arrayBuffer, { type: 'array' })
+  const partes: string[] = []
+  for (const nombreHoja of workbook.SheetNames) {
+    const hoja = workbook.Sheets[nombreHoja]
+    const csv = XLSX.utils.sheet_to_csv(hoja, { blankrows: false })
+    if (csv.trim()) {
+      partes.push(`### Hoja: ${nombreHoja}\n${csv}`)
+    }
+  }
+  return partes.join('\n\n')
 }
 
 /**
