@@ -94,34 +94,72 @@ async function extraerTextoExcel(file: File): Promise<string> {
 }
 
 /**
- * Abre un archivo del filesystem dado un FileSystemDirectoryHandle y una ruta relativa.
- * La ruta es relativa al directorio raíz (ej: "/Contratos/2024/contrato.pdf")
+ * Abre un archivo del filesystem dado un FileSystemDirectoryHandle y una ruta
+ * "absoluta" tal como quedó guardada en BD (ej: "/cab/inmobiliario/legal/X.pdf").
+ *
+ * Estrategia: la ruta guardada en BD viene con segmentos que representan
+ * directorios anidados desde algún ancestro del filesystem. El usuario puede
+ * haber pickeado el directorio raíz en cualquier nivel de esa jerarquía
+ * (ej. "inmobiliario" o "legal" o el propio "cab"). Intentamos encontrar el
+ * archivo probando todos los puntos de partida posibles dentro de la ruta:
+ *
+ *   ruta = ['cab', 'inmobiliario', 'legal', 'X.pdf']
+ *   handle = "legal"  →  prueba navegar [], luego ['inmobiliario'], luego
+ *                        ['cab','inmobiliario'], etc.
+ *
+ * Para cada offset, intenta resolver el resto de la ruta. Devuelve el primero
+ * que matchee.
+ *
+ * Heurística adicional: si dirHandle.name coincide con alguno de los segmentos,
+ * lo prueba primero.
  */
 export async function abrirArchivoPorRuta(
   dirHandle: FileSystemDirectoryHandle,
   rutaRelativa: string,
 ): Promise<FileSystemFileHandle | null> {
-  // Normalizar ruta: quitar / inicial y el nombre del directorio raíz
   const partes = rutaRelativa.split('/').filter(Boolean)
-
-  // Las primeras partes son directorios, la última es el archivo
   if (partes.length === 0) return null
 
-  let currentDir = dirHandle
-  // Navegar por los subdirectorios (saltar el primero que es el nombre del directorio raíz)
-  for (let i = 1; i < partes.length - 1; i++) {
+  const nombreArchivo = partes[partes.length - 1]
+  const directorios = partes.slice(0, -1) // todos menos el archivo
+
+  // Helper: navega desde dirHandle siguiendo `subdirs` y devuelve el file handle.
+  const intentarDesde = async (subdirs: string[]): Promise<FileSystemFileHandle | null> => {
+    let currentDir = dirHandle
+    for (const sub of subdirs) {
+      try {
+        currentDir = await currentDir.getDirectoryHandle(sub)
+      } catch {
+        return null
+      }
+    }
     try {
-      currentDir = await currentDir.getDirectoryHandle(partes[i])
+      return await currentDir.getFileHandle(nombreArchivo)
     } catch {
-      return null // Directorio no encontrado
+      return null
     }
   }
 
-  // Obtener el archivo
-  const nombreArchivo = partes[partes.length - 1]
-  try {
-    return await currentDir.getFileHandle(nombreArchivo)
-  } catch {
-    return null // Archivo no encontrado
+  // Construir la lista de offsets a probar, en orden de preferencia.
+  // 1. Si el nombre del handle aparece como un segmento de la ruta, empezar
+  //    justo después de ese segmento (lo más probable).
+  // 2. Probar todos los offsets desde el final hacia el inicio (más profundo
+  //    primero: minimiza la chance de un falso positivo en directorios con
+  //    nombres comunes como "legal").
+  const offsetsAProbar: number[] = []
+  const idxNombreHandle = directorios.lastIndexOf(dirHandle.name)
+  if (idxNombreHandle >= 0) {
+    offsetsAProbar.push(idxNombreHandle + 1)
   }
+  for (let off = directorios.length; off >= 0; off--) {
+    if (!offsetsAProbar.includes(off)) offsetsAProbar.push(off)
+  }
+
+  for (const off of offsetsAProbar) {
+    const subdirs = directorios.slice(off)
+    const fh = await intentarDesde(subdirs)
+    if (fh) return fh
+  }
+
+  return null
 }
