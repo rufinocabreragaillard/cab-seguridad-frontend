@@ -13,38 +13,7 @@ import { useAuth } from '@/context/AuthContext'
 import type { Documento, RegistroLLM, ColaEstadoDoc, EstadoDoc } from '@/lib/tipos'
 import { extraerTextoDeArchivo, abrirArchivoPorRuta } from '@/lib/extraer-texto'
 
-// ── Persistencia de FileSystemDirectoryHandle en IndexedDB ──
-const IDB_NAME = 'cab-procesar-docs'
-const IDB_STORE = 'handles'
-const IDB_KEY = 'dirHandle'
-
-function idbOpen(): Promise<IDBDatabase> {
-  return new Promise((resolve, reject) => {
-    const req = indexedDB.open(IDB_NAME, 1)
-    req.onupgradeneeded = () => req.result.createObjectStore(IDB_STORE)
-    req.onsuccess = () => resolve(req.result)
-    req.onerror = () => reject(req.error)
-  })
-}
-async function idbGetHandle(): Promise<FileSystemDirectoryHandle | null> {
-  try {
-    const db = await idbOpen()
-    return await new Promise((resolve) => {
-      const tx = db.transaction(IDB_STORE, 'readonly')
-      const req = tx.objectStore(IDB_STORE).get(IDB_KEY)
-      req.onsuccess = () => resolve((req.result as FileSystemDirectoryHandle) || null)
-      req.onerror = () => resolve(null)
-    })
-  } catch { return null }
-}
-async function idbSetHandle(handle: FileSystemDirectoryHandle | null) {
-  try {
-    const db = await idbOpen()
-    const tx = db.transaction(IDB_STORE, 'readwrite')
-    if (handle) tx.objectStore(IDB_STORE).put(handle, IDB_KEY)
-    else tx.objectStore(IDB_STORE).delete(IDB_KEY)
-  } catch { /* ignore */ }
-}
+import { getDirectoryHandle as idbGetHandle, setDirectoryHandle as idbSetHandle } from '@/lib/file-handle-store'
 
 const ESTADO_COLA_CONFIG: Record<string, { variante: 'exito' | 'error' | 'advertencia' | 'neutro'; icono: typeof Clock }> = {
   PENDIENTE: { variante: 'neutro', icono: Clock },

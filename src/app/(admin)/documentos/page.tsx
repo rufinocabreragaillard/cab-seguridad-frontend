@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState, useCallback } from 'react'
-import { Plus, Trash2, Download, Search, Eye, ExternalLink } from 'lucide-react'
+import { Plus, Trash2, Download, Search, Eye, ExternalLink, FileText } from 'lucide-react'
 import { Boton } from '@/components/ui/boton'
 import { Input } from '@/components/ui/input'
 import { Insignia } from '@/components/ui/insignia'
@@ -12,6 +12,8 @@ import { documentosApi, categoriasCaractDocsApi, estadosDocsApi } from '@/lib/ap
 import type { Documento, CategoriaConCaracteristicasDocs, CaracteristicaDocumento, TipoCaractDocs, EstadoDoc } from '@/lib/tipos'
 import { exportarExcel } from '@/lib/exportar-excel'
 import { useAuth } from '@/context/AuthContext'
+import { abrirArchivoPorRuta } from '@/lib/extraer-texto'
+import { getDirectoryHandle, ensureReadPermission } from '@/lib/file-handle-store'
 
 type TabModal = 'datos' | 'caracteristicas'
 
@@ -197,6 +199,48 @@ export default function PaginaDocumentos() {
     cargarCaracteristicas(editando.codigo_documento)
   }
 
+  // ── Abrir documento original desde el filesystem local ─────────────────
+  // Usa el FileSystemDirectoryHandle persistido en IndexedDB cuando el usuario
+  // pickeo la carpeta raiz en /procesar-documentos. NO replica los archivos
+  // en ningun storage remoto: simplemente lee del disco del propio usuario.
+  const abrirDocumentoLocal = async (d: Documento) => {
+    if (!d.ubicacion_documento) {
+      alert('Este documento no tiene ubicacion registrada.')
+      return
+    }
+    const handle = await getDirectoryHandle()
+    if (!handle) {
+      alert(
+        'No hay carpeta raiz seleccionada. Ve a "Procesar Documentos" y ' +
+        'selecciona el directorio raiz una vez para habilitar esta funcion.'
+      )
+      return
+    }
+    const ok = await ensureReadPermission(handle)
+    if (!ok) {
+      alert('Permiso de lectura denegado para la carpeta seleccionada.')
+      return
+    }
+    try {
+      const fileHandle = await abrirArchivoPorRuta(handle, d.ubicacion_documento)
+      if (!fileHandle) {
+        alert(
+          `No se encontro el archivo:\n${d.ubicacion_documento}\n\n` +
+          'Verifica que el directorio raiz seleccionado sea el correcto.'
+        )
+        return
+      }
+      const file = await fileHandle.getFile()
+      const url = URL.createObjectURL(file)
+      window.open(url, '_blank', 'noopener,noreferrer')
+      // Liberar el blob URL despues de un rato (el browser ya tiene el
+      // archivo abierto en la pestania nueva, no lo necesita en memoria).
+      setTimeout(() => URL.revokeObjectURL(url), 60_000)
+    } catch (e) {
+      alert(`Error al abrir el documento: ${e instanceof Error ? e.message : e}`)
+    }
+  }
+
   // ── Filtro ────────────────────────────────────────────────────────────────
   const filtrados = documentos
     .filter(
@@ -315,10 +359,19 @@ export default function PaginaDocumentos() {
                         target="_blank"
                         rel="noopener noreferrer"
                         className="p-1.5 rounded-lg hover:bg-primario-muy-claro text-texto-muted hover:text-primario transition-colors"
-                        title="Abrir documento original"
+                        title="Abrir documento original (URL)"
                       >
                         <ExternalLink size={16} />
                       </a>
+                    )}
+                    {d.ubicacion_documento && !/^https?:\/\//i.test(d.ubicacion_documento) && (
+                      <button
+                        onClick={() => abrirDocumentoLocal(d)}
+                        className="p-1.5 rounded-lg hover:bg-primario-muy-claro text-texto-muted hover:text-primario transition-colors"
+                        title="Abrir documento desde el directorio local seleccionado en Procesar Documentos"
+                      >
+                        <FileText size={16} />
+                      </button>
                     )}
                     <button
                       onClick={() => abrirEditar(d)}
