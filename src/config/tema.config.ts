@@ -4,7 +4,7 @@
  */
 export const tema = {
   app: {
-    nombre: 'Aplicaciones',
+    nombre: 'ServerLM',
     nombreCorto: 'SeguridadApp',
     version: '1.0.0',
   },
