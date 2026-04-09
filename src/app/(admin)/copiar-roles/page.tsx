@@ -5,11 +5,11 @@ import { ArrowDown, ArrowUp, Copy, Pencil, Plus, Search, Trash2, X } from 'lucid
 import { Boton } from '@/components/ui/boton'
 import { Tarjeta, TarjetaCabecera, TarjetaTitulo, TarjetaContenido } from '@/components/ui/tarjeta'
 import { Input } from '@/components/ui/input'
-import { Textarea } from '@/components/ui/textarea'
 import { Modal } from '@/components/ui/modal'
 import { ModalConfirmar } from '@/components/ui/modal-confirmar'
-import { rolesApi, gruposApi, funcionesApi } from '@/lib/api'
-import type { Rol, Grupo, Funcion } from '@/lib/tipos'
+import { rolesApi, gruposApi, funcionesApi, aplicacionesApi } from '@/lib/api'
+import { useAuth } from '@/context/AuthContext'
+import type { Rol, Grupo, Funcion, Aplicacion } from '@/lib/tipos'
 
 type FuncionAsignada = { codigo_funcion: string; orden: number; funciones: { nombre_funcion: string; activo: boolean } }
 
@@ -58,7 +58,9 @@ export default function PaginaRolesGenerales() {
 // ── Tab 1: CRUD de Roles Globales ─────────────────────────────────────────
 
 function TabRolesGlobales() {
+  const { aplicacionActiva } = useAuth()
   const [roles, setRoles] = useState<Rol[]>([])
+  const [aplicaciones, setAplicaciones] = useState<Aplicacion[]>([])
   const [cargando, setCargando] = useState(true)
   const [error, setError] = useState('')
 
@@ -70,6 +72,7 @@ function TabRolesGlobales() {
     alias_de_rol: '',
     descripcion: '',
     url_inicio: '',
+    codigo_aplicacion_origen: '',
   })
   const [guardando, setGuardando] = useState(false)
 
@@ -159,8 +162,19 @@ function TabRolesGlobales() {
   const cargar = async () => {
     setCargando(true)
     try {
-      const data = await rolesApi.listarGlobales()
-      setRoles(data.sort((a, b) => a.nombre.localeCompare(b.nombre, 'es')))
+      const [data, apps] = await Promise.all([rolesApi.listarGlobales(), aplicacionesApi.listar()])
+      setAplicaciones(apps)
+      // Orden por (nombre app origen, nombre rol). Sin app origen al final.
+      const mapaApp = Object.fromEntries(apps.map((a) => [a.codigo_aplicacion, a.nombre]))
+      const ordenado = data.sort((a, b) => {
+        const na = a.codigo_aplicacion_origen ? (mapaApp[a.codigo_aplicacion_origen] || a.codigo_aplicacion_origen) : ''
+        const nb = b.codigo_aplicacion_origen ? (mapaApp[b.codigo_aplicacion_origen] || b.codigo_aplicacion_origen) : ''
+        const sa = na ? 0 : 1; const sb = nb ? 0 : 1
+        if (sa !== sb) return sa - sb
+        if (na !== nb) return na.localeCompare(nb, 'es')
+        return a.nombre.localeCompare(b.nombre, 'es')
+      })
+      setRoles(ordenado)
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Error al cargar roles generales')
     } finally {
@@ -174,7 +188,7 @@ function TabRolesGlobales() {
 
   const abrirCrear = () => {
     setEditando(null)
-    setForm({ codigo_rol: '', nombre: '', alias_de_rol: '', descripcion: '', url_inicio: '' })
+    setForm({ codigo_rol: '', nombre: '', alias_de_rol: '', descripcion: '', url_inicio: '', codigo_aplicacion_origen: aplicacionActiva || '' })
     setError('')
     setTabModal('datos')
     setFuncionesRol([])
@@ -189,6 +203,7 @@ function TabRolesGlobales() {
       alias_de_rol: r.alias_de_rol || '',
       descripcion: r.descripcion || '',
       url_inicio: r.url_inicio || '',
+      codigo_aplicacion_origen: r.codigo_aplicacion_origen || '',
     })
     setError('')
     setTabModal('datos')
@@ -210,6 +225,7 @@ function TabRolesGlobales() {
         alias_de_rol: form.alias_de_rol.trim() || undefined,
         descripcion: form.descripcion.trim() || undefined,
         url_inicio: form.url_inicio.trim() || undefined,
+        codigo_aplicacion_origen: form.codigo_aplicacion_origen || null,
         codigo_grupo: null, // rol global
       }
       if (editando) {
@@ -269,6 +285,7 @@ function TabRolesGlobales() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-borde text-left text-xs uppercase text-texto-muted">
+                  <th className="py-2 pr-4">App origen</th>
                   <th className="py-2 pr-4">Código</th>
                   <th className="py-2 pr-4">Nombre</th>
                   <th className="py-2 pr-4">Alias</th>
@@ -277,8 +294,13 @@ function TabRolesGlobales() {
                 </tr>
               </thead>
               <tbody>
-                {roles.map((r) => (
+                {roles.map((r) => {
+                  const nombreAppOrigen = r.codigo_aplicacion_origen
+                    ? (aplicaciones.find((a) => a.codigo_aplicacion === r.codigo_aplicacion_origen)?.nombre || r.codigo_aplicacion_origen)
+                    : '—'
+                  return (
                   <tr key={r.id_rol} className="border-b border-borde/50 hover:bg-surface-hover">
+                    <td className="py-2 pr-4 text-xs text-texto-muted">{nombreAppOrigen}</td>
                     <td className="py-2 pr-4 font-mono text-xs">{r.codigo_rol}</td>
                     <td className="py-2 pr-4">{r.nombre}</td>
                     <td className="py-2 pr-4 text-texto-muted">{r.alias_de_rol || '—'}</td>
@@ -302,7 +324,8 @@ function TabRolesGlobales() {
                       </div>
                     </td>
                   </tr>
-                ))}
+                  )
+                })}
               </tbody>
             </table>
           </div>
@@ -313,8 +336,9 @@ function TabRolesGlobales() {
         abierto={modalAbierto}
         alCerrar={() => setModalAbierto(false)}
         titulo={editando ? `Editar rol general "${editando.codigo_rol}"` : 'Nuevo rol general'}
+        className="max-w-2xl"
       >
-        <div className="flex flex-col gap-3 min-w-[520px]">
+        <div className="flex flex-col gap-3">
           {/* Tabs (solo si editando) */}
           {editando && (
             <div className="flex gap-1 border-b border-borde -mt-2">
@@ -351,47 +375,62 @@ function TabRolesGlobales() {
 
           {tabModal === 'datos' && (
             <>
-              <div>
-                <label className="text-sm font-medium text-texto">Código *</label>
-                <Input
-                  value={form.codigo_rol}
-                  onChange={(e) => setForm({ ...form, codigo_rol: e.target.value.toUpperCase() })}
-                  placeholder="Ej: SEG-USUARIOS"
-                  disabled={!!editando}
-                />
-              </div>
-              <div>
-                <label className="text-sm font-medium text-texto">Nombre *</label>
-                <Input
-                  value={form.nombre}
-                  onChange={(e) => setForm({ ...form, nombre: e.target.value })}
-                  placeholder="Nombre descriptivo del rol"
-                />
-              </div>
-              <div>
-                <label className="text-sm font-medium text-texto">Alias</label>
-                <Input
-                  value={form.alias_de_rol}
-                  onChange={(e) => setForm({ ...form, alias_de_rol: e.target.value })}
-                  placeholder="Alias corto"
-                  maxLength={40}
-                />
-              </div>
-              <div>
-                <label className="text-sm font-medium text-texto">URL de inicio</label>
-                <Input
-                  value={form.url_inicio}
-                  onChange={(e) => setForm({ ...form, url_inicio: e.target.value })}
-                  placeholder="/dashboard"
-                />
-              </div>
-              <div>
-                <label className="text-sm font-medium text-texto">Descripción</label>
-                <Textarea
-                  value={form.descripcion}
-                  onChange={(e) => setForm({ ...form, descripcion: e.target.value })}
-                  rows={3}
-                />
+              <div className="grid grid-cols-2 gap-x-4 gap-y-3">
+                <div>
+                  <label className="text-sm font-medium text-texto">Código *</label>
+                  <Input
+                    value={form.codigo_rol}
+                    onChange={(e) => setForm({ ...form, codigo_rol: e.target.value.toUpperCase() })}
+                    placeholder="Ej: SEG-USUARIOS"
+                    disabled={!!editando}
+                  />
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-texto">Alias</label>
+                  <Input
+                    value={form.alias_de_rol}
+                    onChange={(e) => setForm({ ...form, alias_de_rol: e.target.value })}
+                    placeholder="Alias corto"
+                    maxLength={40}
+                  />
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-texto">Nombre *</label>
+                  <Input
+                    value={form.nombre}
+                    onChange={(e) => setForm({ ...form, nombre: e.target.value })}
+                    placeholder="Nombre descriptivo del rol"
+                  />
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-texto">Aplicación origen</label>
+                  <select
+                    value={form.codigo_aplicacion_origen}
+                    onChange={(e) => setForm({ ...form, codigo_aplicacion_origen: e.target.value })}
+                    className="w-full rounded-lg border border-borde bg-surface px-3 py-2 text-sm text-texto focus:outline-none focus:ring-2 focus:ring-primario"
+                  >
+                    <option value="">— sin asignar —</option>
+                    {[...aplicaciones].sort((a, b) => a.nombre.localeCompare(b.nombre)).map((a) => (
+                      <option key={a.codigo_aplicacion} value={a.codigo_aplicacion}>{a.nombre} ({a.codigo_aplicacion})</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-texto">URL de inicio</label>
+                  <Input
+                    value={form.url_inicio}
+                    onChange={(e) => setForm({ ...form, url_inicio: e.target.value })}
+                    placeholder="/dashboard"
+                  />
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-texto">Descripción</label>
+                  <Input
+                    value={form.descripcion}
+                    onChange={(e) => setForm({ ...form, descripcion: e.target.value })}
+                    placeholder="Descripción del rol..."
+                  />
+                </div>
               </div>
               <div className="flex justify-end gap-2 pt-2">
                 <Boton variante="contorno" onClick={() => setModalAbierto(false)} disabled={guardando}>
