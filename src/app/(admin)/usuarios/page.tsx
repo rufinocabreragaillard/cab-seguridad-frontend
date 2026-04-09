@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useCallback, useRef } from 'react'
+import { useEffect, useState, useCallback, useMemo, useRef } from 'react'
 import { Plus, Search, Pencil, Trash2, X, Star, Phone, PhoneOff, Download, ChevronUp, ChevronDown } from 'lucide-react'
 import { Boton } from '@/components/ui/boton'
 import { Input } from '@/components/ui/input'
@@ -9,6 +9,8 @@ import { Insignia } from '@/components/ui/insignia'
 import { Modal } from '@/components/ui/modal'
 import { ModalConfirmar } from '@/components/ui/modal-confirmar'
 import { Tabla, TablaCabecera, TablaCuerpo, TablaFila, TablaTh, TablaTd } from '@/components/ui/tabla'
+import { Paginador } from '@/components/ui/paginador'
+import { usePaginacion } from '@/hooks/usePaginacion'
 import { usuariosApi, rolesApi, entidadesApi, aplicacionesApi } from '@/lib/api'
 import { useAuth } from '@/context/AuthContext'
 import type { Usuario, Rol, Entidad, Area, Aplicacion } from '@/lib/tipos'
@@ -36,10 +38,29 @@ export default function PaginaUsuarios() {
   const grupoActivo = usuarioActual?.grupo_activo ?? ''
   const grupoAnteriorRef = useRef(grupoActivo)
 
-  const [usuarios, setUsuarios] = useState<Usuario[]>([])
   const [roles, setRoles] = useState<Rol[]>([])
-  const [cargando, setCargando] = useState(true)
   const [busqueda, setBusqueda] = useState('')
+
+  // Paginación server-side del listado de usuarios del grupo activo.
+  const filtrosUsuarios = useMemo(() => ({ q: busqueda.trim() || undefined, activo: true }), [busqueda])
+  const fetcherUsuarios = useCallback(
+    (params: { page: number; limit: number; q?: string; activo?: boolean }) => usuariosApi.listarPaginado(params),
+    [],
+  )
+  const {
+    items: usuarios,
+    total,
+    page,
+    limit,
+    cargando,
+    setPage,
+    setLimit,
+    refetch: refetchUsuarios,
+  } = usePaginacion<Usuario, { q?: string; activo?: boolean }>({
+    fetcher: fetcherUsuarios,
+    filtros: filtrosUsuarios,
+    limitInicial: 50,
+  })
   const [modalAbierto, setModalAbierto] = useState(false)
   const [usuarioEditando, setUsuarioEditando] = useState<Usuario | null>(null)
   const [guardando, setGuardando] = useState(false)
@@ -100,29 +121,22 @@ export default function PaginaUsuarios() {
   // Catálogo de apps del grupo activo del admin (para detectar RESTRINGIDA al asignar roles)
   const [catalogoApps, setCatalogoApps] = useState<Aplicacion[]>([])
 
-  // ── Carga inicial ──────────────────────────────────────────────────────────
-  const cargar = useCallback(async () => {
-    setCargando(true)
+  // ── Carga inicial de catálogos auxiliares (roles, entidades, apps) ───────
+  // Los usuarios ya se cargan paginados arriba.
+  useEffect(() => {
     setErrorCarga('')
-    try {
-      const [u, r, e, a] = await Promise.all([usuariosApi.listar(), rolesApi.listar(), entidadesApi.listar(), aplicacionesApi.listar()])
-      setUsuarios(u)
-      setRoles(r)
-      setEntidades(e)
-      setCatalogoApps(a)
-    } catch (e) {
-      setErrorCarga(e instanceof Error ? e.message : 'Error al cargar usuarios')
-    } finally {
-      setCargando(false)
-    }
+    Promise.all([rolesApi.listar(), entidadesApi.listar(), aplicacionesApi.listar()])
+      .then(([r, e, a]) => {
+        setRoles(r); setEntidades(e); setCatalogoApps(a)
+      })
+      .catch((e) => setErrorCarga(e instanceof Error ? e.message : 'Error al cargar catálogos'))
   }, [])
 
-  useEffect(() => { cargar() }, [cargar])
+  // Alias para mantener compat con llamadas post-CRUD que usaban cargar().
+  const cargar = refetchUsuarios
 
-  const usuariosFiltrados = usuarios.filter((u) =>
-    (u.nombre || '').toLowerCase().includes(busqueda.toLowerCase()) ||
-    (u.codigo_usuario || '').toLowerCase().includes(busqueda.toLowerCase())
-  )
+  // El backend ya filtra por q; dejamos la lista tal cual llega.
+  const usuariosFiltrados = usuarios
 
   // ── Efectos de cascada ─────────────────────────────────────────────────────
 
@@ -606,6 +620,15 @@ export default function PaginaUsuarios() {
           </TablaCuerpo>
         </Tabla>
       )}
+
+      <Paginador
+        page={page}
+        limit={limit}
+        total={total}
+        onChangePage={setPage}
+        onChangeLimit={setLimit}
+        cargando={cargando}
+      />
 
       {/* Modal crear/editar */}
       <Modal

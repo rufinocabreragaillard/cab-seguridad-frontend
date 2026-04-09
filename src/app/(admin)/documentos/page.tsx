@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useMemo } from 'react'
 import { Plus, Trash2, Download, Search, Eye, ExternalLink, FileText } from 'lucide-react'
 import { Boton } from '@/components/ui/boton'
 import { Input } from '@/components/ui/input'
@@ -8,6 +8,8 @@ import { Insignia } from '@/components/ui/insignia'
 import { Modal } from '@/components/ui/modal'
 import { ModalConfirmar } from '@/components/ui/modal-confirmar'
 import { Tabla, TablaCabecera, TablaCuerpo, TablaFila, TablaTh, TablaTd } from '@/components/ui/tabla'
+import { Paginador } from '@/components/ui/paginador'
+import { usePaginacion } from '@/hooks/usePaginacion'
 import { documentosApi, categoriasCaractDocsApi, estadosDocsApi } from '@/lib/api'
 import type { Documento, CategoriaConCaracteristicasDocs, CaracteristicaDocumento, TipoCaractDocs, EstadoDoc } from '@/lib/tipos'
 import { exportarExcel } from '@/lib/exportar-excel'
@@ -21,10 +23,30 @@ export default function PaginaDocumentos() {
   const { grupoActivo } = useAuth()
 
   // ── State ─────────────────────────────────────────────────────────────────
-  const [documentos, setDocumentos] = useState<Documento[]>([])
   const [estados, setEstados] = useState<EstadoDoc[]>([])
-  const [cargando, setCargando] = useState(true)
   const [busqueda, setBusqueda] = useState('')
+
+  // ── Paginación server-side ────────────────────────────────────────────────
+  const filtros = useMemo(() => ({ q: busqueda.trim() || undefined, activo: true }), [busqueda])
+  const fetcher = useCallback(
+    (params: { page: number; limit: number; q?: string; activo?: boolean }) =>
+      documentosApi.listarPaginado(params),
+    [],
+  )
+  const {
+    items: documentos,
+    total,
+    page,
+    limit,
+    cargando,
+    setPage,
+    setLimit,
+    refetch,
+  } = usePaginacion<Documento, { q?: string; activo?: boolean }>({
+    fetcher,
+    filtros,
+    limitInicial: 50,
+  })
 
   // ── Modal CRUD ────────────────────────────────────────────────────────────
   const [modal, setModal] = useState(false)
@@ -60,22 +82,12 @@ export default function PaginaDocumentos() {
   }>({ codigo_cat_docs: '', codigo_tipo_docs: '', valor_texto_docs: '', valor_numerico_docs: '', valor_fecha_docs: '' })
   const [guardandoCaract, setGuardandoCaract] = useState(false)
 
-  // ── Carga ─────────────────────────────────────────────────────────────────
-  const cargar = useCallback(async () => {
-    setCargando(true)
-    try {
-      const [docs, ests] = await Promise.all([
-        documentosApi.listar(),
-        estadosDocsApi.listar(),
-      ])
-      setDocumentos(docs)
-      setEstados(ests)
-    } finally {
-      setCargando(false)
-    }
+  // ── Carga auxiliares (estados, usados en el selector del modal) ────────
+  useEffect(() => {
+    estadosDocsApi.listar().then(setEstados).catch(() => setEstados([]))
   }, [])
-
-  useEffect(() => { cargar() }, [cargar])
+  // Alias: después de crear/editar/eliminar, refrescar la página actual.
+  const cargar = refetch
 
   // ── Cargar caracteristicas ────────────────────────────────────────────────
   const cargarCaracteristicas = useCallback(async (idDocumento: number) => {
@@ -241,14 +253,8 @@ export default function PaginaDocumentos() {
     }
   }
 
-  // ── Filtro ────────────────────────────────────────────────────────────────
+  // ── Filtro: backend hace la búsqueda y orden, dejamos la lista tal cual ──
   const filtrados = documentos
-    .filter(
-      (d) =>
-        d.nombre_documento.toLowerCase().includes(busqueda.toLowerCase()) ||
-        (d.resumen_documento || '').toLowerCase().includes(busqueda.toLowerCase())
-    )
-    .sort((a, b) => a.nombre_documento.localeCompare(b.nombre_documento))
 
   return (
     <div className="flex flex-col gap-6 max-w-6xl">
@@ -395,6 +401,15 @@ export default function PaginaDocumentos() {
           )}
         </TablaCuerpo>
       </Tabla>
+
+      <Paginador
+        page={page}
+        limit={limit}
+        total={total}
+        onChangePage={setPage}
+        onChangeLimit={setLimit}
+        cargando={cargando}
+      />
 
       {/* Modal CRUD */}
       <Modal

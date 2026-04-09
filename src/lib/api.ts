@@ -157,6 +157,8 @@ export const authApi = {
 
 export const usuariosApi = {
   listar: () => api.get<Usuario[]>('/usuarios').then((r) => r.data),
+  listarPaginado: (params: { page: number; limit: number; activo?: boolean; q?: string }) =>
+    api.get<RespuestaPaginadaApi<Usuario>>('/usuarios/paginado', { params }).then((r) => r.data),
   obtener: (id: string) => api.get<Usuario>(`/usuarios/${id}`).then((r) => r.data),
   crear: (datos: CrearUsuarioRequest) => api.post<Usuario>('/usuarios', datos).then((r) => r.data),
   actualizar: (id: string, datos: Partial<Usuario>) =>
@@ -372,9 +374,18 @@ export const datosBasicosApi = {
 
 // ─── Documentos ──────────────────────────────────────────────────────────────
 
+export interface RespuestaPaginadaApi<T> {
+  items: T[]
+  total: number
+  page: number
+  limit: number
+}
+
 export const documentosApi = {
   listar: (params?: { codigo_estado_doc?: string; activo?: boolean; q?: string; limit?: number }) =>
     api.get<Documento[]>('/documentos', { params }).then((r) => r.data),
+  listarPaginado: (params: { page: number; limit: number; codigo_estado_doc?: string; activo?: boolean; q?: string }) =>
+    api.get<RespuestaPaginadaApi<Documento>>('/documentos/paginado', { params }).then((r) => r.data),
   crear: (datos: Partial<Documento>) =>
     api.post<Documento>('/documentos', datos).then((r) => r.data),
   actualizar: (id: number, datos: Partial<Documento>) =>
@@ -775,6 +786,8 @@ export const estadosDocsApi = {
 export const colaEstadosDocsApi = {
   listar: (estadoCola?: string) =>
     api.get<ColaEstadoDoc[]>('/cola-estados-docs', { params: estadoCola ? { estado_cola: estadoCola } : undefined }).then((r) => r.data),
+  listarPaginado: (params: { page: number; limit: number; estado_cola?: string; q?: string }) =>
+    api.get<RespuestaPaginadaApi<ColaEstadoDoc>>('/cola-estados-docs/paginado', { params }).then((r) => r.data),
   inicializar: (items: { codigo_documento: number; codigo_estado_doc_destino: string; prioridad?: number }[]) =>
     api.post<{ encolados: number; omitidos: number; total: number }>('/cola-estados-docs/inicializar', { items }).then((r) => r.data),
   cerrar: () =>

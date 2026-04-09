@@ -8,6 +8,8 @@ import { Insignia } from '@/components/ui/insignia'
 import { Modal } from '@/components/ui/modal'
 import { ModalConfirmar } from '@/components/ui/modal-confirmar'
 import { Tabla, TablaCabecera, TablaCuerpo, TablaFila, TablaTh, TablaTd } from '@/components/ui/tabla'
+import { Paginador } from '@/components/ui/paginador'
+import { usePaginacion } from '@/hooks/usePaginacion'
 import { colaEstadosDocsApi, documentosApi, estadosDocsApi } from '@/lib/api'
 import type { ColaEstadoDoc, Documento, EstadoDoc } from '@/lib/tipos'
 import { exportarExcel } from '@/lib/exportar-excel'
@@ -24,12 +26,35 @@ export default function PaginaColaEstadosDocs() {
   const { grupoActivo } = useAuth()
 
   // ── State ─────────────────────────────────────────────────────────────────
-  const [cola, setCola] = useState<ColaEstadoDoc[]>([])
   const [documentos, setDocumentos] = useState<Documento[]>([])
   const [estados, setEstados] = useState<EstadoDoc[]>([])
-  const [cargando, setCargando] = useState(true)
   const [busqueda, setBusqueda] = useState('')
   const [filtroEstado, setFiltroEstado] = useState('')
+
+  // Paginación server-side de la cola.
+  const filtrosCola = useMemo(
+    () => ({ q: busqueda.trim() || undefined, estado_cola: filtroEstado || undefined }),
+    [busqueda, filtroEstado],
+  )
+  const fetcherCola = useCallback(
+    (params: { page: number; limit: number; q?: string; estado_cola?: string }) =>
+      colaEstadosDocsApi.listarPaginado(params),
+    [],
+  )
+  const {
+    items: cola,
+    total,
+    page,
+    limit,
+    cargando,
+    setPage,
+    setLimit,
+    refetch: refetchCola,
+  } = usePaginacion<ColaEstadoDoc, { q?: string; estado_cola?: string }>({
+    fetcher: fetcherCola,
+    filtros: filtrosCola,
+    limitInicial: 50,
+  })
 
   // ── Modal Inicializar ─────────────────────────────────────────────────────
   const [modalInit, setModalInit] = useState(false)
@@ -46,24 +71,13 @@ export default function PaginaColaEstadosDocs() {
   const [confirmEliminar, setConfirmEliminar] = useState<ColaEstadoDoc | null>(null)
   const [eliminando, setEliminando] = useState(false)
 
-  // ── Carga ─────────────────────────────────────────────────────────────────
-  const cargar = useCallback(async () => {
-    setCargando(true)
-    try {
-      const [c, d, e] = await Promise.all([
-        colaEstadosDocsApi.listar(),
-        documentosApi.listar(),
-        estadosDocsApi.listar(),
-      ])
-      setCola(c)
-      setDocumentos(d)
-      setEstados(e)
-    } finally {
-      setCargando(false)
-    }
+  // ── Carga auxiliares (la cola es paginada server-side) ───────────────────
+  useEffect(() => {
+    Promise.all([documentosApi.listar(), estadosDocsApi.listar()])
+      .then(([d, e]) => { setDocumentos(d); setEstados(e) })
+      .catch(() => { /* noop */ })
   }, [])
-
-  useEffect(() => { cargar() }, [cargar])
+  const cargar = refetchCola
 
   // ── Helpers ───────────────────────────────────────────────────────────────
   const estadosActivos = useMemo(() => estados.filter((e) => e.activo), [estados])
@@ -157,20 +171,8 @@ export default function PaginaColaEstadosDocs() {
     [documentos, busquedaDocs]
   )
 
-  // ── Filtro tabla principal ────────────────────────────────────────────────
+  // Backend paginado hace el filtrado — el listado llega ya filtrado.
   const filtrados = cola
-    .filter((c) => {
-      if (filtroEstado && c.estado_cola !== filtroEstado) return false
-      if (busqueda) {
-        const nombre = c.documentos?.nombre_documento || ''
-        return (
-          nombre.toLowerCase().includes(busqueda.toLowerCase()) ||
-          String(c.codigo_documento).includes(busqueda) ||
-          c.codigo_estado_doc_destino.toLowerCase().includes(busqueda.toLowerCase())
-        )
-      }
-      return true
-    })
 
   return (
     <div className="flex flex-col gap-6 max-w-6xl">
@@ -321,6 +323,15 @@ export default function PaginaColaEstadosDocs() {
           )}
         </TablaCuerpo>
       </Tabla>
+
+      <Paginador
+        page={page}
+        limit={limit}
+        total={total}
+        onChangePage={setPage}
+        onChangeLimit={setLimit}
+        cargando={cargando}
+      />
 
       {/* Modal Inicializar Cola */}
       <Modal
