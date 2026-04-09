@@ -111,7 +111,7 @@ export default function PaginaUsuarios() {
     id_rol_principal: '',
     grupo_por_defecto: '',
     entidad_por_defecto: '',
-    codigo_area_por_defecto: '',
+    codigo_ubicacion_area_por_defecto: '',
     aplicacion_por_defecto: '',
     invitar: true,
   })
@@ -215,7 +215,7 @@ export default function PaginaUsuarios() {
   const abrirNuevo = () => {
     setUsuarioEditando(null)
     setForm({ codigo_usuario: '', nombre: '', alias: '', telefono: '', descripcion: '', id_rol_principal: '',
-      grupo_por_defecto: '', entidad_por_defecto: '', codigo_area_por_defecto: '', aplicacion_por_defecto: '', invitar: true })
+      grupo_por_defecto: '', entidad_por_defecto: '', codigo_ubicacion_area_por_defecto: '', aplicacion_por_defecto: '', invitar: true })
     setError('')
     setGuardando(false)
     setTabActiva('datos')
@@ -237,7 +237,7 @@ export default function PaginaUsuarios() {
       id_rol_principal: u.id_rol_principal != null ? String(u.id_rol_principal) : '',
       grupo_por_defecto: u.grupo_por_defecto || '',
       entidad_por_defecto: u.entidad_por_defecto || '',
-      codigo_area_por_defecto: u.codigo_area_por_defecto || '',
+      codigo_ubicacion_area_por_defecto: u.codigo_ubicacion_area_por_defecto || '',
       aplicacion_por_defecto: u.aplicacion_por_defecto || '',
       invitar: false,
     })
@@ -276,7 +276,7 @@ export default function PaginaUsuarios() {
           id_rol_principal: form.id_rol_principal ? Number(form.id_rol_principal) : null,
           grupo_por_defecto: form.grupo_por_defecto || undefined,
           entidad_por_defecto: form.entidad_por_defecto || undefined,
-          codigo_area_por_defecto: form.codigo_area_por_defecto || undefined,
+          codigo_ubicacion_area_por_defecto: form.codigo_ubicacion_area_por_defecto || undefined,
           aplicacion_por_defecto: form.aplicacion_por_defecto || undefined,
         })
       } else {
@@ -489,12 +489,12 @@ export default function PaginaUsuarios() {
 
   // ── Handlers de cascada en Datos ──────────────────────────────────────────
   const handleGrupoDefaultChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    setForm({ ...form, grupo_por_defecto: e.target.value, id_rol_principal: '', entidad_por_defecto: '', codigo_area_por_defecto: '', aplicacion_por_defecto: '' })
+    setForm({ ...form, grupo_por_defecto: e.target.value, id_rol_principal: '', entidad_por_defecto: '', codigo_ubicacion_area_por_defecto: '', aplicacion_por_defecto: '' })
     setAreasParaDefault([])
   }
 
   const handleEntidadDefaultChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    setForm({ ...form, entidad_por_defecto: e.target.value, codigo_area_por_defecto: '' })
+    setForm({ ...form, entidad_por_defecto: e.target.value, codigo_ubicacion_area_por_defecto: '' })
   }
 
   // ── Render ─────────────────────────────────────────────────────────────────
@@ -532,7 +532,7 @@ export default function PaginaUsuarios() {
             { titulo: 'Rol principal', campo: 'codigo_rol_principal' },
             { titulo: 'Grupo por defecto', campo: 'grupo_por_defecto' },
             { titulo: 'Entidad por defecto', campo: 'entidad_por_defecto' },
-            { titulo: 'Área por defecto', campo: 'codigo_area_por_defecto' },
+            { titulo: 'Área por defecto', campo: 'codigo_ubicacion_area_por_defecto' },
             { titulo: 'Estado', campo: 'activo', formato: (v) => v ? 'Activo' : 'Inactivo' },
             { titulo: 'Último acceso', campo: 'ultimo_acceso', formato: (v) => v ? new Date(v as string).toLocaleString('es-CL') : '' },
           ], `usuarios_${grupoActivo || 'todos'}`)}
@@ -820,8 +820,8 @@ export default function PaginaUsuarios() {
                       <div className="flex flex-col gap-1.5">
                         <label className="text-sm font-medium text-texto">Área por defecto <span className="text-texto-muted font-normal">(opcional)</span></label>
                         <select
-                          value={form.codigo_area_por_defecto}
-                          onChange={(e) => setForm({ ...form, codigo_area_por_defecto: e.target.value })}
+                          value={form.codigo_ubicacion_area_por_defecto}
+                          onChange={(e) => setForm({ ...form, codigo_ubicacion_area_por_defecto: e.target.value })}
                           disabled={cargandoAreasDefault}
                           className={selectClass}
                         >

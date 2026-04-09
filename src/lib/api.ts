@@ -811,8 +811,18 @@ export const colaEstadosDocsApi = {
 // ─── Ubicaciones Docs ──────────────────────────────────────────────────────
 
 export const ubicacionesDocsApi = {
-  listar: (codigoEntidad?: string) =>
-    api.get<UbicacionDoc[]>('/ubicaciones-docs', { params: codigoEntidad ? { codigo_entidad: codigoEntidad } : undefined }).then((r) => r.data),
+  listar: (opciones?: string | { codigo_entidad?: string; tipo?: 'AREA' | 'CONTENIDO' }) => {
+    const params: Record<string, string> = {}
+    if (typeof opciones === 'string') {
+      if (opciones) params.codigo_entidad = opciones
+    } else if (opciones) {
+      if (opciones.codigo_entidad) params.codigo_entidad = opciones.codigo_entidad
+      if (opciones.tipo) params.tipo = opciones.tipo
+    }
+    return api.get<UbicacionDoc[]>('/ubicaciones-docs', { params: Object.keys(params).length ? params : undefined }).then((r) => r.data)
+  },
+  cambiarTipo: (codigo: string, tipo: 'AREA' | 'CONTENIDO') =>
+    api.patch<{ mensaje: string; actualizadas: number }>(`/ubicaciones-docs/${codigo}/tipo`, { tipo_ubicacion: tipo }).then((r) => r.data),
   crear: (datos: Partial<UbicacionDoc>) =>
     api.post<UbicacionDoc>('/ubicaciones-docs', datos).then((r) => r.data),
   actualizar: (codigo: string, datos: Partial<UbicacionDoc>) =>

@@ -115,7 +115,7 @@ export interface Usuario {
   codigo_rol_principal?: string | null  // conveniencia: codigo_rol asociado
   entidad_por_defecto?: string
   grupo_por_defecto?: string
-  codigo_area_por_defecto?: string
+  codigo_ubicacion_area_por_defecto?: string
   aplicacion_por_defecto?: string
   fecha_creacion?: string
   ultimo_acceso?: string
@@ -131,7 +131,7 @@ export interface CrearUsuarioRequest {
   id_rol_principal?: number | null
   entidad_por_defecto?: string
   grupo_por_defecto?: string
-  codigo_area_por_defecto?: string
+  codigo_ubicacion_area_por_defecto?: string
   invitar?: boolean
 }
 
@@ -351,7 +351,7 @@ export interface Compromiso {
   id_conversacion?: number
   codigo_tipo_compromiso: string
   codigo_usuario_destinatario?: string
-  codigo_area_asignada?: string
+  codigo_ubicacion_area_asignada?: string
   codigo_usuario_asignado?: string
   asunto: string
   descripcion?: string
@@ -536,6 +536,7 @@ export interface UbicacionDoc {
   codigo_grupo: string
   codigo_entidad?: string | null
   nombre_ubicacion: string
+  alias_ubicacion?: string | null
   descripcion?: string | null
   codigo_ubicacion_superior?: string | null
   ruta_completa?: string | null
@@ -543,6 +544,7 @@ export interface UbicacionDoc {
   orden: number
   activo: boolean
   ubicacion_habilitada: boolean
+  tipo_ubicacion: 'AREA' | 'CONTENIDO'
 }
 
 // ─── Utilitarios ─────────────────────────────────────────────────────────────

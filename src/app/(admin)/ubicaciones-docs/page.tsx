@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState, useCallback } from 'react'
-import { Plus, Pencil, Trash2, Download, Search, ChevronRight, ChevronDown, FolderTree, Folder, FolderOpen, FolderInput, FolderPlus, RefreshCw, ToggleLeft, ToggleRight } from 'lucide-react'
+import { Plus, Pencil, Trash2, Download, Search, ChevronRight, ChevronDown, FolderTree, Folder, FolderOpen, FolderInput, FolderPlus, RefreshCw, ToggleLeft, ToggleRight, Shuffle } from 'lucide-react'
 import { Boton } from '@/components/ui/boton'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
@@ -29,10 +29,13 @@ export default function PaginaUbicacionesDocs() {
   const [form, setForm] = useState({
     codigo_ubicacion: '',
     nombre_ubicacion: '',
+    alias_ubicacion: '',
     descripcion: '',
     codigo_ubicacion_superior: '',
     ubicacion_habilitada: true,
   })
+  const [confirmarTipo, setConfirmarTipo] = useState<{ u: UbicacionDoc; nuevoTipo: 'AREA' | 'CONTENIDO' } | null>(null)
+  const [cambiandoTipo, setCambiandoTipo] = useState(false)
   const [guardando, setGuardando] = useState(false)
   const [error, setError] = useState('')
 
@@ -117,6 +120,7 @@ export default function PaginaUbicacionesDocs() {
     setForm({
       codigo_ubicacion: '',
       nombre_ubicacion: '',
+      alias_ubicacion: '',
       descripcion: '',
       codigo_ubicacion_superior: padre || '',
       ubicacion_habilitada: true,
@@ -130,6 +134,7 @@ export default function PaginaUbicacionesDocs() {
     setForm({
       codigo_ubicacion: u.codigo_ubicacion,
       nombre_ubicacion: u.nombre_ubicacion,
+      alias_ubicacion: u.alias_ubicacion || '',
       descripcion: u.descripcion || '',
       codigo_ubicacion_superior: u.codigo_ubicacion_superior || '',
       ubicacion_habilitada: u.ubicacion_habilitada,
@@ -148,6 +153,7 @@ export default function PaginaUbicacionesDocs() {
       if (editando) {
         await ubicacionesDocsApi.actualizar(editando.codigo_ubicacion, {
           nombre_ubicacion: form.nombre_ubicacion,
+          alias_ubicacion: form.alias_ubicacion || undefined,
           descripcion: form.descripcion || undefined,
           codigo_ubicacion_superior: form.codigo_ubicacion_superior || undefined,
           ubicacion_habilitada: form.ubicacion_habilitada,
@@ -156,6 +162,7 @@ export default function PaginaUbicacionesDocs() {
         await ubicacionesDocsApi.crear({
           codigo_grupo: grupoActivo!,
           nombre_ubicacion: form.nombre_ubicacion,
+          alias_ubicacion: form.alias_ubicacion || undefined,
           descripcion: form.descripcion || undefined,
           codigo_ubicacion_superior: form.codigo_ubicacion_superior || undefined,
         })
@@ -166,6 +173,21 @@ export default function PaginaUbicacionesDocs() {
       setError(e instanceof Error ? e.message : 'Error al guardar')
     } finally {
       setGuardando(false)
+    }
+  }
+
+  const ejecutarCambioTipo = async () => {
+    if (!confirmarTipo) return
+    setCambiandoTipo(true)
+    try {
+      await ubicacionesDocsApi.cambiarTipo(confirmarTipo.u.codigo_ubicacion, confirmarTipo.nuevoTipo)
+      setConfirmarTipo(null)
+      cargar()
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Error al cambiar tipo')
+      setConfirmarTipo(null)
+    } finally {
+      setCambiandoTipo(false)
     }
   }
 
@@ -372,6 +394,10 @@ export default function PaginaUbicacionesDocs() {
             {u.ruta_completa || ''}
           </span>
 
+          <Insignia variante={u.tipo_ubicacion === 'AREA' ? 'primario' : 'neutro'}>
+            {u.tipo_ubicacion}
+          </Insignia>
+
           <Insignia variante={u.ubicacion_habilitada ? 'exito' : 'advertencia'}>
             {u.ubicacion_habilitada ? 'Habilitada' : 'Inhabilitada'}
           </Insignia>
@@ -391,6 +417,13 @@ export default function PaginaUbicacionesDocs() {
               title={u.ubicacion_habilitada ? 'Inhabilitar (incluye hijos)' : 'Habilitar (incluye hijos)'}
             >
               {u.ubicacion_habilitada ? <ToggleRight size={14} /> : <ToggleLeft size={14} />}
+            </button>
+            <button
+              onClick={() => setConfirmarTipo({ u, nuevoTipo: u.tipo_ubicacion === 'AREA' ? 'CONTENIDO' : 'AREA' })}
+              className="p-1.5 rounded-lg hover:bg-primario-muy-claro text-texto-muted hover:text-primario transition-colors"
+              title={`Cambiar a ${u.tipo_ubicacion === 'AREA' ? 'CONTENIDO' : 'AREA'}`}
+            >
+              <Shuffle size={14} />
             </button>
             <button
               onClick={() => abrirNuevo(u.codigo_ubicacion)}
@@ -523,6 +556,12 @@ export default function PaginaUbicacionesDocs() {
             onChange={(e) => setForm({ ...form, nombre_ubicacion: e.target.value })}
             placeholder="Contratos 2024"
           />
+          <Input
+            etiqueta="Alias"
+            value={form.alias_ubicacion}
+            onChange={(e) => setForm({ ...form, alias_ubicacion: e.target.value })}
+            placeholder="Alias corto opcional"
+          />
           <Textarea
             etiqueta="Descripción"
             value={form.descripcion}
@@ -601,6 +640,23 @@ export default function PaginaUbicacionesDocs() {
         }
         textoConfirmar="Eliminar definitivamente"
         cargando={eliminando || !previewEliminar}
+      />
+
+      {/* Modal Confirmar Cambio de Tipo */}
+      <ModalConfirmar
+        abierto={!!confirmarTipo}
+        alCerrar={() => setConfirmarTipo(null)}
+        alConfirmar={ejecutarCambioTipo}
+        titulo={`Cambiar tipo a ${confirmarTipo?.nuevoTipo || ''}`}
+        mensaje={
+          confirmarTipo
+            ? `¿Cambiar tipo de "${confirmarTipo.u.nombre_ubicacion}" a ${confirmarTipo.nuevoTipo}?\n\n` +
+              `Si marcas como AREA, todos sus ancestros serán marcados AREA automáticamente.\n` +
+              `Si marcas como CONTENIDO, todos sus descendientes serán marcados CONTENIDO.`
+            : ''
+        }
+        textoConfirmar="Cambiar tipo"
+        cargando={cambiandoTipo}
       />
 
       {/* Modal Cargar Ubicaciones */}

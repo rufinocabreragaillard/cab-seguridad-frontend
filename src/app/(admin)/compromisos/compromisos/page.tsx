@@ -47,7 +47,7 @@ const formInicial = {
   esfuerzo_horas: '' as string | number,
   costo_compromiso: '' as string | number,
   codigo_usuario_destinatario: '',
-  codigo_area_asignada: '',
+  codigo_ubicacion_area_asignada: '',
   codigo_usuario_asignado: '',
 }
 
@@ -194,7 +194,7 @@ export default function PaginaCompromisos() {
       esfuerzo_horas: c.esfuerzo_horas ?? '',
       costo_compromiso: c.costo_compromiso ?? '',
       codigo_usuario_destinatario: c.codigo_usuario_destinatario || '',
-      codigo_area_asignada: c.codigo_area_asignada || '',
+      codigo_ubicacion_area_asignada: c.codigo_ubicacion_area_asignada || '',
       codigo_usuario_asignado: c.codigo_usuario_asignado || '',
     })
     setFormAdjunto(
@@ -247,7 +247,7 @@ export default function PaginaCompromisos() {
         esfuerzo_horas: form.esfuerzo_horas !== '' ? Number(form.esfuerzo_horas) : undefined,
         costo_compromiso: form.costo_compromiso !== '' ? Number(form.costo_compromiso) : undefined,
         codigo_usuario_destinatario: form.codigo_usuario_destinatario || undefined,
-        codigo_area_asignada: form.codigo_area_asignada || undefined,
+        codigo_ubicacion_area_asignada: form.codigo_ubicacion_area_asignada || undefined,
         codigo_usuario_asignado: form.codigo_usuario_asignado || undefined,
         adjunto,
       }
@@ -348,7 +348,7 @@ export default function PaginaCompromisos() {
               return p?.etiqueta || (v as string)
             }},
             { titulo: 'Destinatario', campo: 'codigo_usuario_destinatario', formato: (v) => nombreUsuario(v as string) },
-            { titulo: 'Área', campo: 'codigo_area_asignada', formato: (v) => nombreArea(v as string) },
+            { titulo: 'Área', campo: 'codigo_ubicacion_area_asignada', formato: (v) => nombreArea(v as string) },
             { titulo: 'Asignado', campo: 'codigo_usuario_asignado', formato: (v) => nombreUsuario(v as string) },
             { titulo: 'Estado', campo: 'codigo_estado_compromiso' },
             { titulo: 'Fecha Esperada', campo: 'fecha_esperada', formato: (v) => v ? new Date(v as string).toLocaleDateString('es-CL') : '' },
@@ -630,8 +630,8 @@ export default function PaginaCompromisos() {
               <label className="block text-sm font-medium text-texto mb-1">Área asignada</label>
               <select
                 className={selectClass}
-                value={form.codigo_area_asignada}
-                onChange={(e) => setForm({ ...form, codigo_area_asignada: e.target.value })}
+                value={form.codigo_ubicacion_area_asignada}
+                onChange={(e) => setForm({ ...form, codigo_ubicacion_area_asignada: e.target.value })}
               >
                 <option value="">Sin área</option>
                 {areas.filter((a) => a.activo).map((a) => (
