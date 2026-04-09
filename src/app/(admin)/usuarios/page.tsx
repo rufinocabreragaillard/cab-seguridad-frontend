@@ -11,9 +11,9 @@ import { ModalConfirmar } from '@/components/ui/modal-confirmar'
 import { Tabla, TablaCabecera, TablaCuerpo, TablaFila, TablaTh, TablaTd } from '@/components/ui/tabla'
 import { Paginador } from '@/components/ui/paginador'
 import { usePaginacion } from '@/hooks/usePaginacion'
-import { usuariosApi, rolesApi, entidadesApi, aplicacionesApi } from '@/lib/api'
+import { usuariosApi, rolesApi, entidadesApi, aplicacionesApi, gruposApi } from '@/lib/api'
 import { useAuth } from '@/context/AuthContext'
-import type { Usuario, Rol, Entidad, Area, Aplicacion } from '@/lib/tipos'
+import type { Usuario, Rol, Entidad, Area, Aplicacion, Grupo } from '@/lib/tipos'
 import { exportarExcel } from '@/lib/exportar-excel'
 
 type RolAsignado = {
@@ -120,14 +120,16 @@ export default function PaginaUsuarios() {
   const [appsGrupoUsuario, setAppsGrupoUsuario] = useState<Aplicacion[]>([])
   // Catálogo de apps del grupo activo del admin (para detectar RESTRINGIDA al asignar roles)
   const [catalogoApps, setCatalogoApps] = useState<Aplicacion[]>([])
+  // Catálogo de grupos (para detectar tipo del grupo activo al filtrar roles)
+  const [catalogoGrupos, setCatalogoGrupos] = useState<Grupo[]>([])
 
-  // ── Carga inicial de catálogos auxiliares (roles, entidades, apps) ───────
+  // ── Carga inicial de catálogos auxiliares (roles, entidades, apps, grupos) ───────
   // Los usuarios ya se cargan paginados arriba.
   useEffect(() => {
     setErrorCarga('')
-    Promise.all([rolesApi.listar(), entidadesApi.listar(), aplicacionesApi.listar()])
-      .then(([r, e, a]) => {
-        setRoles(r); setEntidades(e); setCatalogoApps(a)
+    Promise.all([rolesApi.listar(), entidadesApi.listar(), aplicacionesApi.listar(), gruposApi.listar()])
+      .then(([r, e, a, g]) => {
+        setRoles(r); setEntidades(e); setCatalogoApps(a); setCatalogoGrupos(g)
       })
       .catch((e) => setErrorCarga(e instanceof Error ? e.message : 'Error al cargar catálogos'))
   }, [])
@@ -424,6 +426,8 @@ export default function PaginaUsuarios() {
   const esSuperAdmin = (usuarioActual?.grupos || []).some((g) => g.codigo_grupo === 'ADMIN')
   const appsRestringidas = new Set(catalogoApps.filter((a) => a.tipo === 'RESTRINGIDA').map((a) => a.codigo_aplicacion))
   const mapaAppNombre = Object.fromEntries(catalogoApps.map((a) => [a.codigo_aplicacion, a.nombre]))
+  // Tipo del grupo activo: solo roles del mismo tipo se pueden asignar (super-admin es excepción)
+  const tipoGrupoActivo = catalogoGrupos.find((g) => g.codigo_grupo === grupoActivo)?.tipo || 'NORMAL'
   const rolesDisponibles = roles
     .filter((r) =>
       r.activo &&
@@ -431,7 +435,9 @@ export default function PaginaUsuarios() {
       (r.codigo_grupo === grupoActivo || r.codigo_grupo == null) &&
       !rolesUsuario.some((ra) => ra.codigo_grupo === grupoActivo && ra.id_rol === r.id_rol) &&
       // Filtro RESTRINGIDA: ocultar roles de apps restringidas a no-super-admin
-      (esSuperAdmin || !r.codigo_aplicacion_origen || !appsRestringidas.has(r.codigo_aplicacion_origen))
+      (esSuperAdmin || !r.codigo_aplicacion_origen || !appsRestringidas.has(r.codigo_aplicacion_origen)) &&
+      // Filtro tipo: solo roles del mismo tipo que el grupo activo (super-admin puede asignar cualquier tipo)
+      (esSuperAdmin || (r.tipo || 'NORMAL') === tipoGrupoActivo)
     )
     // Orden: nombre app origen → nombre rol. Sin app origen al final.
     .sort((a, b) => {

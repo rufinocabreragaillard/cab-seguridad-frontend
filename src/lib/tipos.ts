@@ -10,6 +10,7 @@ export interface Grupo {
   nombre: string
   descripcion?: string
   activo: boolean
+  tipo?: 'NORMAL' | 'RESTRINGIDO'
 }
 
 // ─── Autenticación ───────────────────────────────────────────────────────────
@@ -149,6 +150,7 @@ export interface Rol {
   codigo_aplicacion_origen?: string | null  // FK a aplicaciones, agrupa para ordenar/filtrar
   orden?: number
   activo: boolean
+  tipo?: 'NORMAL' | 'RESTRINGIDO'
 }
 
 export interface Funcion {

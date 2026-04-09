@@ -28,7 +28,7 @@ export default function PaginaRoles() {
   // Modal rol
   const [modalRol, setModalRol] = useState(false)
   const [rolEditando, setRolEditando] = useState<Rol | null>(null)
-  const [formRol, setFormRol] = useState({ codigo_rol: '', nombre: '', alias_de_rol: '', descripcion: '', url_inicio: '', funcion_por_defecto: '', codigo_aplicacion_origen: '' })
+  const [formRol, setFormRol] = useState({ codigo_rol: '', nombre: '', alias_de_rol: '', descripcion: '', url_inicio: '', funcion_por_defecto: '', codigo_aplicacion_origen: '', tipo: 'NORMAL' as 'NORMAL' | 'RESTRINGIDO' })
   const [tabModalRol, setTabModalRol] = useState<'datos' | 'funciones'>('datos')
 
   // Funciones del rol en edición
@@ -113,7 +113,7 @@ export default function PaginaRoles() {
 
   const abrirNuevoRol = () => {
     setRolEditando(null)
-    setFormRol({ codigo_rol: '', nombre: '', alias_de_rol: '', descripcion: '', url_inicio: '', funcion_por_defecto: '', codigo_aplicacion_origen: aplicacionActiva || '' })
+    setFormRol({ codigo_rol: '', nombre: '', alias_de_rol: '', descripcion: '', url_inicio: '', funcion_por_defecto: '', codigo_aplicacion_origen: aplicacionActiva || '', tipo: 'NORMAL' })
     setError('')
     setTabModalRol('datos')
     setModalRol(true)
@@ -121,7 +121,7 @@ export default function PaginaRoles() {
 
   const abrirEditarRol = (r: Rol) => {
     setRolEditando(r)
-    setFormRol({ codigo_rol: r.codigo_rol, nombre: r.nombre, alias_de_rol: r.alias_de_rol || '', descripcion: r.descripcion || '', url_inicio: r.url_inicio || '', funcion_por_defecto: r.funcion_por_defecto || '', codigo_aplicacion_origen: r.codigo_aplicacion_origen || '' })
+    setFormRol({ codigo_rol: r.codigo_rol, nombre: r.nombre, alias_de_rol: r.alias_de_rol || '', descripcion: r.descripcion || '', url_inicio: r.url_inicio || '', funcion_por_defecto: r.funcion_por_defecto || '', codigo_aplicacion_origen: r.codigo_aplicacion_origen || '', tipo: r.tipo || 'NORMAL' })
     setError('')
     setTabModalRol('datos')
     setFuncionNueva('')
@@ -140,9 +140,9 @@ export default function PaginaRoles() {
     try {
       const origen = formRol.codigo_aplicacion_origen || null
       if (rolEditando) {
-        await rolesApi.actualizar(rolEditando.id_rol, { nombre: formRol.nombre, alias_de_rol: formRol.alias_de_rol || undefined, descripcion: formRol.descripcion, url_inicio: formRol.url_inicio, funcion_por_defecto: formRol.funcion_por_defecto || undefined, codigo_aplicacion_origen: origen })
+        await rolesApi.actualizar(rolEditando.id_rol, { nombre: formRol.nombre, alias_de_rol: formRol.alias_de_rol || undefined, descripcion: formRol.descripcion, url_inicio: formRol.url_inicio, funcion_por_defecto: formRol.funcion_por_defecto || undefined, codigo_aplicacion_origen: origen, tipo: formRol.tipo })
       } else {
-        const payload: Record<string, unknown> = { nombre: formRol.nombre, alias_de_rol: formRol.alias_de_rol || undefined, descripcion: formRol.descripcion, url_inicio: formRol.url_inicio, funcion_por_defecto: formRol.funcion_por_defecto || undefined, codigo_aplicacion_origen: origen, codigo_grupo: grupoActivo || 'ADMIN' }
+        const payload: Record<string, unknown> = { nombre: formRol.nombre, alias_de_rol: formRol.alias_de_rol || undefined, descripcion: formRol.descripcion, url_inicio: formRol.url_inicio, funcion_por_defecto: formRol.funcion_por_defecto || undefined, codigo_aplicacion_origen: origen, codigo_grupo: grupoActivo || 'ADMIN', tipo: formRol.tipo }
         if (esGlobalCreate && formRol.codigo_rol) payload.codigo_rol = formRol.codigo_rol
         await rolesApi.crear(payload as Parameters<typeof rolesApi.crear>[0])
       }
@@ -411,10 +411,10 @@ export default function PaginaRoles() {
             <TablaCabecera>
               <tr>
                 <TablaTh>App origen</TablaTh>
+                <TablaTh>Tipo</TablaTh>
                 <TablaTh>Alias</TablaTh>
                 <TablaTh>Nombre</TablaTh>
                 <TablaTh>URL inicio</TablaTh>
-                <TablaTh>Fn. por defecto</TablaTh>
                 <TablaTh>Estado</TablaTh>
                 <TablaTh>Código</TablaTh>
                 <TablaTh className="text-right">Acciones</TablaTh>
@@ -428,10 +428,10 @@ export default function PaginaRoles() {
               ) : rolesFiltrados.map((r) => (
                 <TablaFila key={r.id_rol}>
                   <TablaTd className="text-xs text-texto-muted">{nombreApp(r.codigo_aplicacion_origen) || '—'}</TablaTd>
+                  <TablaTd>{r.tipo === 'RESTRINGIDO' ? <Insignia variante="advertencia">Restringido</Insignia> : <Insignia variante="primario">Normal</Insignia>}</TablaTd>
                   <TablaTd className="text-sm">{r.alias_de_rol || '—'}</TablaTd>
                   <TablaTd className="font-medium">{r.nombre}</TablaTd>
                   <TablaTd className="text-texto-muted text-xs">{r.url_inicio || '—'}</TablaTd>
-                  <TablaTd className="text-texto-muted text-xs">{r.funcion_por_defecto || '—'}</TablaTd>
                   <TablaTd><Insignia variante={r.activo ? 'exito' : 'error'}>{r.activo ? 'Activo' : 'Inactivo'}</Insignia></TablaTd>
                   <TablaTd>
                     <code className="text-xs bg-fondo px-2 py-1 rounded font-mono">{r.codigo_rol}</code>
@@ -570,6 +570,13 @@ export default function PaginaRoles() {
                     {[...todasApps].sort((a, b) => a.nombre.localeCompare(b.nombre)).map((a) => (
                       <option key={a.codigo_aplicacion} value={a.codigo_aplicacion}>{a.nombre} ({a.codigo_aplicacion})</option>
                     ))}
+                  </select>
+                </div>
+                <div className="flex flex-col gap-1">
+                  <label className="text-sm font-medium text-texto">Tipo</label>
+                  <select value={formRol.tipo} onChange={(e) => setFormRol({ ...formRol, tipo: e.target.value as 'NORMAL' | 'RESTRINGIDO' })} className="w-full rounded-lg border border-borde bg-surface px-3 py-2 text-sm text-texto focus:outline-none focus:ring-2 focus:ring-primario">
+                    <option value="NORMAL">Normal</option>
+                    <option value="RESTRINGIDO">Restringido (sistema)</option>
                   </select>
                 </div>
                 <Input etiqueta="Descripción" value={formRol.descripcion} onChange={(e) => setFormRol({ ...formRol, descripcion: e.target.value })} placeholder="Descripción del rol..." />

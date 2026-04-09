@@ -33,7 +33,7 @@ export default function PaginaGrupos() {
 
   const [modalGrupo, setModalGrupo] = useState(false)
   const [grupoEditando, setGrupoEditando] = useState<Grupo | null>(null)
-  const [formGrupo, setFormGrupo] = useState({ codigo_grupo: '', nombre: '', descripcion: '' })
+  const [formGrupo, setFormGrupo] = useState({ codigo_grupo: '', nombre: '', descripcion: '', tipo: 'NORMAL' as 'NORMAL' | 'RESTRINGIDO' })
   const [guardando, setGuardando] = useState(false)
   const [error, setError] = useState('')
 
@@ -97,14 +97,14 @@ export default function PaginaGrupos() {
 
   const abrirNuevoGrupo = () => {
     setGrupoEditando(null)
-    setFormGrupo({ codigo_grupo: '', nombre: '', descripcion: '' })
+    setFormGrupo({ codigo_grupo: '', nombre: '', descripcion: '', tipo: 'NORMAL' })
     setError('')
     setModalGrupo(true)
   }
 
   const abrirEditarGrupo = (g: Grupo) => {
     setGrupoEditando(g)
-    setFormGrupo({ codigo_grupo: g.codigo_grupo, nombre: g.nombre, descripcion: g.descripcion || '' })
+    setFormGrupo({ codigo_grupo: g.codigo_grupo, nombre: g.nombre, descripcion: g.descripcion || '', tipo: g.tipo || 'NORMAL' })
     setError('')
     setModalGrupo(true)
   }
@@ -114,9 +114,9 @@ export default function PaginaGrupos() {
     setGuardando(true)
     try {
       if (grupoEditando) {
-        await gruposApi.actualizar(grupoEditando.codigo_grupo, { nombre: formGrupo.nombre, descripcion: formGrupo.descripcion || undefined })
+        await gruposApi.actualizar(grupoEditando.codigo_grupo, { nombre: formGrupo.nombre, descripcion: formGrupo.descripcion || undefined, tipo: formGrupo.tipo })
       } else {
-        await gruposApi.crear({ nombre: formGrupo.nombre, descripcion: formGrupo.descripcion || undefined })
+        await gruposApi.crear({ nombre: formGrupo.nombre, descripcion: formGrupo.descripcion || undefined, tipo: formGrupo.tipo })
       }
       setModalGrupo(false)
       cargar()
@@ -330,7 +330,11 @@ export default function PaginaGrupos() {
             busquedaGrupos.length === 0 ||
             g.nombre.toLowerCase().includes(busquedaGrupos.toLowerCase()) ||
             g.codigo_grupo.toLowerCase().includes(busquedaGrupos.toLowerCase())
-          ).map((g) => (
+          ).sort((a, b) => {
+            const tipoOrd = (t?: string) => t === 'RESTRINGIDO' ? 1 : 0
+            const dt = tipoOrd(a.tipo) - tipoOrd(b.tipo)
+            return dt !== 0 ? dt : a.nombre.localeCompare(b.nombre)
+          }).map((g) => (
             <button
               key={g.codigo_grupo}
               onClick={() => setGrupoSeleccionado(g)}
@@ -351,17 +355,15 @@ export default function PaginaGrupos() {
                 <p className="text-sm font-medium text-texto truncate">{g.nombre}</p>
                 <div className="flex items-center gap-2">
                   <p className="text-xs text-texto-muted">{g.codigo_grupo}</p>
-                  {g.codigo_grupo === 'ADMIN' && <Insignia variante="secundario">Sistema</Insignia>}
+                  {g.tipo === 'RESTRINGIDO' && <Insignia variante="advertencia">Restringido</Insignia>}
                 </div>
               </div>
-              {g.codigo_grupo !== 'ADMIN' && (
-                <button
-                  onClick={(ev) => { ev.stopPropagation(); abrirEditarGrupo(g) }}
-                  className="ml-auto p-1 rounded hover:bg-white text-texto-muted hover:text-primario transition-colors"
-                >
-                  <Pencil size={13} />
-                </button>
-              )}
+              <button
+                onClick={(ev) => { ev.stopPropagation(); abrirEditarGrupo(g) }}
+                className="ml-auto p-1 rounded hover:bg-white text-texto-muted hover:text-primario transition-colors"
+              >
+                <Pencil size={13} />
+              </button>
             </button>
           ))}
         </div>
@@ -593,6 +595,17 @@ export default function PaginaGrupos() {
         <div className="flex flex-col gap-4">
           <Input etiqueta="Nombre *" value={formGrupo.nombre} onChange={(e) => setFormGrupo({ ...formGrupo, nombre: e.target.value })} placeholder="Corporacion Municipal" />
           <Textarea etiqueta="Descripción" value={formGrupo.descripcion} onChange={(e) => setFormGrupo({ ...formGrupo, descripcion: e.target.value })} rows={3} />
+          <div className="flex flex-col gap-1">
+            <label className="text-sm font-medium text-texto">Tipo</label>
+            <select
+              value={formGrupo.tipo}
+              onChange={(e) => setFormGrupo({ ...formGrupo, tipo: e.target.value as 'NORMAL' | 'RESTRINGIDO' })}
+              className="rounded-lg border border-borde bg-surface px-3 py-2 text-sm text-texto focus:outline-none focus:ring-2 focus:ring-primario"
+            >
+              <option value="NORMAL">Normal</option>
+              <option value="RESTRINGIDO">Restringido (sistema)</option>
+            </select>
+          </div>
           {grupoEditando && (
             <Input etiqueta="Código" value={formGrupo.codigo_grupo} disabled readOnly />
           )}
