@@ -17,5 +17,11 @@ export default function PaginaRaiz() {
     }
   }, [usuario, cargando, router])
 
-  return null
+  // Mostrar pantalla de carga mientras se verifica la sesión
+  return (
+    <div className="min-h-screen flex flex-col items-center justify-center gap-4 bg-gray-50">
+      <div className="w-10 h-10 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" />
+      <p className="text-sm text-gray-500">Iniciando sesión…</p>
+    </div>
+  )
 }

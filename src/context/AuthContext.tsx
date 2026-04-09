@@ -65,10 +65,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       actualizarMapaFunciones()
       let msg = 'Error al cargar datos del usuario'
       if (e instanceof Error) {
-        msg =
-          e.message === 'Network Error'
-            ? 'No se pudo conectar con el servidor. Verifique su conexión o intente más tarde.'
-            : e.message
+        if (e.message === 'Network Error') {
+          msg = 'No se pudo conectar con el servidor. Verifique su conexión o intente más tarde.'
+        } else if (e.message.includes('timeout')) {
+          msg = 'El servidor tardó demasiado en responder. Intente recargar la página.'
+        } else {
+          msg = e.message
+        }
       }
       setError(msg)
       return null
