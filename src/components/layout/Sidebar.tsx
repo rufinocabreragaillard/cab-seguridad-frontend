@@ -22,6 +22,7 @@ import { cn } from '@/lib/utils'
 import { useAuth } from '@/context/AuthContext'
 import { useTema } from '@/context/ThemeContext'
 import { obtenerIcono } from '@/lib/icon-map'
+import { tema as temaDefault } from '@/config/tema.config'
 
 interface NavItem {
   nombre: string
@@ -125,7 +126,11 @@ export function Sidebar() {
               className="object-contain"
               onError={(e) => {
                 const target = e.target as HTMLImageElement
-                target.style.display = 'none'
+                if (target.src.includes(temaDefault.logo.url)) {
+                  target.style.display = 'none'
+                } else {
+                  target.src = temaDefault.logo.url
+                }
               }}
             />
             <span className="font-bold text-lg ml-2 hidden">{appNombreCorto}</span>
