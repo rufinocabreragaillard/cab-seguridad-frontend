@@ -14,9 +14,9 @@ import { useAuth } from '@/context/AuthContext'
 import type { Aplicacion, Funcion, Grupo } from '@/lib/tipos'
 import { exportarExcel } from '@/lib/exportar-excel'
 
-type FuncionApp = { codigo_funcion: string; funciones: { nombre_funcion: string; activo: boolean } }
-type AppDeFuncion = { codigo_aplicacion: string; aplicaciones?: { nombre_aplicacion: string; activo: boolean } }
-type GrupoApp = { codigo_grupo: string; activo: boolean; grupos_entidades: { nombre_grupo: string } }
+type FuncionApp = { codigo_funcion: string; funciones: { nombre_funcion: string } }
+type AppDeFuncion = { codigo_aplicacion: string; aplicaciones?: { nombre_aplicacion: string } }
+type GrupoApp = { codigo_grupo: string; grupos_entidades: { nombre_grupo: string } }
 
 export default function PaginaAplicacionesFunciones() {
   const { grupoActivo, aplicacionActiva } = useAuth()
@@ -207,15 +207,15 @@ export default function PaginaAplicacionesFunciones() {
   }
 
   // ── Listas filtradas ──────────────────────────────────────────────────────
-  const funcionesDisponiblesApp = funciones.filter((f) => f.activo && !funcionesApp.some((fa) => fa.codigo_funcion === f.codigo_funcion))
+  const funcionesDisponiblesApp = funciones.filter((f) => !funcionesApp.some((fa) => fa.codigo_funcion === f.codigo_funcion))
   const funcionesAppFiltradas = funcionesDisponiblesApp.filter((f) =>
     busquedaFuncionApp.length === 0 ||
     f.nombre.toLowerCase().includes(busquedaFuncionApp.toLowerCase()) ||
     f.codigo_funcion.toLowerCase().includes(busquedaFuncionApp.toLowerCase())
   )
-  const appsDisponiblesFuncion = aplicaciones.filter((a) => a.activo && !appsDeFuncion.some((af) => af.codigo_aplicacion === a.codigo_aplicacion))
+  const appsDisponiblesFuncion = aplicaciones.filter((a) => !appsDeFuncion.some((af) => af.codigo_aplicacion === a.codigo_aplicacion))
 
-  const gruposDisponiblesApp = todosGrupos.filter((g) => g.activo && !gruposApp.some((ga) => ga.codigo_grupo === g.codigo_grupo))
+  const gruposDisponiblesApp = todosGrupos.filter((g) => !gruposApp.some((ga) => ga.codigo_grupo === g.codigo_grupo))
 
   // Mapa codigo_aplicacion → nombre, para mostrar y ordenar funciones por aplicación origen
   const mapaAppNombre = Object.fromEntries(aplicaciones.map((a) => [a.codigo_aplicacion, a.nombre]))
@@ -259,22 +259,21 @@ export default function PaginaAplicacionesFunciones() {
               <Input placeholder="Buscar por nombre o código..." value={busquedaApps} onChange={(e) => setBusquedaApps(e.target.value)} icono={<Search size={15} />} />
             </div>
             <div className="flex gap-2 ml-auto">
-              <Boton variante="contorno" tamano="sm" onClick={() => exportarExcel(appsFiltradas as unknown as Record<string, unknown>[], [{ titulo: 'Código', campo: 'codigo_aplicacion' }, { titulo: 'Nombre', campo: 'nombre' }, { titulo: 'Descripción', campo: 'descripcion' }, { titulo: 'Estado', campo: 'activo', formato: (v) => v ? 'Activo' : 'Inactivo' }], 'aplicaciones')} disabled={appsFiltradas.length === 0}><Download size={15} />Excel</Boton>
+              <Boton variante="contorno" tamano="sm" onClick={() => exportarExcel(appsFiltradas as unknown as Record<string, unknown>[], [{ titulo: 'Código', campo: 'codigo_aplicacion' }, { titulo: 'Nombre', campo: 'nombre' }, { titulo: 'Tipo', campo: 'tipo' }, { titulo: 'Descripción', campo: 'descripcion' }], 'aplicaciones')} disabled={appsFiltradas.length === 0}><Download size={15} />Excel</Boton>
               <Boton variante="primario" onClick={abrirNuevaApp}><Plus size={16} />Nueva aplicación</Boton>
             </div>
           </div>
           <Tabla>
-            <TablaCabecera><tr><TablaTh>Código</TablaTh><TablaTh>Nombre</TablaTh><TablaTh>Tipo</TablaTh><TablaTh>Descripción</TablaTh><TablaTh>Estado</TablaTh><TablaTh className="text-right">Acciones</TablaTh></tr></TablaCabecera>
+            <TablaCabecera><tr><TablaTh>Código</TablaTh><TablaTh>Nombre</TablaTh><TablaTh>Tipo</TablaTh><TablaTh>Descripción</TablaTh><TablaTh className="text-right">Acciones</TablaTh></tr></TablaCabecera>
             <TablaCuerpo>
-              {cargando ? (<TablaFila><TablaTd className="py-8 text-center text-texto-muted" colSpan={6 as never}>Cargando...</TablaTd></TablaFila>
-              ) : appsFiltradas.length === 0 ? (<TablaFila><TablaTd className="py-8 text-center text-texto-muted" colSpan={6 as never}>No se encontraron aplicaciones</TablaTd></TablaFila>
+              {cargando ? (<TablaFila><TablaTd className="py-8 text-center text-texto-muted" colSpan={5 as never}>Cargando...</TablaTd></TablaFila>
+              ) : appsFiltradas.length === 0 ? (<TablaFila><TablaTd className="py-8 text-center text-texto-muted" colSpan={5 as never}>No se encontraron aplicaciones</TablaTd></TablaFila>
               ) : appsFiltradas.map((a) => (
                 <TablaFila key={a.codigo_aplicacion}>
                   <TablaTd><code className="text-xs bg-fondo px-2 py-1 rounded font-mono">{a.codigo_aplicacion}</code></TablaTd>
                   <TablaTd className="font-medium">{a.nombre}</TablaTd>
-                  <TablaTd><Insignia variante={a.tipo === 'RESTRINGIDA' ? 'advertencia' : 'primario'}>{a.tipo || 'NORMAL'}</Insignia></TablaTd>
+                  <TablaTd><Insignia variante={a.tipo === 'RESTRINGIDA' ? 'error' : 'exito'}>{a.tipo === 'RESTRINGIDA' ? 'Restringida' : 'Normal'}</Insignia></TablaTd>
                   <TablaTd className="text-texto-muted text-sm">{a.descripcion || '—'}</TablaTd>
-                  <TablaTd><Insignia variante={a.activo ? 'exito' : 'error'}>{a.activo ? 'Activo' : 'Inactivo'}</Insignia></TablaTd>
                   <TablaTd>
                     <div className="flex items-center justify-end gap-1">
                       <button onClick={() => abrirEditarApp(a)} className="p-1.5 rounded-lg hover:bg-primario-muy-claro text-texto-muted hover:text-primario transition-colors" title="Editar"><Pencil size={14} /></button>
@@ -296,23 +295,23 @@ export default function PaginaAplicacionesFunciones() {
               <Input placeholder="Buscar por nombre, código o alias..." value={busquedaFunciones} onChange={(e) => setBusquedaFunciones(e.target.value)} icono={<Search size={15} />} />
             </div>
             <div className="flex gap-2 ml-auto">
-              <Boton variante="contorno" tamano="sm" onClick={() => exportarExcel(funcionesFiltradas as unknown as Record<string, unknown>[], [{ titulo: 'Código', campo: 'codigo_funcion' }, { titulo: 'Alias', campo: 'alias_de_funcion' }, { titulo: 'Nombre', campo: 'nombre' }, { titulo: 'Icono', campo: 'icono_de_funcion' }, { titulo: 'URL', campo: 'url_funcion' }, { titulo: 'Estado', campo: 'activo', formato: (v) => v ? 'Activa' : 'Inactiva' }], `funciones_${grupoActivo || 'todos'}`)} disabled={funcionesFiltradas.length === 0}><Download size={15} />Excel</Boton>
+              <Boton variante="contorno" tamano="sm" onClick={() => exportarExcel(funcionesFiltradas as unknown as Record<string, unknown>[], [{ titulo: 'Código', campo: 'codigo_funcion' }, { titulo: 'Alias', campo: 'alias_de_funcion' }, { titulo: 'Nombre', campo: 'nombre' }, { titulo: 'Tipo', campo: 'tipo' }, { titulo: 'Icono', campo: 'icono_de_funcion' }, { titulo: 'URL', campo: 'url_funcion' }], `funciones_${grupoActivo || 'todos'}`)} disabled={funcionesFiltradas.length === 0}><Download size={15} />Excel</Boton>
               <Boton variante="primario" onClick={abrirNuevaFuncion}><Plus size={16} />Nueva función</Boton>
             </div>
           </div>
           <Tabla>
-            <TablaCabecera><tr><TablaTh>App origen</TablaTh><TablaTh>Alias</TablaTh><TablaTh>Nombre</TablaTh><TablaTh>Icono</TablaTh><TablaTh>URL</TablaTh><TablaTh>Estado</TablaTh><TablaTh>Código</TablaTh><TablaTh className="text-right">Acciones</TablaTh></tr></TablaCabecera>
+            <TablaCabecera><tr><TablaTh>App origen</TablaTh><TablaTh>Tipo</TablaTh><TablaTh>Alias</TablaTh><TablaTh>Nombre</TablaTh><TablaTh>Icono</TablaTh><TablaTh>URL</TablaTh><TablaTh>Código</TablaTh><TablaTh className="text-right">Acciones</TablaTh></tr></TablaCabecera>
             <TablaCuerpo>
               {cargando ? (<TablaFila><TablaTd className="py-8 text-center text-texto-muted" colSpan={8 as never}>Cargando...</TablaTd></TablaFila>
               ) : funcionesFiltradas.length === 0 ? (<TablaFila><TablaTd className="py-8 text-center text-texto-muted" colSpan={8 as never}>No se encontraron funciones</TablaTd></TablaFila>
               ) : funcionesFiltradas.map((f) => (
                 <TablaFila key={f.codigo_funcion}>
                   <TablaTd className="text-xs text-texto-muted">{nombreApp(f.codigo_aplicacion_origen) || '—'}</TablaTd>
+                  <TablaTd>{f.tipo === 'RESTRINGIDA' ? <Insignia variante="error">Restringida</Insignia> : <Insignia variante="exito">Normal</Insignia>}</TablaTd>
                   <TablaTd className="text-sm">{f.alias_de_funcion || '—'}</TablaTd>
                   <TablaTd className="font-medium">{f.nombre}</TablaTd>
                   <TablaTd className="text-texto-muted text-xs">{f.icono_de_funcion || '—'}</TablaTd>
                   <TablaTd className="text-texto-muted text-xs">{f.url_funcion || '—'}</TablaTd>
-                  <TablaTd><Insignia variante={f.activo ? 'exito' : 'error'}>{f.activo ? 'Activa' : 'Inactiva'}</Insignia></TablaTd>
                   <TablaTd><code className="text-xs bg-fondo px-2 py-1 rounded font-mono">{f.codigo_funcion}</code></TablaTd>
                   <TablaTd>
                     <div className="flex items-center justify-end gap-1">
@@ -474,11 +473,11 @@ export default function PaginaAplicacionesFunciones() {
         abierto={!!confirmacion}
         alCerrar={() => setConfirmacion(null)}
         alConfirmar={ejecutarEliminacion}
-        titulo={confirmacion?.tipo === 'app' ? 'Desactivar aplicación' : 'Eliminar función'}
+        titulo={confirmacion?.tipo === 'app' ? 'Eliminar aplicación' : 'Eliminar función'}
         mensaje={confirmacion?.tipo === 'app'
-          ? `¿Estás seguro de desactivar la aplicación "${confirmacion.item.nombre}"?`
+          ? `¿Estás seguro de eliminar la aplicación "${confirmacion.item.nombre}"? Esta acción no se puede deshacer.`
           : `¿Estás seguro de eliminar la función "${confirmacion?.item.nombre}"? Se eliminarán todas las asignaciones.`}
-        textoConfirmar={confirmacion?.tipo === 'app' ? 'Desactivar' : 'Eliminar'}
+        textoConfirmar="Eliminar"
         cargando={eliminando}
       />
     </div>

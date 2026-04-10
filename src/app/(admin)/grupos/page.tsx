@@ -355,7 +355,9 @@ export default function PaginaGrupos() {
                 <p className="text-sm font-medium text-texto truncate">{g.nombre}</p>
                 <div className="flex items-center gap-2">
                   <p className="text-xs text-texto-muted">{g.codigo_grupo}</p>
-                  {g.tipo === 'RESTRINGIDO' && <Insignia variante="advertencia">Restringido</Insignia>}
+                  {g.tipo === 'RESTRINGIDO'
+                    ? <Insignia variante="error">Restringido</Insignia>
+                    : <Insignia variante="exito">Normal</Insignia>}
                 </div>
               </div>
               <button
@@ -599,8 +601,8 @@ export default function PaginaGrupos() {
             <label className="text-sm font-medium text-texto">Tipo</label>
             <div className="flex items-center gap-2 py-1">
               {formGrupo.tipo === 'RESTRINGIDO'
-                ? <Insignia variante="advertencia">Restringido</Insignia>
-                : <Insignia variante="primario">Normal</Insignia>}
+                ? <Insignia variante="error">Restringido</Insignia>
+                : <Insignia variante="exito">Normal</Insignia>}
               <span className="text-xs text-texto-muted">Solo modificable desde la base de datos</span>
             </div>
           </div>

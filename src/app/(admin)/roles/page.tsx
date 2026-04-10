@@ -14,7 +14,7 @@ import { useAuth } from '@/context/AuthContext'
 import type { Rol, Funcion, Aplicacion, RegistroLLM } from '@/lib/tipos'
 import { exportarExcel } from '@/lib/exportar-excel'
 
-type FuncionAsignada = { codigo_funcion: string; orden: number; funciones: { nombre_funcion: string; activo: boolean } }
+type FuncionAsignada = { codigo_funcion: string; orden: number; funciones: { nombre_funcion: string } }
 
 export default function PaginaRoles() {
   const { grupoActivo, aplicacionActiva } = useAuth()
@@ -245,7 +245,6 @@ export default function PaginaRoles() {
 
   // Funciones disponibles para asignar (excluir las ya asignadas)
   const funcionesDisponibles = funciones.filter((f) =>
-    f.activo &&
     !funcionesRol.some((fa) => fa.codigo_funcion === f.codigo_funcion)
   )
 
@@ -397,7 +396,7 @@ export default function PaginaRoles() {
                 { titulo: 'Descripción', campo: 'descripcion' },
                 { titulo: 'URL inicio', campo: 'url_inicio' },
                 { titulo: 'Fn. por defecto', campo: 'funcion_por_defecto' },
-                { titulo: 'Estado', campo: 'activo', formato: (v) => v ? 'Activo' : 'Inactivo' },
+                { titulo: 'Tipo', campo: 'tipo' },
               ], `roles_${grupoActivo || 'todos'}`)}
               disabled={rolesFiltrados.length === 0}
             >
@@ -415,7 +414,6 @@ export default function PaginaRoles() {
                 <TablaTh>Alias</TablaTh>
                 <TablaTh>Nombre</TablaTh>
                 <TablaTh>URL inicio</TablaTh>
-                <TablaTh>Estado</TablaTh>
                 <TablaTh>Código</TablaTh>
                 <TablaTh className="text-right">Acciones</TablaTh>
               </tr>
@@ -428,11 +426,10 @@ export default function PaginaRoles() {
               ) : rolesFiltrados.map((r) => (
                 <TablaFila key={r.id_rol}>
                   <TablaTd className="text-xs text-texto-muted">{nombreApp(r.codigo_aplicacion_origen) || '—'}</TablaTd>
-                  <TablaTd>{r.tipo === 'RESTRINGIDO' ? <Insignia variante="advertencia">Restringido</Insignia> : <Insignia variante="primario">Normal</Insignia>}</TablaTd>
+                  <TablaTd>{r.tipo === 'RESTRINGIDO' ? <Insignia variante="error">Restringido</Insignia> : <Insignia variante="exito">Normal</Insignia>}</TablaTd>
                   <TablaTd className="text-sm">{r.alias_de_rol || '—'}</TablaTd>
                   <TablaTd className="font-medium">{r.nombre}</TablaTd>
                   <TablaTd className="text-texto-muted text-xs">{r.url_inicio || '—'}</TablaTd>
-                  <TablaTd><Insignia variante={r.activo ? 'exito' : 'error'}>{r.activo ? 'Activo' : 'Inactivo'}</Insignia></TablaTd>
                   <TablaTd>
                     <code className="text-xs bg-fondo px-2 py-1 rounded font-mono">{r.codigo_rol}</code>
                     {r.codigo_grupo == null && <span className="ml-2 text-xs bg-primario/10 text-primario px-1.5 py-0.5 rounded">Global</span>}
@@ -472,7 +469,7 @@ export default function PaginaRoles() {
                 { titulo: 'Descripción', campo: 'descripcion' },
                 { titulo: 'Icono', campo: 'icono_de_funcion' },
                 { titulo: 'URL función', campo: 'url_funcion' },
-                { titulo: 'Estado', campo: 'activo', formato: (v) => v ? 'Activa' : 'Inactiva' },
+                { titulo: 'Tipo', campo: 'tipo' },
               ], `funciones_${grupoActivo || 'todos'}`)}
               disabled={funcionesFiltradas.length === 0}
             >
@@ -486,11 +483,11 @@ export default function PaginaRoles() {
             <TablaCabecera>
               <tr>
                 <TablaTh>App origen</TablaTh>
+                <TablaTh>Tipo</TablaTh>
                 <TablaTh>Alias</TablaTh>
                 <TablaTh>Nombre</TablaTh>
                 <TablaTh>Icono</TablaTh>
                 <TablaTh>URL función</TablaTh>
-                <TablaTh>Estado</TablaTh>
                 <TablaTh>Código</TablaTh>
                 <TablaTh className="text-right">Acciones</TablaTh>
               </tr>
@@ -503,11 +500,11 @@ export default function PaginaRoles() {
               ) : funcionesFiltradas.map((f) => (
                 <TablaFila key={f.codigo_funcion}>
                   <TablaTd className="text-xs text-texto-muted">{nombreApp(f.codigo_aplicacion_origen) || '—'}</TablaTd>
+                  <TablaTd>{f.tipo === 'RESTRINGIDA' ? <Insignia variante="error">Restringida</Insignia> : <Insignia variante="exito">Normal</Insignia>}</TablaTd>
                   <TablaTd className="text-sm">{f.alias_de_funcion || '—'}</TablaTd>
                   <TablaTd className="font-medium">{f.nombre}</TablaTd>
                   <TablaTd className="text-texto-muted text-xs">{f.icono_de_funcion || '—'}</TablaTd>
                   <TablaTd className="text-texto-muted text-xs">{f.url_funcion || '—'}</TablaTd>
-                  <TablaTd><Insignia variante={f.activo ? 'exito' : 'error'}>{f.activo ? 'Activa' : 'Inactiva'}</Insignia></TablaTd>
                   <TablaTd><code className="text-xs bg-fondo px-2 py-1 rounded font-mono">{f.codigo_funcion}</code></TablaTd>
                   <TablaTd>
                     <div className="flex items-center justify-end gap-1">

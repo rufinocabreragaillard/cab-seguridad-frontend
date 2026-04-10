@@ -9,7 +9,6 @@ export interface Grupo {
   codigo_grupo: string
   nombre: string
   descripcion?: string
-  activo: boolean
   tipo?: 'NORMAL' | 'RESTRINGIDO'
 }
 
@@ -149,7 +148,6 @@ export interface Rol {
   funcion_por_defecto?: string
   codigo_aplicacion_origen?: string | null  // FK a aplicaciones, agrupa para ordenar/filtrar
   orden?: number
-  activo: boolean
   tipo?: 'NORMAL' | 'RESTRINGIDO'
 }
 
@@ -161,7 +159,7 @@ export interface Funcion {
   alias_de_funcion?: string
   icono_de_funcion?: string
   codigo_aplicacion_origen?: string | null  // FK a aplicaciones, agrupa para ordenar/filtrar
-  activo: boolean
+  tipo?: 'NORMAL' | 'RESTRINGIDA'
   id_modelo?: number | null  // FK a registro_llm. NULL = sin LLM
   system_prompt?: string | null  // instrucciones extra al LLM
 }
@@ -200,7 +198,6 @@ export interface Aplicacion {
   nombre: string
   descripcion?: string
   tipo?: 'NORMAL' | 'RESTRINGIDA'
-  activo: boolean
 }
 
 // ─── Parámetros ──────────────────────────────────────────────────────────────
