@@ -92,6 +92,27 @@ export default function PaginaUsuariosSemilla() {
   const [confirmarEliminar, setConfirmarEliminar] = useState<Usuario | null>(null)
   const [eliminando, setEliminando] = useState(false)
 
+  // ── Selectores buscables del formulario ───────────────────────────────────
+  const [busquedaGrupoForm, setBusquedaGrupoForm] = useState('')
+  const [dropdownGrupoFormAbierto, setDropdownGrupoFormAbierto] = useState(false)
+  const dropdownGrupoFormRef = useRef<HTMLDivElement>(null)
+
+  const [busquedaEntidadForm, setBusquedaEntidadForm] = useState('')
+  const [dropdownEntidadFormAbierto, setDropdownEntidadFormAbierto] = useState(false)
+  const dropdownEntidadFormRef = useRef<HTMLDivElement>(null)
+
+  const [busquedaAreaForm, setBusquedaAreaForm] = useState('')
+  const [dropdownAreaFormAbierto, setDropdownAreaFormAbierto] = useState(false)
+  const dropdownAreaFormRef = useRef<HTMLDivElement>(null)
+
+  const [busquedaRolPpal, setBusquedaRolPpal] = useState('')
+  const [dropdownRolPpalAbierto, setDropdownRolPpalAbierto] = useState(false)
+  const dropdownRolPpalRef = useRef<HTMLDivElement>(null)
+
+  const [busquedaAppForm, setBusquedaAppForm] = useState('')
+  const [dropdownAppFormAbierto, setDropdownAppFormAbierto] = useState(false)
+  const dropdownAppFormRef = useRef<HTMLDivElement>(null)
+
   // ── Carga inicial ─────────────────────────────────────────────────────────
   const cargarUsuarios = useCallback(async () => {
     setCargando(true)
@@ -174,6 +195,8 @@ export default function PaginaUsuariosSemilla() {
     setForm({ codigo_usuario: '', nombre: '', alias: '', telefono: '', descripcion: '',
       grupo_por_defecto: '', entidad_por_defecto: '', codigo_ubicacion_area_por_defecto: '',
       id_rol_principal: '', aplicacion_por_defecto: '', invitar: true })
+    setBusquedaGrupoForm(''); setBusquedaEntidadForm(''); setBusquedaAreaForm('')
+    setBusquedaRolPpal(''); setBusquedaAppForm('')
     setError('')
     setEntidadesGrupo([])
     setAreasEntidad([])
@@ -326,14 +349,56 @@ export default function PaginaUsuariosSemilla() {
     } catch (e) { setError(e instanceof Error ? e.message : 'Error al cambiar rol principal') }
   }
 
-  // Cerrar dropdown al hacer click fuera
+  // Cerrar dropdowns al hacer click fuera
   useEffect(() => {
     const handler = (e: MouseEvent) => {
       if (dropdownRolRef.current && !dropdownRolRef.current.contains(e.target as Node)) setDropdownRolAbierto(false)
+      if (dropdownGrupoFormRef.current && !dropdownGrupoFormRef.current.contains(e.target as Node)) setDropdownGrupoFormAbierto(false)
+      if (dropdownEntidadFormRef.current && !dropdownEntidadFormRef.current.contains(e.target as Node)) setDropdownEntidadFormAbierto(false)
+      if (dropdownAreaFormRef.current && !dropdownAreaFormRef.current.contains(e.target as Node)) setDropdownAreaFormAbierto(false)
+      if (dropdownRolPpalRef.current && !dropdownRolPpalRef.current.contains(e.target as Node)) setDropdownRolPpalAbierto(false)
+      if (dropdownAppFormRef.current && !dropdownAppFormRef.current.contains(e.target as Node)) setDropdownAppFormAbierto(false)
     }
     document.addEventListener('mousedown', handler)
     return () => document.removeEventListener('mousedown', handler)
   }, [])
+
+  // Sincronizar textos de display cuando el dropdown está cerrado y el valor cambia
+  useEffect(() => {
+    if (dropdownGrupoFormAbierto) return
+    if (!form.grupo_por_defecto) { setBusquedaGrupoForm(''); return }
+    const g = grupos.find((g) => g.codigo_grupo === form.grupo_por_defecto)
+    if (g) setBusquedaGrupoForm(`${g.nombre} — ${g.codigo_grupo}`)
+  }, [form.grupo_por_defecto, grupos, dropdownGrupoFormAbierto])
+
+  useEffect(() => {
+    if (dropdownEntidadFormAbierto) return
+    if (!form.entidad_por_defecto) { setBusquedaEntidadForm(''); return }
+    const e = entidadesGrupo.find((e) => e.codigo_entidad === form.entidad_por_defecto)
+    if (e) setBusquedaEntidadForm(e.nombre)
+  }, [form.entidad_por_defecto, entidadesGrupo, dropdownEntidadFormAbierto])
+
+  useEffect(() => {
+    if (dropdownAreaFormAbierto) return
+    if (!form.codigo_ubicacion_area_por_defecto) { setBusquedaAreaForm(''); return }
+    const a = areasEntidad.find((a) => a.codigo_area === form.codigo_ubicacion_area_por_defecto)
+    if (a) setBusquedaAreaForm(a.nombre)
+  }, [form.codigo_ubicacion_area_por_defecto, areasEntidad, dropdownAreaFormAbierto])
+
+  useEffect(() => {
+    if (dropdownRolPpalAbierto) return
+    if (!form.id_rol_principal) { setBusquedaRolPpal(''); return }
+    const r = rolesGrupo.find((r) => r.id_rol === Number(form.id_rol_principal))
+    if (r) setBusquedaRolPpal(r.nombre)
+  }, [form.id_rol_principal, rolesGrupo, dropdownRolPpalAbierto])
+
+  useEffect(() => {
+    if (dropdownAppFormAbierto) return
+    if (!form.aplicacion_por_defecto) { setBusquedaAppForm(''); return }
+    const listaApps = appsGrupo.length > 0 ? appsGrupo : aplicaciones
+    const a = listaApps.find((a) => a.codigo_aplicacion === form.aplicacion_por_defecto)
+    if (a) setBusquedaAppForm(a.nombre)
+  }, [form.aplicacion_por_defecto, appsGrupo, aplicaciones, dropdownAppFormAbierto])
 
   // Roles disponibles para asignar (en el grupo del formulario)
   // Grupo RESTRINGIDO → solo roles RESTRINGIDO; Grupo NORMAL → solo roles NORMAL
@@ -538,90 +603,157 @@ export default function PaginaUsuariosSemilla() {
             />
           </div>
 
-          {/* Grupo — selector libre de todos los grupos */}
+          {/* Grupo — selector buscable libre de todos los grupos */}
           <div className="flex flex-col gap-1">
             <label className="text-sm font-medium text-texto">Grupo por defecto *</label>
-            <select
-              value={form.grupo_por_defecto}
-              onChange={(e) => setForm({ ...form, grupo_por_defecto: e.target.value })}
-              className="w-full rounded-lg border border-borde bg-surface px-3 py-2 text-sm text-texto focus:outline-none focus:ring-2 focus:ring-primario"
-            >
-              <option value="">— Seleccionar grupo —</option>
-              {grupos.sort((a, b) => {
-                const to = (t?: string) => t === 'RESTRINGIDO' ? 1 : 0
-                return to(a.tipo) - to(b.tipo) || a.nombre.localeCompare(b.nombre)
-              }).map((g) => (
-                <option key={g.codigo_grupo} value={g.codigo_grupo}>
-                  {g.nombre} {g.tipo === 'RESTRINGIDO' ? '(Restringido)' : ''} — {g.codigo_grupo}
-                </option>
-              ))}
-            </select>
+            <div className="relative" ref={dropdownGrupoFormRef}>
+              <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-texto-muted pointer-events-none" />
+              <input
+                type="text"
+                placeholder="Buscar grupo..."
+                value={busquedaGrupoForm}
+                onChange={(e) => { setBusquedaGrupoForm(e.target.value); setDropdownGrupoFormAbierto(true); if (!e.target.value) setForm({ ...form, grupo_por_defecto: '' }) }}
+                onFocus={() => setDropdownGrupoFormAbierto(true)}
+                className="w-full rounded-lg border border-borde bg-surface pl-9 pr-3 py-2 text-sm text-texto focus:outline-none focus:ring-2 focus:ring-primario"
+              />
+              {dropdownGrupoFormAbierto && (
+                <div className="absolute z-50 w-full mt-1 bg-surface border border-borde rounded-lg shadow-lg max-h-52 overflow-y-auto">
+                  {grupos
+                    .filter((g) => !busquedaGrupoForm || g.nombre.toLowerCase().includes(busquedaGrupoForm.toLowerCase()) || g.codigo_grupo.toLowerCase().includes(busquedaGrupoForm.toLowerCase()))
+                    .sort((a, b) => { const to = (t?: string) => t === 'RESTRINGIDO' ? 1 : 0; return to(a.tipo) - to(b.tipo) || a.nombre.localeCompare(b.nombre, 'es') })
+                    .slice(0, 20)
+                    .map((g) => (
+                      <button key={g.codigo_grupo} type="button" onClick={() => { setForm({ ...form, grupo_por_defecto: g.codigo_grupo }); setBusquedaGrupoForm(`${g.nombre} — ${g.codigo_grupo}`); setDropdownGrupoFormAbierto(false) }}
+                        className="w-full text-left px-3 py-2 text-sm hover:bg-primario-muy-claro hover:text-primario transition-colors flex items-center gap-2">
+                        <span className="font-medium">{g.nombre}</span>
+                        <span className="text-texto-muted text-xs">{g.codigo_grupo}</span>
+                        {g.tipo === 'RESTRINGIDO' && <span className="ml-auto text-xs bg-error/10 text-error px-1.5 py-0.5 rounded">Restringido</span>}
+                      </button>
+                    ))}
+                  {grupos.filter((g) => !busquedaGrupoForm || g.nombre.toLowerCase().includes(busquedaGrupoForm.toLowerCase()) || g.codigo_grupo.toLowerCase().includes(busquedaGrupoForm.toLowerCase())).length === 0 && (
+                    <div className="px-3 py-2 text-sm text-texto-muted">No se encontraron grupos</div>
+                  )}
+                </div>
+              )}
+            </div>
           </div>
 
-          {/* Entidad por defecto — filtrada al grupo */}
+          {/* Entidad, Área, Rol y App — visibles solo si hay grupo seleccionado */}
           {form.grupo_por_defecto && (
             <div className="grid grid-cols-2 gap-x-4 gap-y-3">
+
+              {/* Entidad buscable */}
               <div className="flex flex-col gap-1">
                 <label className="text-sm font-medium text-texto">Entidad por defecto</label>
-                <select
-                  value={form.entidad_por_defecto}
-                  onChange={(e) => setForm({ ...form, entidad_por_defecto: e.target.value })}
-                  disabled={cargandoEntidades}
-                  className="w-full rounded-lg border border-borde bg-surface px-3 py-2 text-sm text-texto focus:outline-none focus:ring-2 focus:ring-primario disabled:opacity-60"
-                >
-                  <option value="">— Seleccionar entidad —</option>
-                  {entidadesGrupo.map((e) => (
-                    <option key={e.codigo_entidad} value={e.codigo_entidad}>{e.nombre}</option>
-                  ))}
-                </select>
+                <div className="relative" ref={dropdownEntidadFormRef}>
+                  <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-texto-muted pointer-events-none" />
+                  <input type="text" placeholder={cargandoEntidades ? 'Cargando...' : 'Buscar entidad...'}
+                    value={busquedaEntidadForm}
+                    onChange={(e) => { setBusquedaEntidadForm(e.target.value); setDropdownEntidadFormAbierto(true); if (!e.target.value) setForm({ ...form, entidad_por_defecto: '' }) }}
+                    onFocus={() => setDropdownEntidadFormAbierto(true)}
+                    disabled={cargandoEntidades}
+                    className="w-full rounded-lg border border-borde bg-surface pl-9 pr-3 py-2 text-sm text-texto focus:outline-none focus:ring-2 focus:ring-primario disabled:opacity-60" />
+                  {dropdownEntidadFormAbierto && !cargandoEntidades && (
+                    <div className="absolute z-50 w-full mt-1 bg-surface border border-borde rounded-lg shadow-lg max-h-48 overflow-y-auto">
+                      {entidadesGrupo.filter((e) => !busquedaEntidadForm || e.nombre.toLowerCase().includes(busquedaEntidadForm.toLowerCase()) || e.codigo_entidad.toLowerCase().includes(busquedaEntidadForm.toLowerCase())).slice(0, 20).map((e) => (
+                        <button key={e.codigo_entidad} type="button"
+                          onClick={() => { setForm({ ...form, entidad_por_defecto: e.codigo_entidad }); setBusquedaEntidadForm(e.nombre); setDropdownEntidadFormAbierto(false) }}
+                          className="w-full text-left px-3 py-2 text-sm hover:bg-primario-muy-claro hover:text-primario transition-colors flex items-center gap-2">
+                          <span className="font-medium">{e.nombre}</span>
+                          <span className="text-texto-muted text-xs">{e.codigo_entidad}</span>
+                        </button>
+                      ))}
+                      {entidadesGrupo.length === 0 && <div className="px-3 py-2 text-sm text-texto-muted">Sin entidades en este grupo</div>}
+                    </div>
+                  )}
+                </div>
               </div>
 
+              {/* Área buscable */}
               <div className="flex flex-col gap-1">
                 <label className="text-sm font-medium text-texto">Área por defecto</label>
-                <select
-                  value={form.codigo_ubicacion_area_por_defecto}
-                  onChange={(e) => setForm({ ...form, codigo_ubicacion_area_por_defecto: e.target.value })}
-                  disabled={!form.entidad_por_defecto || cargandoAreas}
-                  className="w-full rounded-lg border border-borde bg-surface px-3 py-2 text-sm text-texto focus:outline-none focus:ring-2 focus:ring-primario disabled:opacity-60"
-                >
-                  <option value="">— Sin área —</option>
-                  {areasEntidad.map((a) => (
-                    <option key={a.codigo_area} value={a.codigo_area}>{a.nombre}</option>
-                  ))}
-                </select>
+                <div className="relative" ref={dropdownAreaFormRef}>
+                  <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-texto-muted pointer-events-none" />
+                  <input type="text" placeholder={!form.entidad_por_defecto ? 'Seleccione entidad primero' : cargandoAreas ? 'Cargando...' : 'Buscar área...'}
+                    value={busquedaAreaForm}
+                    onChange={(e) => { setBusquedaAreaForm(e.target.value); setDropdownAreaFormAbierto(true); if (!e.target.value) setForm({ ...form, codigo_ubicacion_area_por_defecto: '' }) }}
+                    onFocus={() => { if (form.entidad_por_defecto) setDropdownAreaFormAbierto(true) }}
+                    disabled={!form.entidad_por_defecto || cargandoAreas}
+                    className="w-full rounded-lg border border-borde bg-surface pl-9 pr-3 py-2 text-sm text-texto focus:outline-none focus:ring-2 focus:ring-primario disabled:opacity-60" />
+                  {dropdownAreaFormAbierto && form.entidad_por_defecto && !cargandoAreas && (
+                    <div className="absolute z-50 w-full mt-1 bg-surface border border-borde rounded-lg shadow-lg max-h-48 overflow-y-auto">
+                      {areasEntidad.filter((a) => !busquedaAreaForm || a.nombre.toLowerCase().includes(busquedaAreaForm.toLowerCase())).slice(0, 20).map((a) => (
+                        <button key={a.codigo_area} type="button"
+                          onClick={() => { setForm({ ...form, codigo_ubicacion_area_por_defecto: a.codigo_area }); setBusquedaAreaForm(a.nombre); setDropdownAreaFormAbierto(false) }}
+                          className="w-full text-left px-3 py-2 text-sm hover:bg-primario-muy-claro hover:text-primario transition-colors">
+                          <span className="font-medium">{a.nombre}</span>
+                        </button>
+                      ))}
+                      {areasEntidad.length === 0 && <div className="px-3 py-2 text-sm text-texto-muted">Sin áreas en esta entidad</div>}
+                    </div>
+                  )}
+                </div>
               </div>
 
-              {/* Rol principal — filtrado al grupo */}
+              {/* Rol principal buscable */}
               <div className="flex flex-col gap-1">
                 <label className="text-sm font-medium text-texto">Rol principal</label>
-                <select
-                  value={form.id_rol_principal}
-                  onChange={(e) => setForm({ ...form, id_rol_principal: e.target.value })}
-                  className="w-full rounded-lg border border-borde bg-surface px-3 py-2 text-sm text-texto focus:outline-none focus:ring-2 focus:ring-primario"
-                >
-                  <option value="">— Sin rol —</option>
-                  {rolesGrupo.map((r) => (
-                    <option key={r.id_rol} value={r.id_rol}>
-                      {r.nombre} {r.codigo_grupo == null ? '[Global]' : ''} {r.tipo === 'RESTRINGIDO' ? '★' : ''}
-                    </option>
-                  ))}
-                </select>
+                <div className="relative" ref={dropdownRolPpalRef}>
+                  <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-texto-muted pointer-events-none" />
+                  <input type="text" placeholder="Buscar rol..."
+                    value={busquedaRolPpal}
+                    onChange={(e) => { setBusquedaRolPpal(e.target.value); setDropdownRolPpalAbierto(true); if (!e.target.value) setForm({ ...form, id_rol_principal: '' }) }}
+                    onFocus={() => setDropdownRolPpalAbierto(true)}
+                    className="w-full rounded-lg border border-borde bg-surface pl-9 pr-3 py-2 text-sm text-texto focus:outline-none focus:ring-2 focus:ring-primario" />
+                  {dropdownRolPpalAbierto && (
+                    <div className="absolute z-50 w-full mt-1 bg-surface border border-borde rounded-lg shadow-lg max-h-48 overflow-y-auto">
+                      {[{ id_rol: 0, nombre: '— Sin rol —', codigo_rol: '', codigo_grupo: null, tipo: 'NORMAL' } as Rol, ...rolesGrupo]
+                        .filter((r) => r.id_rol === 0 || !busquedaRolPpal || r.nombre.toLowerCase().includes(busquedaRolPpal.toLowerCase()) || r.codigo_rol.toLowerCase().includes(busquedaRolPpal.toLowerCase()))
+                        .slice(0, 21).map((r) => (
+                          <button key={r.id_rol} type="button"
+                            onClick={() => { setForm({ ...form, id_rol_principal: r.id_rol ? String(r.id_rol) : '' }); setBusquedaRolPpal(r.id_rol ? r.nombre : ''); setDropdownRolPpalAbierto(false) }}
+                            className="w-full text-left px-3 py-2 text-sm hover:bg-primario-muy-claro hover:text-primario transition-colors flex items-center gap-2">
+                            {r.id_rol === 0 ? <span className="text-texto-muted italic">Sin rol</span> : <>
+                              <span className="font-medium">{r.nombre}</span>
+                              <span className="text-texto-muted text-xs">{r.codigo_rol}</span>
+                              {r.codigo_grupo == null && <span className="text-xs bg-primario/10 text-primario px-1.5 py-0.5 rounded">Global</span>}
+                            </>}
+                          </button>
+                        ))}
+                    </div>
+                  )}
+                </div>
               </div>
 
-              {/* Aplicación por defecto */}
+              {/* Aplicación buscable */}
               <div className="flex flex-col gap-1">
                 <label className="text-sm font-medium text-texto">Aplicación por defecto</label>
-                <select
-                  value={form.aplicacion_por_defecto}
-                  onChange={(e) => setForm({ ...form, aplicacion_por_defecto: e.target.value })}
-                  className="w-full rounded-lg border border-borde bg-surface px-3 py-2 text-sm text-texto focus:outline-none focus:ring-2 focus:ring-primario"
-                >
-                  <option value="">— Sin aplicación —</option>
-                  {(appsGrupo.length > 0 ? appsGrupo : aplicaciones).map((a) => (
-                    <option key={a.codigo_aplicacion} value={a.codigo_aplicacion}>{a.nombre}</option>
-                  ))}
-                </select>
+                <div className="relative" ref={dropdownAppFormRef}>
+                  <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-texto-muted pointer-events-none" />
+                  <input type="text" placeholder="Buscar aplicación..."
+                    value={busquedaAppForm}
+                    onChange={(e) => { setBusquedaAppForm(e.target.value); setDropdownAppFormAbierto(true); if (!e.target.value) setForm({ ...form, aplicacion_por_defecto: '' }) }}
+                    onFocus={() => setDropdownAppFormAbierto(true)}
+                    className="w-full rounded-lg border border-borde bg-surface pl-9 pr-3 py-2 text-sm text-texto focus:outline-none focus:ring-2 focus:ring-primario" />
+                  {dropdownAppFormAbierto && (
+                    <div className="absolute z-50 w-full mt-1 bg-surface border border-borde rounded-lg shadow-lg max-h-48 overflow-y-auto">
+                      {[{ codigo_aplicacion: '', nombre: '— Sin aplicación —' } as Aplicacion, ...(appsGrupo.length > 0 ? appsGrupo : aplicaciones)]
+                        .filter((a) => !a.codigo_aplicacion || !busquedaAppForm || a.nombre.toLowerCase().includes(busquedaAppForm.toLowerCase()))
+                        .slice(0, 21).map((a) => (
+                          <button key={a.codigo_aplicacion || '__sin'} type="button"
+                            onClick={() => { setForm({ ...form, aplicacion_por_defecto: a.codigo_aplicacion }); setBusquedaAppForm(a.codigo_aplicacion ? a.nombre : ''); setDropdownAppFormAbierto(false) }}
+                            className="w-full text-left px-3 py-2 text-sm hover:bg-primario-muy-claro hover:text-primario transition-colors flex items-center gap-2">
+                            {!a.codigo_aplicacion ? <span className="text-texto-muted italic">Sin aplicación</span> : <>
+                              <span className="font-medium">{a.nombre}</span>
+                              <span className="text-texto-muted text-xs">{a.codigo_aplicacion}</span>
+                            </>}
+                          </button>
+                        ))}
+                    </div>
+                  )}
+                </div>
               </div>
+
             </div>
           )}
 
