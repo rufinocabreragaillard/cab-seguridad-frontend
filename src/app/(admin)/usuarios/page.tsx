@@ -648,7 +648,7 @@ export default function PaginaUsuarios() {
         alCerrar={() => setModalAbierto(false)}
         titulo={usuarioEditando ? `Usuario: ${usuarioEditando.codigo_usuario}` : 'Nuevo usuario'}
         descripcion={usuarioEditando ? undefined : 'El usuario recibirá una invitación por correo'}
-        className="w-[min(95vw,42rem)] max-w-none"
+        className="w-[min(95vw,42rem)] max-w-none min-h-[32rem]"
       >
         <div className="flex flex-col gap-4">
           {/* Pestañas (solo en edición) */}
@@ -882,7 +882,7 @@ export default function PaginaUsuarios() {
                       />
                     </div>
                     {dropdownEntidadAbierto && (
-                      <div className="absolute z-50 w-full mt-1 bg-surface border border-borde rounded-lg shadow-lg max-h-48 overflow-y-auto">
+                      <div className="absolute z-50 w-full bottom-full mb-1 bg-surface border border-borde rounded-lg shadow-lg max-h-48 overflow-y-auto">
                         {entidadesDisponiblesFiltradas.length === 0 ? (
                           <div className="px-3 py-2 text-sm text-texto-muted">No se encontraron entidades</div>
                         ) : entidadesDisponiblesFiltradas.slice(0, 20).map((e) => (
@@ -1001,7 +1001,7 @@ export default function PaginaUsuarios() {
                     />
                   </div>
                   {dropdownRolAbierto && (
-                    <div className="absolute z-50 w-full mt-1 bg-surface border border-borde rounded-lg shadow-lg max-h-48 overflow-y-auto">
+                    <div className="absolute z-50 w-full bottom-full mb-1 bg-surface border border-borde rounded-lg shadow-lg max-h-48 overflow-y-auto">
                       {rolesDisponiblesFiltrados.length === 0 ? (
                         <div className="px-3 py-2 text-sm text-texto-muted">No se encontraron roles</div>
                       ) : rolesDisponiblesFiltrados.slice(0, 20).map((r) => (
