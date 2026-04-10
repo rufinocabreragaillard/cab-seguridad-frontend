@@ -15,7 +15,7 @@ const Boton = forwardRef<HTMLButtonElement, BotonProps>(
       'inline-flex items-center justify-center font-medium rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed'
 
     const variantes = {
-      primario: 'bg-primario text-white hover:bg-primario-hover focus:ring-primario',
+      primario: 'bg-primario text-primario-texto hover:bg-primario-hover focus:ring-primario',
       secundario: 'bg-secundario text-white hover:bg-secundario-light focus:ring-secundario',
       fantasma: 'bg-transparent text-texto hover:bg-primario-muy-claro focus:ring-primario',
       peligro: 'bg-error text-white hover:bg-red-700 focus:ring-error',
