@@ -19,7 +19,10 @@ import { type LucideIcon, Circle } from 'lucide-react'
 export function obtenerIcono(nombre: string | null | undefined): LucideIcon {
   if (!nombre) return Circle
   const icono = (LucideIcons as Record<string, unknown>)[nombre]
-  if (typeof icono === 'function') return icono as LucideIcon
+  // Los iconos Lucide son forwardRef objects (no funciones), verificar que exista y sea usable
+  if (icono != null && (typeof icono === 'function' || typeof icono === 'object')) {
+    return icono as LucideIcon
+  }
   return Circle
 }
 
