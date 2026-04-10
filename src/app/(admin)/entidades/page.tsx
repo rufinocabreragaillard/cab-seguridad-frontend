@@ -5,7 +5,6 @@ import { Plus, Pencil, Building2, MapPin, Download, Search, Trash2, ChevronUp, C
 import { Boton } from '@/components/ui/boton'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
-import { Insignia } from '@/components/ui/insignia'
 import { Modal } from '@/components/ui/modal'
 import { ModalConfirmar } from '@/components/ui/modal-confirmar'
 import { Tarjeta, TarjetaContenido } from '@/components/ui/tarjeta'
@@ -17,7 +16,7 @@ import { exportarExcel } from '@/lib/exportar-excel'
 
 const selectClass = 'w-full rounded-lg border border-borde bg-surface px-3 py-2 text-sm text-texto focus:outline-none focus:ring-2 focus:ring-primario'
 
-type FuncionAsignada = { codigo_funcion: string; orden: number; funciones: { nombre_funcion: string; activo: boolean } }
+type FuncionAsignada = { codigo_funcion: string; orden: number; funciones: { nombre_funcion: string } }
 
 export default function PaginaEntidades() {
   const { grupoActivo } = useAuth()
@@ -226,7 +225,7 @@ export default function PaginaEntidades() {
     catch { cargar() }
   }
 
-  const funcionesDisponiblesRol = allFunciones.filter((f) => f.activo && !funcionesRol.some((fa) => fa.codigo_funcion === f.codigo_funcion))
+  const funcionesDisponiblesRol = allFunciones.filter((f) => !funcionesRol.some((fa) => fa.codigo_funcion === f.codigo_funcion))
   const funcionesEntFiltradas = funcionesDisponiblesRol.filter((f) =>
     busquedaFuncionEnt.length === 0 ||
     f.nombre.toLowerCase().includes(busquedaFuncionEnt.toLowerCase()) ||
@@ -434,15 +433,15 @@ export default function PaginaEntidades() {
               <Input placeholder="Buscar por nombre, código o alias..." value={busquedaRoles} onChange={(e) => setBusquedaRoles(e.target.value)} icono={<Search size={15} />} />
             </div>
             <div className="flex gap-2 ml-auto">
-              <Boton variante="contorno" tamano="sm" onClick={() => exportarExcel(rolesFiltrados as unknown as Record<string, unknown>[], [{ titulo: 'Orden', campo: 'orden' }, { titulo: 'Grupo', campo: 'codigo_grupo' }, { titulo: 'Código', campo: 'codigo_rol' }, { titulo: 'Alias', campo: 'alias_de_rol' }, { titulo: 'Nombre', campo: 'nombre' }, { titulo: 'Descripción', campo: 'descripcion' }, { titulo: 'URL inicio', campo: 'url_inicio' }, { titulo: 'Fn. defecto', campo: 'funcion_por_defecto' }, { titulo: 'Estado', campo: 'activo', formato: (v) => v ? 'Activo' : 'Inactivo' }], `roles_${grupoActivo || 'todos'}`)} disabled={rolesFiltrados.length === 0}><Download size={15} />Excel</Boton>
+              <Boton variante="contorno" tamano="sm" onClick={() => exportarExcel(rolesFiltrados as unknown as Record<string, unknown>[], [{ titulo: 'Orden', campo: 'orden' }, { titulo: 'Grupo', campo: 'codigo_grupo' }, { titulo: 'Código', campo: 'codigo_rol' }, { titulo: 'Alias', campo: 'alias_de_rol' }, { titulo: 'Nombre', campo: 'nombre' }, { titulo: 'Descripción', campo: 'descripcion' }, { titulo: 'URL inicio', campo: 'url_inicio' }, { titulo: 'Fn. defecto', campo: 'funcion_por_defecto' }], `roles_${grupoActivo || 'todos'}`)} disabled={rolesFiltrados.length === 0}><Download size={15} />Excel</Boton>
               <Boton variante="primario" onClick={abrirNuevoRol}><Plus size={16} />Nuevo rol</Boton>
             </div>
           </div>
           <Tabla>
-            <TablaCabecera><tr><TablaTh className="w-16">Orden</TablaTh><TablaTh>Código</TablaTh><TablaTh>Alias</TablaTh><TablaTh>Nombre</TablaTh><TablaTh>URL inicio</TablaTh><TablaTh>Fn. defecto</TablaTh><TablaTh>Estado</TablaTh><TablaTh className="text-right">Acciones</TablaTh></tr></TablaCabecera>
+            <TablaCabecera><tr><TablaTh className="w-16">Orden</TablaTh><TablaTh>Código</TablaTh><TablaTh>Alias</TablaTh><TablaTh>Nombre</TablaTh><TablaTh>URL inicio</TablaTh><TablaTh>Fn. defecto</TablaTh><TablaTh className="text-right">Acciones</TablaTh></tr></TablaCabecera>
             <TablaCuerpo>
-              {cargando ? (<TablaFila><TablaTd className="py-8 text-center text-texto-muted" colSpan={8 as never}>Cargando...</TablaTd></TablaFila>
-              ) : rolesFiltrados.length === 0 ? (<TablaFila><TablaTd className="py-8 text-center text-texto-muted" colSpan={8 as never}>No se encontraron roles</TablaTd></TablaFila>
+              {cargando ? (<TablaFila><TablaTd className="py-8 text-center text-texto-muted" colSpan={7 as never}>Cargando...</TablaTd></TablaFila>
+              ) : rolesFiltrados.length === 0 ? (<TablaFila><TablaTd className="py-8 text-center text-texto-muted" colSpan={7 as never}>No se encontraron roles</TablaTd></TablaFila>
               ) : rolesFiltrados.map((r, idx) => (
                 <TablaFila key={r.codigo_rol}>
                   <TablaTd>
@@ -459,7 +458,6 @@ export default function PaginaEntidades() {
                   <TablaTd className="font-medium">{r.nombre}</TablaTd>
                   <TablaTd className="text-texto-muted text-xs">{r.url_inicio || '—'}</TablaTd>
                   <TablaTd className="text-texto-muted text-xs">{r.funcion_por_defecto || '—'}</TablaTd>
-                  <TablaTd><Insignia variante={r.activo ? 'exito' : 'error'}>{r.activo ? 'Activo' : 'Inactivo'}</Insignia></TablaTd>
                   <TablaTd>
                     <div className="flex items-center justify-end gap-1">
                       <button onClick={() => abrirEditarRol(r)} className="p-1.5 rounded-lg hover:bg-primario-muy-claro text-texto-muted hover:text-primario transition-colors" title="Editar"><Pencil size={14} /></button>
