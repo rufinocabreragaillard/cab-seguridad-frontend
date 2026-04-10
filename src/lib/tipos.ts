@@ -438,7 +438,7 @@ export interface RolCaractPers {
   codigo_rol?: string  // resuelto vía join
   codigo_cat_pers: string
   orden: number
-  roles?: { codigo_rol: string; nombre_rol: string; activo: boolean } | null
+  roles?: { codigo_rol: string; nombre_rol: string } | null
 }
 
 export interface CategoriaConCaracteristicas {
@@ -567,7 +567,6 @@ export interface RolCargo {
     id_rol: number
     codigo_rol: string
     nombre: string
-    activo: boolean
     codigo_grupo: string | null
     codigo_aplicacion_origen?: string | null
   }

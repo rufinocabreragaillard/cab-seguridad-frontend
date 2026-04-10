@@ -436,7 +436,6 @@ export default function PaginaUsuarios() {
   const tipoGrupoActivo = catalogoGrupos.find((g) => g.codigo_grupo === grupoActivo)?.tipo || 'NORMAL'
   const rolesDisponibles = roles
     .filter((r) =>
-      r.activo &&
       !ROLES_PROTEGIDOS.has(r.codigo_rol) &&
       (r.codigo_grupo === grupoActivo || r.codigo_grupo == null) &&
       !rolesUsuario.some((ra) => ra.codigo_grupo === grupoActivo && ra.id_rol === r.id_rol) &&
