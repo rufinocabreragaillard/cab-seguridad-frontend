@@ -131,7 +131,7 @@ export function Sidebar() {
         )}
         <button
           onClick={() => setColapsado(!colapsado)}
-          className="p-1.5 rounded-lg hover:bg-sidebar-hover text-sidebar-texto transition-colors shrink-0"
+          className="p-1.5 rounded-lg hover:bg-sidebar-hover text-texto-muted hover:text-sidebar-texto transition-colors shrink-0"
           title={colapsado ? 'Expandir menú' : 'Colapsar menú'}
         >
           {colapsado
