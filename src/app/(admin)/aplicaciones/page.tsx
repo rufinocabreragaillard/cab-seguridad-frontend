@@ -199,7 +199,7 @@ export default function PaginaAplicacionesFunciones() {
   const ejecutarEliminacion = async () => {
     if (!confirmacion) return; setEliminando(true)
     try {
-      if (confirmacion.tipo === 'app') { await aplicacionesApi.desactivar((confirmacion.item as Aplicacion).codigo_aplicacion) }
+      if (confirmacion.tipo === 'app') { await aplicacionesApi.eliminar((confirmacion.item as Aplicacion).codigo_aplicacion) }
       else { await funcionesApi.eliminar((confirmacion.item as Funcion).codigo_funcion) }
       setConfirmacion(null); cargar()
     } catch (e) { setErrorApp(e instanceof Error ? e.message : 'Error'); setConfirmacion(null) }

@@ -169,7 +169,7 @@ export const usuariosApi = {
     api.put<Usuario>(`/usuarios/${id}`, datos).then((r) => r.data),
   eliminar: (id: string) => api.delete(`/usuarios/${id}`),
   listarRoles: (id: string) =>
-    api.get<{ codigo_grupo: string; id_rol: number; codigo_rol?: string; orden: number; roles?: { codigo_rol: string; nombre: string; activo: boolean; codigo_grupo: string | null } }[]>(
+    api.get<{ codigo_grupo: string; id_rol: number; codigo_rol?: string; orden: number; roles?: { codigo_rol: string; nombre: string; codigo_grupo: string | null } }[]>(
       `/usuarios/${id}/roles`
     ).then((r) => r.data),
   asignarRol: (id: string, idRol: number, codigoGrupo: string) =>
@@ -189,7 +189,7 @@ export const usuariosApi = {
       ...(codigoArea ? { codigo_area: codigoArea } : {}),
     }, { timeout: 45000 }),
   listarGrupos: (id: string) =>
-    api.get<{ codigo_grupo: string; grupos_entidades: { nombre: string; activo: boolean } }[]>(
+    api.get<{ codigo_grupo: string; grupos_entidades: { nombre: string } }[]>(
       `/usuarios/${id}/grupos`
     ).then((r) => r.data),
   quitarEntidad: (id: string, codigoEntidad: string) =>
@@ -203,8 +203,8 @@ export const usuariosApi = {
 // ─── Roles ────────────────────────────────────────────────────────────────────
 
 export const rolesApi = {
-  listar: (activo?: boolean, codigoGrupo?: string, incluirGlobales?: boolean) =>
-    api.get<Rol[]>('/roles', { params: { ...(activo !== undefined && { activo }), ...(codigoGrupo && { codigo_grupo: codigoGrupo }), ...(incluirGlobales !== undefined && { incluir_globales: incluirGlobales }) } }).then((r) => r.data),
+  listar: (codigoGrupo?: string, incluirGlobales?: boolean) =>
+    api.get<Rol[]>('/roles', { params: { ...(codigoGrupo && { codigo_grupo: codigoGrupo }), ...(incluirGlobales !== undefined && { incluir_globales: incluirGlobales }) } }).then((r) => r.data),
   listarGlobales: () => api.get<Rol[]>('/roles/globales').then((r) => r.data),
   obtener: (idRol: number) => api.get<Rol>(`/roles/${idRol}`).then((r) => r.data),
   crear: (datos: Partial<Rol>) => api.post<Rol>('/roles', datos).then((r) => r.data),
@@ -212,7 +212,7 @@ export const rolesApi = {
     api.put<Rol>(`/roles/${idRol}`, datos).then((r) => r.data),
   eliminar: (idRol: number) => api.delete(`/roles/${idRol}`),
   listarFunciones: (idRol: number) =>
-    api.get<{ codigo_funcion: string; orden: number; funciones: { nombre_funcion: string; activo: boolean } }[]>(
+    api.get<{ codigo_funcion: string; orden: number; funciones: { nombre_funcion: string } }[]>(
       `/roles/${idRol}/funciones`
     ).then((r) => r.data),
   asignarFuncion: (idRol: number, codigoFuncion: string) =>
@@ -240,7 +240,7 @@ export const funcionesApi = {
     api.put<Funcion>(`/funciones/${id}`, datos).then((r) => r.data),
   eliminar: (id: string) => api.delete(`/funciones/${id}`),
   listarAplicaciones: (id: string) =>
-    api.get<{ codigo_aplicacion: string; aplicaciones: { nombre_aplicacion: string; activo: boolean } }[]>(
+    api.get<{ codigo_aplicacion: string; aplicaciones: { nombre_aplicacion: string } }[]>(
       `/funciones/${id}/aplicaciones`
     ).then((r) => r.data),
   asignarAplicacion: (id: string, codigoApp: string) =>
@@ -257,9 +257,9 @@ export const aplicacionesApi = {
   crear: (datos: Partial<Aplicacion>) => api.post<Aplicacion>('/aplicaciones', datos).then((r) => r.data),
   actualizar: (id: string, datos: Partial<Aplicacion>) =>
     api.put<Aplicacion>(`/aplicaciones/${id}`, datos).then((r) => r.data),
-  desactivar: (id: string) => api.delete(`/aplicaciones/${id}`),
+  eliminar: (id: string) => api.delete(`/aplicaciones/${id}`),
   listarFunciones: (id: string) =>
-    api.get<{ codigo_funcion: string; funciones: { nombre_funcion: string; activo: boolean } }[]>(
+    api.get<{ codigo_funcion: string; funciones: { nombre_funcion: string } }[]>(
       `/aplicaciones/${id}/funciones`
     ).then((r) => r.data),
   asignarFuncion: (id: string, codigoFuncion: string) =>
@@ -267,7 +267,7 @@ export const aplicacionesApi = {
   quitarFuncion: (id: string, codigoFuncion: string) =>
     api.delete(`/aplicaciones/${id}/funciones/${codigoFuncion}`),
   listarGrupos: (id: string) =>
-    api.get<{ codigo_grupo: string; activo: boolean; grupos_entidades: { nombre_grupo: string } }[]>(
+    api.get<{ codigo_grupo: string; grupos_entidades: { nombre_grupo: string } }[]>(
       `/aplicaciones/${id}/grupos`
     ).then((r) => r.data),
   asignarGrupo: (id: string, codigoGrupo: string) =>

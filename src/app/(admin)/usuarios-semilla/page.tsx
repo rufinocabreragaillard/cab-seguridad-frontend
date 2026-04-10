@@ -113,7 +113,7 @@ export default function PaginaUsuariosSemilla() {
       .finally(() => setCargandoEntidades(false))
 
     // Roles disponibles para el grupo (incluye globales)
-    rolesApi.listar(undefined, grupo, true)
+    rolesApi.listar(grupo, true)
       .then(setRolesGrupo)
       .catch(() => setRolesGrupo([]))
 
