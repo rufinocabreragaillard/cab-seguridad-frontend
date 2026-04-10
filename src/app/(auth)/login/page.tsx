@@ -81,23 +81,21 @@ export default function PaginaLogin() {
           style={{ backgroundColor: tema.colores.primario }}
         />
 
-        <div className="relative z-10 flex flex-col items-center text-center gap-6 max-w-sm">
+        <div className="relative z-10 flex flex-col items-center text-center gap-2 max-w-sm">
           <Image
             src={tema.logo.url}
             alt={tema.logo.alt}
-            width={213}
-            height={69}
+            width={284}
+            height={92}
             className="object-contain"
             onError={(e) => {
               const t = e.target as HTMLImageElement
               t.style.display = 'none'
             }}
           />
-          <div>
-            <p className="mt-3 text-sm leading-relaxed text-gray-500">
-              Aplicaciones de RAG y mucho más
-            </p>
-          </div>
+          <p className="text-sm leading-relaxed text-gray-500">
+            Aplicaciones de RAG y mucho más
+          </p>
         </div>
       </div>
 
