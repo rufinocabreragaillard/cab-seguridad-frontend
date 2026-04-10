@@ -94,7 +94,7 @@ export default function PaginaLogin() {
             }}
           />
           <div>
-            <h2 className="text-3xl font-bold" style={{ color: tema.colores.primario }}>{tema.app.nombre}</h2>
+            <h2 className="text-3xl font-bold text-texto">{tema.app.nombre}</h2>
             <p className="mt-3 text-sm leading-relaxed text-gray-500">
               Aplicaciones de RAG y mucho más
             </p>
