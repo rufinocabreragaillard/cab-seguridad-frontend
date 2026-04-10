@@ -559,6 +559,21 @@ export interface Cargo {
   alias: string
   descripcion?: string | null
   activo: boolean
+  codigo_entidad?: string | null
+}
+
+export interface RolCargo {
+  id_cargo: number
+  id_rol: number
+  orden: number
+  roles?: {
+    id_rol: number
+    codigo_rol: string
+    nombre: string
+    activo: boolean
+    codigo_grupo: string | null
+    codigo_aplicacion_origen?: string | null
+  }
 }
 
 // ─── Utilitarios ─────────────────────────────────────────────────────────────

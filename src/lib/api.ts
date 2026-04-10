@@ -43,6 +43,7 @@ import type {
   ChatConversacion,
   ChatConversacionDetalle,
   Cargo,
+  RolCargo,
 } from './tipos'
 
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
@@ -1008,13 +1009,21 @@ export const chatApi = {
 // ─── Cargos ───────────────────────────────────────────────────────────────────
 
 export const cargosApi = {
-  listar: (activo?: boolean) =>
-    api.get<Cargo[]>('/cargos', { params: activo !== undefined ? { activo } : undefined }).then((r) => r.data),
-  crear: (datos: { codigo_cargo?: string; nombre_cargo: string; alias?: string; descripcion?: string }) =>
+  listar: (params?: { activo?: boolean; codigo_entidad?: string }) =>
+    api.get<Cargo[]>('/cargos', { params }).then((r) => r.data),
+  crear: (datos: { codigo_cargo?: string; nombre_cargo: string; alias?: string; descripcion?: string; codigo_entidad?: string }) =>
     api.post<Cargo>('/cargos', datos).then((r) => r.data),
-  actualizar: (id: number, datos: Partial<Pick<Cargo, 'nombre_cargo' | 'alias' | 'descripcion' | 'activo'>>) =>
+  actualizar: (id: number, datos: Partial<Pick<Cargo, 'nombre_cargo' | 'alias' | 'descripcion' | 'activo' | 'codigo_entidad'>>) =>
     api.put<Cargo>(`/cargos/${id}`, datos).then((r) => r.data),
   eliminar: (id: number) => api.delete(`/cargos/${id}`),
+  listarRoles: (id: number) =>
+    api.get<RolCargo[]>(`/cargos/${id}/roles`).then((r) => r.data),
+  asignarRol: (id: number, id_rol: number) =>
+    api.post(`/cargos/${id}/roles/${id_rol}`).then((r) => r.data),
+  quitarRol: (id: number, id_rol: number) =>
+    api.delete(`/cargos/${id}/roles/${id_rol}`).then((r) => r.data),
+  reordenarRoles: (id: number, orden: { id_rol: number; orden: number }[]) =>
+    api.put(`/cargos/${id}/roles/reordenar`, orden).then((r) => r.data),
 }
 
 export default api
