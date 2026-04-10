@@ -324,6 +324,8 @@ export const gruposApi = {
 // ─── Parámetros ───────────────────────────────────────────────────────────────
 
 export const parametrosApi = {
+  obtenerValor: (categoria: string, tipo: string) =>
+    api.get<{ valor: string | null; nivel: string | null }>(`/parametros/valor/${categoria}/${tipo}`).then((r) => r.data),
   listarGenerales: () =>
     api.get<ParametroGeneral[]>('/parametros/generales').then((r) => r.data),
   actualizarGeneral: (codigo: string, valor: string) =>

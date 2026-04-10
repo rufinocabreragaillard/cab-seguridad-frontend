@@ -8,7 +8,7 @@ import { Insignia } from '@/components/ui/insignia'
 import { Tarjeta, TarjetaContenido } from '@/components/ui/tarjeta'
 import { Tabla, TablaCabecera, TablaCuerpo, TablaFila, TablaTh, TablaTd } from '@/components/ui/tabla'
 import { ModalConfirmar } from '@/components/ui/modal-confirmar'
-import { documentosApi, ubicacionesDocsApi, colaEstadosDocsApi, estadosDocsApi, procesosApi } from '@/lib/api'
+import { documentosApi, ubicacionesDocsApi, colaEstadosDocsApi, estadosDocsApi, procesosApi, parametrosApi } from '@/lib/api'
 import type { Proceso as ProcesoCatalogo } from '@/lib/api'
 import { useAuth } from '@/context/AuthContext'
 import type { Documento, ColaEstadoDoc, EstadoDoc } from '@/lib/tipos'
@@ -85,6 +85,7 @@ export default function PaginaProcesarDocumentos() {
   const [dirHandle, setDirHandle] = useState<FileSystemDirectoryHandle | null>(null)
   const [archivosEnDir, setArchivosEnDir] = useState<Set<string> | null>(null)
   const [escaneandoDir, setEscaneandoDir] = useState(false)
+  const [nivelesDirectorio, setNivelesDirectorio] = useState(5)
   const abortRef = useRef(false)
 
   // Tab Cola (datos persistidos)
@@ -155,13 +156,18 @@ export default function PaginaProcesarDocumentos() {
     }
   }
 
-  // Cargar procesos (catálogo) y ubicaciones
+  // Cargar procesos (catálogo), ubicaciones y parámetro de niveles
   useEffect(() => {
     const init = async () => {
-      const [procsRaw, u] = await Promise.all([
+      const [procsRaw, u, nivelParam] = await Promise.all([
         procesosApi.listar('DOCUMENTOS').catch(() => []),
         ubicacionesDocsApi.listar().catch(() => []),
+        parametrosApi.obtenerValor('DOCUMENTOS', 'NIVELES_DIRECTORIO').catch(() => null),
       ])
+      if (nivelParam?.valor != null) {
+        const n = parseInt(nivelParam.valor, 10)
+        if (!isNaN(n) && n >= 0 && n <= 5) setNivelesDirectorio(n)
+      }
       // Solo procesos con al menos un paso y que no sean CARGAR (CARGAR se
       // dispara automáticamente desde el módulo Cargar Docs, no desde aquí).
       const procs = (procsRaw || []).filter((p) => p.pasos && p.pasos.length > 0 && p.codigo_proceso !== 'CARGAR')
@@ -284,16 +290,16 @@ export default function PaginaProcesarDocumentos() {
   const seleccionarTodos = () => setSeleccionados(new Set(docsFiltrados.map((d) => d.codigo_documento)))
   const deseleccionarTodos = () => setSeleccionados(new Set())
 
-  const escanearDirectorio = async (handle: FileSystemDirectoryHandle): Promise<Set<string>> => {
+  const escanearDirectorio = async (handle: FileSystemDirectoryHandle, maxNiveles: number = nivelesDirectorio): Promise<Set<string>> => {
     const archivos = new Set<string>()
-    const walk = async (dir: FileSystemDirectoryHandle) => {
+    const walk = async (dir: FileSystemDirectoryHandle, nivel: number) => {
       // @ts-expect-error - values() is FileSystemDirectoryHandle iterator
       for await (const entry of dir.values()) {
         if (entry.kind === 'file') archivos.add(entry.name)
-        else if (entry.kind === 'directory') await walk(entry as FileSystemDirectoryHandle)
+        else if (entry.kind === 'directory' && nivel < maxNiveles) await walk(entry as FileSystemDirectoryHandle, nivel + 1)
       }
     }
-    await walk(handle)
+    await walk(handle, 0)
     return archivos
   }
 
@@ -643,6 +649,9 @@ export default function PaginaProcesarDocumentos() {
                     Quitar
                   </Boton>
                 )}
+                <span className="text-xs text-texto-muted" title="Niveles del árbol de directorios a escanear (configurable en Parámetros → DOCUMENTOS/NIVELES_DIRECTORIO)">
+                  {nivelesDirectorio === 0 ? 'Solo raíz' : `Hasta ${nivelesDirectorio} nivel${nivelesDirectorio !== 1 ? 'es' : ''}`}
+                </span>
                 {!dirHandle && (() => {
                   const raiz = ubicaciones.length > 0
                     ? ubicaciones.reduce((min, u) => u.nivel < min.nivel ? u : min, ubicaciones[0])
