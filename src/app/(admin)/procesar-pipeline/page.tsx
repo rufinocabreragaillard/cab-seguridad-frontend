@@ -4,7 +4,7 @@ import { useEffect, useRef, useState, useCallback } from 'react'
 import { FolderOpen } from 'lucide-react'
 import { Boton } from '@/components/ui/boton'
 import { CirculoProgreso } from '@/components/ui/circulo-progreso'
-import { documentosApi, colaEstadosDocsApi } from '@/lib/api'
+import { documentosApi, colaEstadosDocsApi, ubicacionesDocsApi } from '@/lib/api'
 import { extraerTextoDeArchivo, abrirArchivoPorRuta } from '@/lib/extraer-texto'
 import { getDirectoryHandle, setDirectoryHandle, ensureReadPermission } from '@/lib/file-handle-store'
 import { useAuth } from '@/context/AuthContext'
@@ -77,6 +77,7 @@ export default function PaginaProcesarPipeline() {
   const [tiempoInicio, setTiempoInicio] = useState<number | null>(null)
   const [tiempoTranscurrido, setTiempoTranscurrido] = useState(0)
   const [mensajeError, setMensajeError] = useState('')
+  const [carpetaRaiz, setCarpetaRaiz] = useState<string>('')
 
   const abortRef = useRef(false)
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null)
@@ -93,10 +94,17 @@ export default function PaginaProcesarPipeline() {
     return () => { if (timerRef.current) clearInterval(timerRef.current) }
   }, [ejecutando, tiempoInicio])
 
-  // ── Cargar dirHandle persistido y conteos iniciales ───────────────────────
+  // ── Cargar dirHandle persistido, conteos y raíz de ubicaciones ───────────
   useEffect(() => {
     getDirectoryHandle().then((h) => { if (h) setDirHandleState(h) })
     cargarConteos()
+    ubicacionesDocsApi.listar().then((ubs) => {
+      if (!ubs?.length) return
+      const raiz = (ubs as { nivel: number; ruta_completa?: string }[])
+        .reduce((min, u) => u.nivel < min.nivel ? u : min, ubs[0] as { nivel: number; ruta_completa?: string })
+      const nombre = raiz?.ruta_completa?.split('/').filter(Boolean)[0] ?? ''
+      if (nombre) setCarpetaRaiz(nombre)
+    }).catch(() => {})
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [grupoActivo])
 
@@ -300,13 +308,20 @@ export default function PaginaProcesarPipeline() {
         </div>
 
         {/* Selector de directorio */}
-        <button
-          onClick={seleccionarDirectorio}
-          className="flex items-center gap-2 rounded-lg border border-borde bg-fondo-tarjeta px-4 py-2 text-sm text-texto hover:border-primario transition-colors"
-        >
-          <FolderOpen size={16} className={dirHandle ? 'text-primario' : 'text-texto-muted'} />
-          {dirHandle ? dirHandle.name : 'Seleccionar directorio'}
-        </button>
+        <div className="flex flex-col items-end gap-1">
+          <button
+            onClick={seleccionarDirectorio}
+            className="flex items-center gap-2 rounded-lg border border-borde bg-fondo-tarjeta px-4 py-2 text-sm text-texto hover:border-primario transition-colors"
+          >
+            <FolderOpen size={16} className={dirHandle ? 'text-primario' : 'text-texto-muted'} />
+            {dirHandle ? dirHandle.name : 'Seleccionar directorio'}
+          </button>
+          {!dirHandle && carpetaRaiz && (
+            <span className="text-xs text-texto-muted text-right">
+              Al ejecutar se pedirá acceso. Selecciona: <strong className="text-texto">{carpetaRaiz}</strong> (no subcarpetas)
+            </span>
+          )}
+        </div>
       </div>
 
       {/* Error */}
