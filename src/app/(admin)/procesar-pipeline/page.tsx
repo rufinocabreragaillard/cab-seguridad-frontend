@@ -133,9 +133,7 @@ export default function PaginaProcesarPipeline() {
     setProgresos((prev) => ({ ...prev, [key]: { ...prev[key], ...patch } }))
 
   // ── EXTRAER (client-side) ─────────────────────────────────────────────────
-  const ejecutarExtraer = async (): Promise<boolean> => {
-    if (!dirHandle) return false
-
+  const ejecutarExtraer = async (handle: FileSystemDirectoryHandle): Promise<boolean> => {
     const docs = await documentosApi.listar({ codigo_estado_doc: 'CARGADO', activo: true })
     if (docs.length === 0) { setPaso('EXTRAER', { estado: 'listo' }); return true }
 
@@ -149,7 +147,7 @@ export default function PaginaProcesarPipeline() {
         if (!doc.ubicacion_documento) {
           await documentosApi.subirTexto(doc.codigo_documento, { texto_fuente: '', archivo_no_encontrado: true })
         } else {
-          const fileHandle = await abrirArchivoPorRuta(dirHandle, doc.ubicacion_documento)
+          const fileHandle = await abrirArchivoPorRuta(handle, doc.ubicacion_documento)
           if (!fileHandle) {
             await documentosApi.subirTexto(doc.codigo_documento, { texto_fuente: '', archivo_no_encontrado: true })
           } else {
@@ -222,12 +220,21 @@ export default function PaginaProcesarPipeline() {
 
   // ── Ejecutar pipeline completo ────────────────────────────────────────────
   const ejecutarPipeline = async () => {
-    if (!dirHandle) {
-      setMensajeError('Selecciona el directorio raíz antes de procesar.')
-      return
+    // Si no hay dirHandle, auto-disparar el picker antes de continuar.
+    // El usuario verá el diálogo de permisos del browser al presionar "Procesar Todo".
+    let handleEfectivo = dirHandle
+    if (!handleEfectivo) {
+      try {
+        handleEfectivo = await (window as unknown as { showDirectoryPicker: () => Promise<FileSystemDirectoryHandle> })
+          .showDirectoryPicker()
+        setDirHandleState(handleEfectivo)
+        await setDirectoryHandle(handleEfectivo)
+      } catch {
+        return // usuario canceló el picker
+      }
     }
 
-    const ok = await ensureReadPermission(dirHandle)
+    const ok = await ensureReadPermission(handleEfectivo)
     if (!ok) {
       setMensajeError('Sin permiso de lectura sobre el directorio seleccionado.')
       return
@@ -246,7 +253,7 @@ export default function PaginaProcesarPipeline() {
 
         let ok: boolean
         if (paso.clienteSide) {
-          ok = await ejecutarExtraer()
+          ok = await ejecutarExtraer(handleEfectivo)
         } else {
           ok = await ejecutarPasoBackend(paso.key, paso.estadoOrigen, paso.estadoDestino)
         }
@@ -343,7 +350,6 @@ export default function PaginaProcesarPipeline() {
           <Boton
             variante="primario"
             onClick={ejecutarPipeline}
-            deshabilitado={!dirHandle}
           >
             {todosListos ? 'Procesar de nuevo' : 'Procesar Todo'}
           </Boton>

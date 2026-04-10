@@ -360,10 +360,28 @@ export default function PaginaProcesarDocumentos() {
 
     // ── EXTRAER (client-side): CARGADO → METADATA ─────────────────────────
     if (esExtraer) {
-      if (!dirHandle) {
-        alert('Este proceso requiere seleccionar un directorio raíz que contenga los archivos.')
-        setEjecutando(false)
-        return
+      // Si no hay dirHandle, auto-disparar el picker antes de continuar.
+      // El sistema sugiere la raíz del árbol de ubicaciones_docs (nivel mínimo)
+      // como referencia textual; el usuario navega hasta allí en el diálogo del browser.
+      let handleEfectivo = dirHandle
+      if (!handleEfectivo) {
+        try {
+          const opts: Record<string, unknown> = { mode: 'read', id: 'cab-procesar-docs' }
+          handleEfectivo = await (window as unknown as { showDirectoryPicker: (opts?: Record<string, unknown>) => Promise<FileSystemDirectoryHandle> }).showDirectoryPicker(opts)
+          setDirHandle(handleEfectivo)
+          idbSetHandle(handleEfectivo)
+          setEscaneandoDir(true)
+          try {
+            const archivos = await escanearDirectorio(handleEfectivo)
+            setArchivosEnDir(archivos)
+          } finally {
+            setEscaneandoDir(false)
+          }
+        } catch {
+          // Usuario canceló el picker
+          setEjecutando(false)
+          return
+        }
       }
 
       const ids = Array.from(seleccionados)
@@ -392,7 +410,7 @@ export default function PaginaProcesarDocumentos() {
             })
             setCola((prev) => prev.map((c, idx) => idx === i ? { ...c, estado_cola: 'COMPLETADO', resultado: 'NO_ENCONTRADO (sin ubicación)', tiempo_ms: Date.now() - t0 } : c))
           } else {
-            const fileHandle = await abrirArchivoPorRuta(dirHandle, item.ubicacion_documento)
+            const fileHandle = await abrirArchivoPorRuta(handleEfectivo, item.ubicacion_documento)
             if (!fileHandle) {
               await documentosApi.subirTexto(item.codigo_documento, { texto_fuente: '', archivo_no_encontrado: true })
               setCola((prev) => prev.map((c, idx) => idx === i ? { ...c, estado_cola: 'COMPLETADO', resultado: 'NO_ENCONTRADO', tiempo_ms: Date.now() - t0 } : c))
@@ -614,7 +632,13 @@ export default function PaginaProcesarDocumentos() {
                   </Boton>
                 )}
                 {!dirHandle && (
-                  <span className="text-xs text-texto-muted">Este proceso requiere un directorio raíz con los archivos.</span>
+                  <span className="text-xs text-texto-muted">
+                    Al ejecutar se solicitará acceso al directorio
+                    {ubicaciones.length > 0 && (() => {
+                      const raiz = ubicaciones.reduce((min, u) => u.nivel < min.nivel ? u : min, ubicaciones[0])
+                      return raiz?.ruta_completa ? ` (navega a: ${raiz.ruta_completa})` : ''
+                    })()}.
+                  </span>
                 )}
               </>
             )}
@@ -628,7 +652,7 @@ export default function PaginaProcesarDocumentos() {
                 {seleccionados.size}/{documentos.length} seleccionados{archivosEnDir && ` (filtrado por directorio)`}
               </span>
               <Boton variante="primario" onClick={ejecutar}
-                disabled={ejecutando || seleccionados.size === 0 || !procesoSel || (esExtraer && !dirHandle)}>
+                disabled={ejecutando || seleccionados.size === 0 || !procesoSel}>
                 {ejecutando ? <Loader2 size={16} className="animate-spin" /> : <Play size={16} />}
                 {ejecutando ? 'Procesando...' : 'Ejecutar'}
               </Boton>
