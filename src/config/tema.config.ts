@@ -9,7 +9,7 @@ export const tema = {
     version: '1.0.0',
   },
   logo: {
-    url: '/logo.png',
+    url: '/logo_CAB_bn_a.png',
     alt: 'Logo',
     ancho: 110,
     alto: 36,
