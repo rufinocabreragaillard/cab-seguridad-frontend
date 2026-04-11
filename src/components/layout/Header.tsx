@@ -12,8 +12,17 @@ import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Boton } from '@/components/ui/boton'
 import { usuariosApi, parametrosApi, aplicacionesApi } from '@/lib/api'
+import { useTranslations } from 'next-intl'
+import { locales, type Locale } from '@/i18n/config'
+
+function cambiarLocale(nuevoLocale: Locale) {
+  document.cookie = `NEXT_LOCALE=${nuevoLocale};path=/;max-age=31536000`
+  window.location.reload()
+}
 
 export function Header({ titulo }: { titulo?: string }) {
+  const t = useTranslations('header')
+  const tc = useTranslations('common')
   const router = useRouter()
   const { usuario, cambiarEntidad, cambiarGrupo, cambiarAplicacion, logout } = useAuth()
   const [cambiando, setCambiando] = useState(false)
@@ -147,7 +156,7 @@ export function Header({ titulo }: { titulo?: string }) {
   }
 
   const guardarMiCuenta = async () => {
-    if (!usuario || !formCuenta.nombre) { setErrorCuenta('El nombre es obligatorio'); return }
+    if (!usuario || !formCuenta.nombre) { setErrorCuenta(t('nombreObligatorio')); return }
     setGuardandoCuenta(true)
     setErrorCuenta('')
     setExitoCuenta('')
@@ -173,7 +182,7 @@ export function Header({ titulo }: { titulo?: string }) {
         cambios.aplicacion_por_defecto = formCuenta.aplicacion_por_defecto || null
       }
       await usuariosApi.actualizar(usuario.codigo_usuario, cambios)
-      setExitoCuenta('Datos actualizados correctamente')
+      setExitoCuenta(t('datosActualizados'))
       // Actualizar datos originales para futuras comparaciones
       setDatosOriginales({ ...formCuenta })
     } catch (e) {
@@ -203,7 +212,7 @@ export function Header({ titulo }: { titulo?: string }) {
     setExitoParametros('')
     try {
       await parametrosApi.upsertUsuario({ categoria_parametro: cat, tipo_parametro: tipo, valor_parametro: valor })
-      setExitoParametros('Parametro guardado')
+      setExitoParametros(t('parametroGuardado'))
       cargarParametros()
     } catch (e) {
       setErrorParametros(e instanceof Error ? e.message : 'Error al guardar')
@@ -268,7 +277,7 @@ export function Header({ titulo }: { titulo?: string }) {
               </DropdownMenu.Trigger>
               <DropdownMenu.Portal>
                 <DropdownMenu.Content align="end" sideOffset={8} className="z-50 min-w-[200px] bg-surface rounded-xl border border-borde shadow-lg p-1">
-                  <p className="px-3 py-2 text-xs font-semibold text-texto-muted uppercase tracking-wider">Mis grupos</p>
+                  <p className="px-3 py-2 text-xs font-semibold text-texto-muted uppercase tracking-wider">{t('misGrupos')}</p>
                   {usuario.grupos.map((grupo) => (
                     <DropdownMenu.Item
                       key={grupo.codigo_grupo}
@@ -308,7 +317,7 @@ export function Header({ titulo }: { titulo?: string }) {
               </DropdownMenu.Trigger>
               <DropdownMenu.Portal>
                 <DropdownMenu.Content align="end" sideOffset={8} className="z-50 min-w-[200px] bg-surface rounded-xl border border-borde shadow-lg p-1">
-                  <p className="px-3 py-2 text-xs font-semibold text-texto-muted uppercase tracking-wider">Mis entidades</p>
+                  <p className="px-3 py-2 text-xs font-semibold text-texto-muted uppercase tracking-wider">{t('misEntidades')}</p>
                   {usuario.entidades.map((entidad) => (
                     <DropdownMenu.Item
                       key={entidad.codigo_entidad}
@@ -356,14 +365,14 @@ export function Header({ titulo }: { titulo?: string }) {
                   className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-texto hover:bg-fondo cursor-pointer outline-none"
                 >
                   <User size={14} className="shrink-0" />
-                  Mi cuenta
+                  {t('miCuenta')}
                 </DropdownMenu.Item>
                 <DropdownMenu.Item
                   onSelect={() => setModalAplicacion(true)}
                   className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-texto hover:bg-fondo cursor-pointer outline-none"
                 >
                   <AppWindow size={14} className="shrink-0" />
-                  Cambio aplicacion
+                  {t('cambiarAplicacion')}
                 </DropdownMenu.Item>
                 <DropdownMenu.Separator className="h-px bg-borde my-1" />
                 <DropdownMenu.Item
@@ -371,7 +380,7 @@ export function Header({ titulo }: { titulo?: string }) {
                   className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-error hover:bg-red-50 cursor-pointer outline-none"
                 >
                   <LogOut size={14} className="shrink-0" />
-                  Cerrar sesion
+                  {t('cerrarSesion')}
                 </DropdownMenu.Item>
               </DropdownMenu.Content>
             </DropdownMenu.Portal>
@@ -380,7 +389,7 @@ export function Header({ titulo }: { titulo?: string }) {
       </header>
 
       {/* Modal Mi Cuenta (con tabs) */}
-      <Modal abierto={modalCuenta} alCerrar={() => setModalCuenta(false)} titulo={`Mi cuenta: ${usuario?.codigo_usuario || ''}`} className="max-w-2xl">
+      <Modal abierto={modalCuenta} alCerrar={() => setModalCuenta(false)} titulo={t('miCuentaTitulo', { email: usuario?.codigo_usuario || '' })} className="max-w-2xl">
         <div className="flex flex-col gap-4">
           {/* Tabs */}
           <div className="flex border-b border-borde">
@@ -393,7 +402,7 @@ export function Header({ titulo }: { titulo?: string }) {
                   : 'border-transparent text-texto-muted hover:text-texto'
               )}
             >
-              Cuenta
+              {t('tabCuenta')}
             </button>
             <button
               onClick={() => setTabCuenta('parametros')}
@@ -404,7 +413,7 @@ export function Header({ titulo }: { titulo?: string }) {
                   : 'border-transparent text-texto-muted hover:text-texto'
               )}
             >
-              Parametros
+              {t('tabParametros')}
             </button>
           </div>
 
@@ -413,26 +422,26 @@ export function Header({ titulo }: { titulo?: string }) {
             <div className="flex flex-col gap-4">
               <div className="grid grid-cols-2 gap-x-6 gap-y-3">
                 <Input
-                  etiqueta="Alias"
+                  etiqueta={t('alias')}
                   value={formCuenta.alias}
                   onChange={(e) => setFormCuenta({ ...formCuenta, alias: e.target.value })}
-                  placeholder="Alias del usuario"
+                  placeholder={t('aliasPlaceholder')}
                 />
                 <Input
-                  etiqueta="Nombre completo"
+                  etiqueta={t('nombreCompleto')}
                   value={formCuenta.nombre}
                   onChange={(e) => setFormCuenta({ ...formCuenta, nombre: e.target.value })}
                 />
                 <Input
-                  etiqueta="Telefono"
+                  etiqueta={t('telefono')}
                   value={formCuenta.telefono}
                   onChange={(e) => setFormCuenta({ ...formCuenta, telefono: e.target.value })}
-                  placeholder="+56 9 1234 5678"
+                  placeholder={t('telefonoPlaceholder')}
                 />
                 <div /> {/* spacer para mantener grid alineado */}
                 <div className="col-span-2">
                   <Textarea
-                    etiqueta="Descripcion"
+                    etiqueta={t('descripcion')}
                     value={formCuenta.descripcion}
                     onChange={(e) => setFormCuenta({ ...formCuenta, descripcion: e.target.value })}
                     rows={2}
@@ -440,11 +449,11 @@ export function Header({ titulo }: { titulo?: string }) {
                 </div>
               </div>
               {/* Preferencias de inicio de sesión */}
-              <p className="text-xs font-semibold text-texto-muted uppercase tracking-wide mt-1">Preferencias de inicio</p>
+              <p className="text-xs font-semibold text-texto-muted uppercase tracking-wide mt-1">{t('preferenciasInicio')}</p>
               <div className="grid grid-cols-2 gap-x-6 gap-y-3">
                 {/* Grupo por defecto */}
                 <div className="flex flex-col gap-1">
-                  <label className="text-sm font-medium text-texto">Grupo por defecto</label>
+                  <label className="text-sm font-medium text-texto">{t('grupoPorDefecto')}</label>
                   <select
                     value={formCuenta.grupo_por_defecto}
                     onChange={(e) => {
@@ -460,7 +469,7 @@ export function Header({ titulo }: { titulo?: string }) {
                     }}
                     className="w-full rounded-lg border border-borde bg-surface px-3 py-2 text-sm text-texto focus:outline-none focus:ring-2 focus:ring-primario"
                   >
-                    <option value="">Seleccionar grupo...</option>
+                    <option value="">{t('seleccionarGrupo')}</option>
                     {gruposCuenta.map((g) => (
                       <option key={g.codigo_grupo} value={g.codigo_grupo}>{g.nombre}</option>
                     ))}
@@ -468,14 +477,14 @@ export function Header({ titulo }: { titulo?: string }) {
                 </div>
                 {/* Rol principal — filtrado por grupo seleccionado */}
                 <div className="flex flex-col gap-1">
-                  <label className="text-sm font-medium text-texto">Rol principal</label>
+                  <label className="text-sm font-medium text-texto">{t('rolPrincipal')}</label>
                   <select
                     value={formCuenta.id_rol_principal}
                     onChange={(e) => setFormCuenta({ ...formCuenta, id_rol_principal: e.target.value })}
                     disabled={!formCuenta.grupo_por_defecto}
                     className="w-full rounded-lg border border-borde bg-surface px-3 py-2 text-sm text-texto focus:outline-none focus:ring-2 focus:ring-primario disabled:opacity-50"
                   >
-                    <option value="">Sin rol principal</option>
+                    <option value="">{t('sinRolPrincipal')}</option>
                     {rolesCuenta
                       .filter(r => r.codigo_grupo === formCuenta.grupo_por_defecto)
                       .map((r) => (
@@ -485,14 +494,14 @@ export function Header({ titulo }: { titulo?: string }) {
                 </div>
                 {/* Entidad por defecto — filtrada por grupo seleccionado */}
                 <div className="flex flex-col gap-1">
-                  <label className="text-sm font-medium text-texto">Entidad por defecto</label>
+                  <label className="text-sm font-medium text-texto">{t('entidadPorDefecto')}</label>
                   <select
                     value={formCuenta.entidad_por_defecto}
                     onChange={(e) => setFormCuenta({ ...formCuenta, entidad_por_defecto: e.target.value })}
                     disabled={!formCuenta.grupo_por_defecto}
                     className="w-full rounded-lg border border-borde bg-surface px-3 py-2 text-sm text-texto focus:outline-none focus:ring-2 focus:ring-primario disabled:opacity-50"
                   >
-                    <option value="">Sin entidad seleccionada</option>
+                    <option value="">{t('sinEntidad')}</option>
                     {entidadesCuenta
                       .filter(e => e.codigo_grupo === formCuenta.grupo_por_defecto)
                       .map((e) => (
@@ -502,14 +511,14 @@ export function Header({ titulo }: { titulo?: string }) {
                 </div>
                 {/* Aplicación por defecto — filtrada por grupo seleccionado */}
                 <div className="flex flex-col gap-1">
-                  <label className="text-sm font-medium text-texto">Aplicacion por defecto</label>
+                  <label className="text-sm font-medium text-texto">{t('aplicacionPorDefecto')}</label>
                   <select
                     value={formCuenta.aplicacion_por_defecto}
                     onChange={(e) => setFormCuenta({ ...formCuenta, aplicacion_por_defecto: e.target.value })}
                     disabled={!formCuenta.grupo_por_defecto}
                     className="w-full rounded-lg border border-borde bg-surface px-3 py-2 text-sm text-texto focus:outline-none focus:ring-2 focus:ring-primario disabled:opacity-50"
                   >
-                    <option value="">Sin aplicacion por defecto</option>
+                    <option value="">{t('sinAplicacion')}</option>
                     {appsCuenta.map((app) => (
                       <option key={app.codigo_aplicacion} value={app.codigo_aplicacion}>{app.nombre}</option>
                     ))}
@@ -518,10 +527,31 @@ export function Header({ titulo }: { titulo?: string }) {
               </div>
               {errorCuenta && <div className="bg-red-50 border border-red-200 rounded-lg px-4 py-3"><p className="text-sm text-error">{errorCuenta}</p></div>}
               {exitoCuenta && <div className="bg-green-50 border border-green-200 rounded-lg px-4 py-3"><p className="text-sm text-exito">{exitoCuenta}</p></div>}
+              {/* Selector de idioma */}
+              <div className="flex items-center gap-3 pt-1">
+                <span className="text-xs font-medium text-texto-muted uppercase tracking-wide">{t('idioma')}:</span>
+                <div className="flex gap-1">
+                  {locales.map((loc) => (
+                    <button
+                      key={loc}
+                      type="button"
+                      onClick={() => cambiarLocale(loc)}
+                      className={`text-xs px-2.5 py-1 rounded border transition-colors ${
+                        (typeof document !== 'undefined' && document.cookie.includes(`NEXT_LOCALE=${loc}`)) ||
+                        (typeof document !== 'undefined' && !document.cookie.includes('NEXT_LOCALE=') && loc === 'es')
+                          ? 'bg-primario text-primario-texto border-primario font-medium'
+                          : 'text-texto-muted border-borde hover:text-texto hover:border-primario/50'
+                      }`}
+                    >
+                      {loc.toUpperCase()}
+                    </button>
+                  ))}
+                </div>
+              </div>
               <div className="flex gap-3 justify-end pt-2">
-                <Boton variante="contorno" onClick={() => setModalCuenta(false)}>Cerrar</Boton>
+                <Boton variante="contorno" onClick={() => setModalCuenta(false)}>{tc('cerrar')}</Boton>
                 <Boton variante="primario" onClick={guardarMiCuenta} cargando={guardandoCuenta}>
-                  <Save size={14} /> Guardar
+                  <Save size={14} /> {tc('guardar')}
                 </Boton>
               </div>
             </div>
@@ -533,7 +563,7 @@ export function Header({ titulo }: { titulo?: string }) {
                   {[1, 2].map((i) => <div key={i} className="h-10 bg-fondo rounded-lg animate-pulse" />)}
                 </div>
               ) : parametros.length === 0 ? (
-                <p className="text-sm text-texto-muted text-center py-4">No tienes parametros configurados</p>
+                <p className="text-sm text-texto-muted text-center py-4">{t('sinParametros')}</p>
               ) : (
                 <div className="flex flex-col gap-2 max-h-60 overflow-y-auto">
                   {parametros.map((p) => (
@@ -559,7 +589,7 @@ export function Header({ titulo }: { titulo?: string }) {
               {errorParametros && <div className="bg-red-50 border border-red-200 rounded-lg px-4 py-3"><p className="text-sm text-error">{errorParametros}</p></div>}
               {exitoParametros && <div className="bg-green-50 border border-green-200 rounded-lg px-4 py-3"><p className="text-sm text-exito">{exitoParametros}</p></div>}
               <div className="flex justify-end pt-2">
-                <Boton variante="contorno" onClick={() => setModalCuenta(false)}>Cerrar</Boton>
+                <Boton variante="contorno" onClick={() => setModalCuenta(false)}>{tc('cerrar')}</Boton>
               </div>
             </div>
           )}
@@ -567,7 +597,7 @@ export function Header({ titulo }: { titulo?: string }) {
       </Modal>
 
       {/* Modal Cambio Aplicacion */}
-      <Modal abierto={modalAplicacion} alCerrar={() => setModalAplicacion(false)} titulo="Cambiar aplicacion">
+      <Modal abierto={modalAplicacion} alCerrar={() => setModalAplicacion(false)} titulo={t('cambiarAplicacion')}>
         <div className="flex flex-col gap-2">
           {usuario?.aplicaciones_disponibles && usuario.aplicaciones_disponibles.length > 0 ? (
             usuario.aplicaciones_disponibles.map((app) => (
@@ -597,7 +627,7 @@ export function Header({ titulo }: { titulo?: string }) {
               </button>
             ))
           ) : (
-            <p className="text-sm text-texto-muted text-center py-4">No hay aplicaciones disponibles</p>
+            <p className="text-sm text-texto-muted text-center py-4">{t('sinAplicacionesDisponibles')}</p>
           )}
         </div>
       </Modal>

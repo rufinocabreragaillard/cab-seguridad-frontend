@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState, useCallback } from 'react'
+import { useTranslations } from 'next-intl'
 
 interface UseCrudPageOptions<T, F> {
   /** Función para cargar los items desde la API */
@@ -22,6 +23,7 @@ interface UseCrudPageOptions<T, F> {
 }
 
 export function useCrudPage<T, F extends Record<string, any>>(opts: UseCrudPageOptions<T, F>) {
+  const t = useTranslations('common')
   const [items, setItems] = useState<T[]>([])
   const [cargando, setCargando] = useState(true)
   const [busqueda, setBusqueda] = useState('')
@@ -82,7 +84,7 @@ export function useCrudPage<T, F extends Record<string, any>>(opts: UseCrudPageO
       cerrarModal()
       cargar()
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Error al guardar')
+      setError(e instanceof Error ? e.message : t('errorAlGuardar'))
     } finally {
       setGuardando(false)
     }
@@ -96,7 +98,7 @@ export function useCrudPage<T, F extends Record<string, any>>(opts: UseCrudPageO
       setConfirmacion(null)
       cargar()
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Error al eliminar')
+      setError(e instanceof Error ? e.message : t('errorAlEliminar'))
       setConfirmacion(null)
     } finally {
       setEliminando(false)
