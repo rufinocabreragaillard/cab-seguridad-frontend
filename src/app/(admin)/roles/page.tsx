@@ -363,7 +363,7 @@ export default function PaginaRoles() {
             onClick={() => setTabActiva(tab)}
             className={`px-4 py-2 rounded-md text-sm font-medium transition-colors capitalize ${
               tabActiva === tab
-                ? 'bg-surface text-primario shadow-sm border border-borde'
+                ? 'bg-surface text-primario-oscuro shadow-sm border border-borde'
                 : 'text-texto-muted hover:text-texto'
             }`}
           >

@@ -251,7 +251,7 @@ export default function PaginaEntidades() {
       {/* Tabs principales */}
       <div className="flex gap-1 p-1 bg-fondo rounded-lg border border-borde w-fit">
         {(['entidades', 'roles'] as const).map((tab) => (
-          <button key={tab} onClick={() => setTabPrincipal(tab)} className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${tabPrincipal === tab ? 'bg-surface text-primario shadow-sm border border-borde' : 'text-texto-muted hover:text-texto'}`}>
+          <button key={tab} onClick={() => setTabPrincipal(tab)} className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${tabPrincipal === tab ? 'bg-surface text-primario-oscuro shadow-sm border border-borde' : 'text-texto-muted hover:text-texto'}`}>
             {tab === 'entidades' ? 'Entidades y Áreas' : 'Roles'}
           </button>
         ))}

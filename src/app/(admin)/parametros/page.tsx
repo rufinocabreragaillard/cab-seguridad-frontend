@@ -274,7 +274,7 @@ export default function PaginaParametros() {
               onClick={() => setTabActiva(tab.id)}
               className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-colors ${
                 tabActiva === tab.id
-                  ? 'bg-surface text-primario shadow-sm border border-borde'
+                  ? 'bg-surface text-primario-oscuro shadow-sm border border-borde'
                   : 'text-texto-muted hover:text-texto'
               }`}
             >

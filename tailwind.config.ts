@@ -16,6 +16,7 @@ const config: Config = {
         primario: {
           DEFAULT:     'var(--color-primario, #074B91)',
           texto:       'var(--color-primario-texto, #FFFFFF)',
+          oscuro:      'var(--color-primario-oscuro, #074B91)',
           hover:       'var(--color-primario-hover, #053870)',
           light:       'var(--color-primario-light, #1E5A9C)',
           'muy-claro': 'var(--color-primario-muy-claro, #E8EFF8)',
