@@ -771,37 +771,53 @@ export default function PaginaProcesarDocumentos() {
       )}
 
       {/* Cola de procesamiento (visible durante/después de ejecución) */}
-      {cola.length > 0 && (
-        <Tabla>
-          <TablaCabecera>
-            <tr>
-              <TablaTh className="w-10">{t('colEstado')}</TablaTh>
-              <TablaTh>{t('colDocumento')}</TablaTh>
-              <TablaTh>{t('colResultado')}</TablaTh>
-              <TablaTh className="w-20">{t('colTiempo')}</TablaTh>
-            </tr>
-          </TablaCabecera>
-          <TablaCuerpo>
-            {cola.map((c) => (
-              <TablaFila key={c.id_cola} className={c.estado_cola === 'COMPLETADO' ? 'bg-green-50/50' : c.estado_cola === 'ERROR' ? 'bg-red-50/50' : ''}>
-                <TablaTd>{iconoEstado(c.estado_cola)}</TablaTd>
-                <TablaTd>
-                  <div className="flex items-center gap-2">
-                    <FileText size={14} className="text-texto-muted shrink-0" />
-                    <span className="font-medium text-sm">{c.nombre_documento}</span>
-                  </div>
-                </TablaTd>
-                <TablaTd>
-                  <span className={`text-xs max-w-[400px] truncate block ${c.estado_cola === 'ERROR' ? 'text-error' : 'text-texto-muted'}`}>
-                    {c.resultado || '—'}
-                  </span>
-                </TablaTd>
-                <TablaTd className="text-xs text-texto-muted">{c.tiempo_ms ? `${c.tiempo_ms}ms` : '—'}</TablaTd>
-              </TablaFila>
-            ))}
-          </TablaCuerpo>
-        </Tabla>
-      )}
+      {cola.length > 0 && (() => {
+        // Mostrar solo los últimos 100 ítems procesados/en proceso para no congelar el browser.
+        // Siempre incluir los que aún están EN_PROCESO o PENDIENTE activos (lote actual).
+        const MAX_FILAS = 100
+        const terminados = cola.filter((c) => c.estado_cola === 'COMPLETADO' || c.estado_cola === 'ERROR')
+        const activos    = cola.filter((c) => c.estado_cola === 'EN_PROCESO' || c.estado_cola === 'PENDIENTE')
+        const visibles   = [...terminados.slice(-MAX_FILAS), ...activos.slice(0, MAX_FILAS)]
+        const ocultos    = cola.length - visibles.length
+        return (
+          <>
+            {ocultos > 0 && (
+              <p className="text-xs text-texto-muted text-center py-1">
+                … {ocultos} documentos procesados anteriores ocultos (mostrando últimos {MAX_FILAS})
+              </p>
+            )}
+            <Tabla>
+              <TablaCabecera>
+                <tr>
+                  <TablaTh className="w-10">{t('colEstado')}</TablaTh>
+                  <TablaTh>{t('colDocumento')}</TablaTh>
+                  <TablaTh>{t('colResultado')}</TablaTh>
+                  <TablaTh className="w-20">{t('colTiempo')}</TablaTh>
+                </tr>
+              </TablaCabecera>
+              <TablaCuerpo>
+                {visibles.map((c) => (
+                  <TablaFila key={c.id_cola} className={c.estado_cola === 'COMPLETADO' ? 'bg-green-50/50' : c.estado_cola === 'ERROR' ? 'bg-red-50/50' : ''}>
+                    <TablaTd>{iconoEstado(c.estado_cola)}</TablaTd>
+                    <TablaTd>
+                      <div className="flex items-center gap-2">
+                        <FileText size={14} className="text-texto-muted shrink-0" />
+                        <span className="font-medium text-sm">{c.nombre_documento}</span>
+                      </div>
+                    </TablaTd>
+                    <TablaTd>
+                      <span className={`text-xs max-w-[400px] truncate block ${c.estado_cola === 'ERROR' ? 'text-error' : 'text-texto-muted'}`}>
+                        {c.resultado || '—'}
+                      </span>
+                    </TablaTd>
+                    <TablaTd className="text-xs text-texto-muted">{c.tiempo_ms ? `${c.tiempo_ms}ms` : '—'}</TablaTd>
+                  </TablaFila>
+                ))}
+              </TablaCuerpo>
+            </Tabla>
+          </>
+        )
+      })()}
 
       {/* Lista de documentos candidatos (visible antes de ejecución) */}
       {cola.length === 0 && (
