@@ -356,7 +356,10 @@ export default function PaginaProcesarDocumentos() {
   //     con /cola-estados-docs/ejecutar + polling. El navegador ya no corre
   //     el loop LLM.
   const ejecutar = async () => {
-    if (seleccionados.size === 0) return
+    // EXTRAER y RESTABLECER requieren selección explícita.
+    // Para procesos LLM (ANALIZAR, CHUNKEAR, VECTORIZAR) se puede ejecutar sin
+    // selección: el worker backend ya tiene ítems en la cola y los procesa todos.
+    if (seleccionados.size === 0 && (esExtraer || esRestablecer)) return
 
     setEjecutando(true)
     setProcesados(0)
@@ -547,13 +550,15 @@ export default function PaginaProcesarDocumentos() {
     }
 
     // 2. Cargar cola inicial para mostrar en UI.
-    // Filtrar por estado_destino del proceso. Si se encolaron nuevos, priorizar
-    // los seleccionados; si todos ya estaban en cola (encolados=0), mostrar
-    // todos los ítems activos del grupo para ese destino.
+    // Para procesos LLM mostramos TODOS los ítems activos del grupo para ese
+    // destino, independientemente de qué docs tenga el usuario seleccionados en
+    // la tabla. El worker backend procesa todos los PENDIENTE; limitar por
+    // seleccionados hacía que la UI quedara vacía cuando los ítems ya existían
+    // en la cola (encolados=0) y los docs seleccionados no coincidían con los
+    // de la cola (ej. docs filtrados por nombre vs cola completa).
     const pendientes = await colaEstadosDocsApi.listar()
     const misItems = pendientes.filter((p) =>
-      p.codigo_estado_doc_destino === estadoDestino &&
-      (seleccionados.has(p.codigo_documento) || seleccionados.size === 0),
+      p.codigo_estado_doc_destino === estadoDestino,
     )
     const colaInicial: ItemCola[] = misItems.map((p) => {
       const doc = documentos.find((d) => d.codigo_documento === p.codigo_documento)
@@ -598,11 +603,16 @@ export default function PaginaProcesarDocumentos() {
         try {
           const actual = await colaEstadosDocsApi.listar()
           const mapa = new Map(actual.filter((c) => idsSet.has(c.id_cola)).map((c) => [c.id_cola, c]))
+          // Contar activos fuera del setCola callback para evitar el problema de
+          // closures con React 18 batching (el callback se ejecuta en reconciliación,
+          // no de forma síncrona). activos = ítems aún PENDIENTE o EN_PROCESO.
           let activos = 0
+          for (const item of mapa.values()) {
+            if (item.estado_cola === 'PENDIENTE' || item.estado_cola === 'EN_PROCESO') activos++
+          }
           setCola((prev) => prev.map((c) => {
             const nuevo = mapa.get(c.id_cola)
             if (!nuevo) return c
-            if (nuevo.estado_cola === 'PENDIENTE' || nuevo.estado_cola === 'EN_PROCESO') activos++
             let tiempoMs: number | undefined = c.tiempo_ms
             if (nuevo.fecha_inicio && nuevo.fecha_fin) {
               const t0 = new Date(nuevo.fecha_inicio).getTime()
@@ -779,7 +789,7 @@ export default function PaginaProcesarDocumentos() {
                 {t('xDeYSeleccionados', { x: seleccionados.size, y: documentos.length })}{archivosEnDir && ` ${t('filtradoPorDirectorio')}`}
               </span>
               <Boton variante="primario" onClick={ejecutar}
-                disabled={ejecutando || seleccionados.size === 0 || !procesoSel}>
+                disabled={ejecutando || !procesoSel || ((esExtraer || esRestablecer) && seleccionados.size === 0)}>
                 {ejecutando ? <Loader2 size={16} className="animate-spin" /> : <Play size={16} />}
                 {ejecutando ? t('ejecutando') : t('ejecutar')}
               </Boton>
