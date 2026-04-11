@@ -46,6 +46,7 @@ export interface UsuarioContexto {
   codigo_usuario: string   // email
   nombre: string
   alias?: string | null
+  locale?: string          // Locale preferido (es, en, fr-CA, etc.)
   activo: boolean
   grupo_activo: string
   nombre_grupo?: string
@@ -108,6 +109,7 @@ export interface Usuario {
   codigo_usuario: string   // email
   nombre: string
   alias?: string
+  locale?: string          // Locale preferido (es, en, fr-CA, etc.)
   telefono?: string
   fono_verificado?: boolean
   descripcion?: string

@@ -2,14 +2,24 @@
 
 import { useState } from 'react'
 import Image from 'next/image'
-import { Mail, Lock, Eye, EyeOff, ArrowLeft } from 'lucide-react'
+import { Mail, Lock, Eye, EyeOff, ArrowLeft, Globe } from 'lucide-react'
 import { Boton } from '@/components/ui/boton'
 import { Input } from '@/components/ui/input'
 import { useAuth } from '@/context/AuthContext'
 import { tema } from '@/config/tema.config'
 import api from '@/lib/api'
+import { useTranslations } from 'next-intl'
+import { locales, type Locale } from '@/i18n/config'
+
+const LOCALE_LABELS: Record<string, string> = { es: 'ES', en: 'EN' }
+
+function cambiarLocale(nuevoLocale: Locale) {
+  document.cookie = `NEXT_LOCALE=${nuevoLocale};path=/;max-age=31536000`
+  window.location.reload()
+}
 
 export default function PaginaLogin() {
+  const t = useTranslations('login')
   const { login, loginConGoogle, cargando, error } = useAuth()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -94,7 +104,7 @@ export default function PaginaLogin() {
             }}
           />
           <p className="text-sm leading-relaxed text-gray-500">
-            Aplicaciones de RAG y mucho más
+            {t('tagline')}
           </p>
         </div>
       </div>
@@ -130,16 +140,16 @@ export default function PaginaLogin() {
                   className="flex items-center gap-1 text-sm text-primario hover:text-primario-hover transition-colors mb-4"
                 >
                   <ArrowLeft size={14} />
-                  Volver al login
+                  {t('volverLogin')}
                 </button>
-                <h1 className="text-2xl font-bold text-texto mb-1">Recuperar contraseña</h1>
+                <h1 className="text-2xl font-bold text-texto mb-1">{t('recuperarTitulo')}</h1>
                 <p className="text-sm text-texto-muted mb-8">
-                  Ingresa tu correo y te enviaremos un enlace para restablecer tu contraseña
+                  {t('recuperarSubtitulo')}
                 </p>
 
                 <form onSubmit={handleRecuperarClave} className="flex flex-col gap-4">
                   <Input
-                    etiqueta="Correo electrónico"
+                    etiqueta={t('email')}
                     type="email"
                     id="emailRecuperacion"
                     value={emailRecuperacion}
@@ -169,15 +179,15 @@ export default function PaginaLogin() {
                     cargando={enviandoRecuperacion}
                     disabled={enviandoRecuperacion}
                   >
-                    Enviar enlace de recuperación
+                    {t('enviarEnlace')}
                   </Boton>
                 </form>
               </>
             ) : (
               <>
-                <h1 className="text-2xl font-bold text-texto mb-1">Iniciar sesión</h1>
+                <h1 className="text-2xl font-bold text-texto mb-1">{t('titulo')}</h1>
                 <p className="text-sm text-texto-muted mb-8">
-                  Accede con tu cuenta para continuar
+                  {t('subtitulo')}
                 </p>
 
                 {/* Botón Google */}
@@ -194,19 +204,19 @@ export default function PaginaLogin() {
                     <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
                     <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
                   </svg>
-                  Continuar con Google
+                  {t('google')}
                 </Boton>
 
                 <div className="relative flex items-center gap-3 my-5">
                   <div className="flex-1 h-px bg-borde" />
-                  <span className="text-xs text-texto-muted">o ingresa con tu correo</span>
+                  <span className="text-xs text-texto-muted">{t('separador')}</span>
                   <div className="flex-1 h-px bg-borde" />
                 </div>
 
                 {/* Formulario */}
                 <form onSubmit={handleSubmit} className="flex flex-col gap-4">
                   <Input
-                    etiqueta="Correo electrónico"
+                    etiqueta={t('email')}
                     type="email"
                     id="email"
                     value={email}
@@ -220,7 +230,7 @@ export default function PaginaLogin() {
                   <div className="flex flex-col gap-1.5">
                     <div className="relative">
                       <Input
-                        etiqueta="Contraseña"
+                        etiqueta={t('password')}
                         type={verPassword ? 'text' : 'password'}
                         id="password"
                         value={password}
@@ -255,7 +265,7 @@ export default function PaginaLogin() {
                     cargando={cargando}
                     disabled={cargando}
                   >
-                    Iniciar sesión
+                    {t('entrar')}
                   </Boton>
                 </form>
 
@@ -269,15 +279,35 @@ export default function PaginaLogin() {
                   }}
                   className="text-sm text-primario hover:text-primario-hover transition-colors w-full text-right mt-2"
                 >
-                  ¿Olvidaste tu contraseña?
+                  {t('olvidoPassword')}
                 </button>
               </>
             )}
           </div>
 
-          <p className="text-center text-xs text-texto-muted mt-6">
-            {tema.app.nombre} v{tema.app.version}
-          </p>
+          <div className="flex items-center justify-between mt-6">
+            <p className="text-xs text-texto-muted">
+              {tema.app.nombre} v{tema.app.version}
+            </p>
+            <div className="flex items-center gap-1">
+              <Globe size={12} className="text-texto-muted" />
+              {locales.map((loc) => (
+                <button
+                  key={loc}
+                  type="button"
+                  onClick={() => cambiarLocale(loc)}
+                  className={`text-xs px-1.5 py-0.5 rounded transition-colors ${
+                    (typeof document !== 'undefined' && document.cookie.includes(`NEXT_LOCALE=${loc}`)) ||
+                    (typeof document !== 'undefined' && !document.cookie.includes('NEXT_LOCALE=') && loc === 'es')
+                      ? 'bg-primario text-primario-texto font-medium'
+                      : 'text-texto-muted hover:text-texto'
+                  }`}
+                >
+                  {LOCALE_LABELS[loc] || loc.toUpperCase()}
+                </button>
+              ))}
+            </div>
+          </div>
         </div>
       </div>
     </div>

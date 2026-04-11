@@ -112,6 +112,11 @@ api.interceptors.request.use(async (config) => {
   if (token) config.headers.Authorization = `Bearer ${token}`
   const funcion = resolverFuncion()
   if (funcion) config.headers['X-Codigo-Funcion'] = funcion
+  // Enviar locale para i18n de mensajes del backend
+  if (typeof window !== 'undefined') {
+    const locale = document.cookie.match(/NEXT_LOCALE=([^;]+)/)?.[1] || 'es'
+    config.headers['Accept-Language'] = locale
+  }
   // Enviar overrides de sesión como headers
   if (typeof window !== 'undefined') {
     const og = localStorage.getItem(OVERRIDE_KEYS.grupo)

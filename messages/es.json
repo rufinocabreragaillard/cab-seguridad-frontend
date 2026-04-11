@@ -1,0 +1,35 @@
+{
+  "common": {
+    "guardar": "Guardar",
+    "cancelar": "Cancelar",
+    "eliminar": "Eliminar",
+    "editar": "Editar",
+    "crear": "Crear",
+    "buscar": "Buscar...",
+    "cargando": "Cargando...",
+    "sinResultados": "Sin resultados",
+    "confirmarEliminar": "\u00bfEliminar {nombre}?",
+    "error": "Error",
+    "exito": "\u00c9xito",
+    "cerrar": "Cerrar",
+    "si": "S\u00ed",
+    "no": "No",
+    "volver": "Volver"
+  },
+  "login": {
+    "titulo": "Iniciar sesi\u00f3n",
+    "subtitulo": "Accede con tu cuenta para continuar",
+    "email": "Correo electr\u00f3nico",
+    "password": "Contrase\u00f1a",
+    "entrar": "Iniciar sesi\u00f3n",
+    "google": "Continuar con Google",
+    "separador": "o ingresa con tu correo",
+    "olvidoPassword": "\u00bfOlvidaste tu contrase\u00f1a?",
+    "recuperarTitulo": "Recuperar contrase\u00f1a",
+    "recuperarSubtitulo": "Ingresa tu correo y te enviaremos un enlace para restablecer tu contrase\u00f1a.",
+    "enviarEnlace": "Enviar enlace de recuperaci\u00f3n",
+    "volverLogin": "Volver al login",
+    "tagline": "Aplicaciones de RAG y mucho m\u00e1s",
+    "iniciando": "Iniciando sesi\u00f3n\u2026"
+  }
+}

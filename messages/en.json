@@ -1,0 +1,35 @@
+{
+  "common": {
+    "guardar": "Save",
+    "cancelar": "Cancel",
+    "eliminar": "Delete",
+    "editar": "Edit",
+    "crear": "Create",
+    "buscar": "Search...",
+    "cargando": "Loading...",
+    "sinResultados": "No results",
+    "confirmarEliminar": "Delete {nombre}?",
+    "error": "Error",
+    "exito": "Success",
+    "cerrar": "Close",
+    "si": "Yes",
+    "no": "No",
+    "volver": "Back"
+  },
+  "login": {
+    "titulo": "Sign in",
+    "subtitulo": "Sign in with your account to continue",
+    "email": "Email",
+    "password": "Password",
+    "entrar": "Sign in",
+    "google": "Continue with Google",
+    "separador": "or sign in with your email",
+    "olvidoPassword": "Forgot your password?",
+    "recuperarTitulo": "Reset password",
+    "recuperarSubtitulo": "Enter your email and we'll send you a reset link.",
+    "enviarEnlace": "Send reset link",
+    "volverLogin": "Back to login",
+    "tagline": "RAG applications and much more",
+    "iniciando": "Signing in\u2026"
+  }
+}
