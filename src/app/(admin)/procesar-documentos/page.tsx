@@ -508,9 +508,20 @@ export default function PaginaProcesarDocumentos() {
       }
 
       setEjecutando(false)
-      // Solo recargar si el proceso terminó normalmente; si se abortó, dejar
-      // la lista como está para que el usuario pueda relanzar con Ejecutar.
-      if (!abortRef.current) cargarDocumentos()
+      // Solo recargar si el proceso terminó normalmente Y sin errores.
+      // Si hubo errores o se abortó, dejar la cola visible para que el usuario
+      // pueda ver qué falló antes de volver a intentar.
+      if (!abortRef.current) {
+        // Leer estado final de la cola para decidir si recargar
+        // Usamos un callback de setState para acceder al valor más reciente
+        setCola((colaFinal) => {
+          const hayErrores = colaFinal.some((c) => c.estado_cola === 'ERROR')
+          if (!hayErrores) {
+            cargarDocumentos()
+          }
+          return colaFinal
+        })
+      }
       return
     }
 
