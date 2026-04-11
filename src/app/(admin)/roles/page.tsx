@@ -234,10 +234,28 @@ export default function PaginaRoles() {
     return a.nombre.localeCompare(b.nombre)
   }
 
-  // Listas filtradas, ordenadas por aplicación origen → nombre
+  // ── Reordenar roles ───────────────────────────────────────────────────────
+  const moverRol = async (index: number, direccion: 'arriba' | 'abajo') => {
+    const lista = [...roles].sort((a, b) => (a.orden ?? 0) - (b.orden ?? 0))
+    const swap = direccion === 'arriba' ? index - 1 : index + 1
+    if (swap < 0 || swap >= lista.length) return
+    const ordenA = lista[index].orden ?? 0
+    const ordenB = lista[swap].orden ?? 0
+    lista[index] = { ...lista[index], orden: ordenB }
+    lista[swap] = { ...lista[swap], orden: ordenA }
+    ;[lista[index], lista[swap]] = [lista[swap], lista[index]]
+    setRoles(lista)
+    try {
+      await rolesApi.reordenar(lista.map((r) => ({ id_rol: r.id_rol, orden: r.orden ?? 0 })))
+    } catch {
+      cargar()
+    }
+  }
+
+  // Listas filtradas: por orden cuando no hay búsqueda, por app+nombre cuando hay búsqueda
   const rolesFiltrados = roles
     .filter((r) => r.nombre.toLowerCase().includes(busquedaRoles.toLowerCase()) || r.codigo_rol.toLowerCase().includes(busquedaRoles.toLowerCase()) || (r.alias_de_rol || '').toLowerCase().includes(busquedaRoles.toLowerCase()))
-    .sort(compararPorAppYNombre)
+    .sort(busquedaRoles ? compararPorAppYNombre : (a, b) => (a.orden ?? 0) - (b.orden ?? 0))
 
   const funcionesFiltradas = funciones
     .filter((f) => f.nombre.toLowerCase().includes(busquedaFunciones.toLowerCase()) || f.codigo_funcion.toLowerCase().includes(busquedaFunciones.toLowerCase()) || (f.alias_de_funcion || '').toLowerCase().includes(busquedaFunciones.toLowerCase()))
@@ -409,6 +427,7 @@ export default function PaginaRoles() {
           <Tabla>
             <TablaCabecera>
               <tr>
+                <TablaTh className="w-16">Orden</TablaTh>
                 <TablaTh>App origen</TablaTh>
                 <TablaTh>Tipo</TablaTh>
                 <TablaTh>Alias</TablaTh>
@@ -420,11 +439,20 @@ export default function PaginaRoles() {
             </TablaCabecera>
             <TablaCuerpo>
               {cargando ? (
-                <TablaFila><TablaTd className="py-8 text-center text-texto-muted" colSpan={8 as never}>Cargando...</TablaTd></TablaFila>
+                <TablaFila><TablaTd className="py-8 text-center text-texto-muted" colSpan={9 as never}>Cargando...</TablaTd></TablaFila>
               ) : rolesFiltrados.length === 0 ? (
-                <TablaFila><TablaTd className="py-8 text-center text-texto-muted" colSpan={8 as never}>No se encontraron roles</TablaTd></TablaFila>
-              ) : rolesFiltrados.map((r) => (
+                <TablaFila><TablaTd className="py-8 text-center text-texto-muted" colSpan={9 as never}>No se encontraron roles</TablaTd></TablaFila>
+              ) : rolesFiltrados.map((r, idx) => (
                 <TablaFila key={r.id_rol}>
+                  <TablaTd>
+                    <div className="flex items-center gap-1">
+                      <div className="flex flex-col">
+                        <button onClick={() => moverRol(idx, 'arriba')} disabled={idx === 0 || !!busquedaRoles} className="p-0.5 rounded hover:bg-primario-muy-claro text-texto-muted hover:text-primario transition-colors disabled:opacity-30 disabled:cursor-not-allowed" title="Subir"><ChevronUp size={14} /></button>
+                        <button onClick={() => moverRol(idx, 'abajo')} disabled={idx === rolesFiltrados.length - 1 || !!busquedaRoles} className="p-0.5 rounded hover:bg-primario-muy-claro text-texto-muted hover:text-primario transition-colors disabled:opacity-30 disabled:cursor-not-allowed" title="Bajar"><ChevronDown size={14} /></button>
+                      </div>
+                      <span className="text-xs text-texto-muted w-4 text-center">{r.orden}</span>
+                    </div>
+                  </TablaTd>
                   <TablaTd className="text-xs text-texto-muted">{nombreApp(r.codigo_aplicacion_origen) || '—'}</TablaTd>
                   <TablaTd>{r.tipo === 'RESTRINGIDO' ? <Insignia variante="error">Restringido</Insignia> : <Insignia variante="exito">Normal</Insignia>}</TablaTd>
                   <TablaTd className="text-sm">{r.alias_de_rol || '—'}</TablaTd>
