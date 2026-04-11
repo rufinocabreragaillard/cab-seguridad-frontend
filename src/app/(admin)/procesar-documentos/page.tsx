@@ -17,6 +17,7 @@ import { extraerTextoDeArchivo, abrirArchivoPorRuta } from '@/lib/extraer-texto'
 
 import { getDirectoryHandle as idbGetHandle, setDirectoryHandle as idbSetHandle, ensureReadPermission } from '@/lib/file-handle-store'
 import { TabPipelineTodo } from './_components/tab-pipeline-todo'
+import { useColaRealtime } from '@/hooks/useColaRealtime'
 
 const ESTADO_COLA_CONFIG: Record<string, { variante: 'exito' | 'error' | 'advertencia' | 'neutro'; icono: typeof Clock }> = {
   PENDIENTE: { variante: 'neutro', icono: Clock },
@@ -91,6 +92,19 @@ export default function PaginaProcesarDocumentos() {
   const [escaneandoDir, setEscaneandoDir] = useState(false)
   const [nivelesDirectorio, setNivelesDirectorio] = useState(5)
   const abortRef = useRef(false)
+  const resolveColaRef = useRef<(() => void) | null>(null)
+
+  // Realtime: notificación push cuando cambia la cola (reemplaza polling 3s)
+  const handleColaChange = useCallback(() => {
+    if (resolveColaRef.current) {
+      resolveColaRef.current()
+      resolveColaRef.current = null
+    }
+  }, [])
+  const { suscribir: suscribirCola, desuscribir: desuscribirCola } = useColaRealtime(
+    grupoActivo,
+    handleColaChange,
+  )
 
   // Tab Cola (datos persistidos)
   const [colaBackend, setColaBackend] = useState<ColaEstadoDoc[]>([])
@@ -525,12 +539,23 @@ export default function PaginaProcesarDocumentos() {
       return
     }
 
-    // 4. Polling: cada 3 seg refresca el estado. Cuando ninguno está
-    // PENDIENTE ni EN_PROCESO, termina.
+    // 4. Espera via Realtime (reemplaza polling 3s).
+    // Cuando llega una notificación, refresca el estado de la cola.
+    // Cuando ningún ítem está PENDIENTE o EN_PROCESO, termina.
     const idsSet = new Set(colaInicial.map((c) => c.id_cola))
+    const esperarCambio = () => new Promise<void>((resolve) => {
+      const timeoutId = setTimeout(() => {
+        resolveColaRef.current = null
+        resolve()
+      }, 30_000) // fallback si Realtime no llega en 30s
+      resolveColaRef.current = () => {
+        clearTimeout(timeoutId)
+        resolve()
+      }
+    })
     const poll = async () => {
       while (!abortRef.current) {
-        await new Promise((r) => setTimeout(r, 3000))
+        await esperarCambio()
         if (abortRef.current) break
         try {
           const actual = await colaEstadosDocsApi.listar()
@@ -540,7 +565,6 @@ export default function PaginaProcesarDocumentos() {
             const nuevo = mapa.get(c.id_cola)
             if (!nuevo) return c
             if (nuevo.estado_cola === 'PENDIENTE' || nuevo.estado_cola === 'EN_PROCESO') activos++
-            // Calcular tiempo_ms a partir de fechas si están disponibles
             let tiempoMs: number | undefined = c.tiempo_ms
             if (nuevo.fecha_inicio && nuevo.fecha_fin) {
               const t0 = new Date(nuevo.fecha_inicio).getTime()
@@ -557,20 +581,25 @@ export default function PaginaProcesarDocumentos() {
           setProcesados(colaInicial.length - activos)
           if (activos === 0) break
         } catch {
-          // Si el polling falla, seguimos intentando un par de veces más.
+          // Si falla, espera la próxima notificación Realtime
         }
       }
+      desuscribirCola()
       setEjecutando(false)
       if (!abortRef.current) cargarDocumentos()
     }
+    suscribirCola()
     poll()
   }
 
   const detener = () => {
-    // "Detener" ahora solo corta el polling y el loop client-side de EXTRAER.
-    // El worker backend sigue corriendo hasta terminar; el usuario puede
-    // cerrar la pestaña y ver el avance más tarde en la tab Cola.
+    // Corta el loop Realtime y el loop client-side de EXTRAER.
+    // El worker backend sigue corriendo; el usuario puede ver el avance en la tab Cola.
     abortRef.current = true
+    if (resolveColaRef.current) {
+      resolveColaRef.current()
+      resolveColaRef.current = null
+    }
   }
 
   const selectClass = 'w-full rounded-lg border border-borde bg-surface px-3 py-2 text-sm text-texto focus:outline-none focus:ring-2 focus:ring-primario'

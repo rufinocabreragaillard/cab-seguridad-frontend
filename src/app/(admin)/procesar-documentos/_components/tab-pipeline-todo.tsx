@@ -8,6 +8,7 @@ import { documentosApi, colaEstadosDocsApi, ubicacionesDocsApi } from '@/lib/api
 import { extraerTextoDeArchivo, abrirArchivoPorRuta } from '@/lib/extraer-texto'
 import { getDirectoryHandle, setDirectoryHandle, ensureReadPermission } from '@/lib/file-handle-store'
 import { useAuth } from '@/context/AuthContext'
+import { useColaRealtime } from '@/hooks/useColaRealtime'
 
 const PASOS = [
   { key: 'EXTRAER',    nombre: 'EXTRAER',    estadoOrigen: 'CARGADO',   estadoDestino: 'METADATA',    colorDisco: '#EF4444', clienteSide: true },
@@ -35,6 +36,23 @@ export function TabPipelineTodo() {
 
   const abortRef = useRef(false)
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null)
+
+  // Estado de la cola en tiempo real (usado por ejecutarPasoBackend)
+  const colaActualRef = useRef<Map<number, string>>(new Map()) // id_cola -> estado_cola
+  const resolveColaRef = useRef<(() => void) | null>(null)    // desbloquea la espera Realtime
+
+  const handleColaChange = useCallback(() => {
+    // Cuando llega cualquier cambio, desbloquear la espera activa (si existe)
+    if (resolveColaRef.current) {
+      resolveColaRef.current()
+      resolveColaRef.current = null
+    }
+  }, [])
+
+  const { suscribir: suscribirCola, desuscribir: desuscribirCola } = useColaRealtime(
+    grupoActivo,
+    handleColaChange,
+  )
 
   useEffect(() => {
     if (ejecutando && tiempoInicio) {
@@ -125,19 +143,50 @@ export function TabPipelineTodo() {
     const items = docs.map((d) => ({ codigo_documento: d.codigo_documento, codigo_estado_doc_destino: estadoDestino }))
     await colaEstadosDocsApi.inicializar(items)
     await colaEstadosDocsApi.ejecutar(estadoDestino)
+
     const idsSet = new Set(docs.map((d) => d.codigo_documento))
+
+    // Carga inicial del estado de la cola
+    const refrescarCola = async (): Promise<{ activos: number; completados: number }> => {
+      const cola = await colaEstadosDocsApi.listar()
+      const propios = cola.filter((c) => idsSet.has(c.codigo_documento) && c.codigo_estado_doc_destino === estadoDestino)
+      const activos = propios.filter((c) => c.estado_cola === 'PENDIENTE' || c.estado_cola === 'EN_PROCESO').length
+      const completados = propios.filter((c) => c.estado_cola === 'COMPLETADO').length
+      setPaso(key, { completados })
+      return { activos, completados }
+    }
+
+    // Esperar cambio via Realtime o fallback timeout de 30s
+    const esperarCambio = () => new Promise<void>((resolve) => {
+      const timeoutId = setTimeout(() => {
+        resolveColaRef.current = null
+        resolve()
+      }, 30_000) // fallback si Realtime no llega en 30s
+      resolveColaRef.current = () => {
+        clearTimeout(timeoutId)
+        resolve()
+      }
+    })
+
+    // Verificación inicial
+    try {
+      const { activos } = await refrescarCola()
+      if (activos === 0) {
+        setPaso(key, { completados: docs.length, estado: 'listo' })
+        return true
+      }
+    } catch { /* continuar */ }
+
+    // Loop Realtime: espera notificación → refresca → continúa si hay activos
     while (!abortRef.current) {
-      await new Promise((r) => setTimeout(r, 3000))
+      await esperarCambio()
       if (abortRef.current) return false
       try {
-        const cola = await colaEstadosDocsApi.listar()
-        const propios = cola.filter((c) => idsSet.has(c.codigo_documento) && c.codigo_estado_doc_destino === estadoDestino)
-        const activos = propios.filter((c) => c.estado_cola === 'PENDIENTE' || c.estado_cola === 'EN_PROCESO').length
-        const completados = propios.filter((c) => c.estado_cola === 'COMPLETADO').length
-        setPaso(key, { completados })
+        const { activos } = await refrescarCola()
         if (activos === 0) break
-      } catch { /* reintentar */ }
+      } catch { /* reintentar en próxima notificación */ }
     }
+
     if (abortRef.current) return false
     setPaso(key, { completados: docs.length, estado: 'listo' })
     return true
@@ -169,6 +218,8 @@ export function TabPipelineTodo() {
     setTiempoInicio(Date.now())
     setTiempoTranscurrido(0)
     setProgresos(progresosIniciales())
+    // Activar Realtime antes de disparar el worker
+    suscribirCola()
     try {
       for (const paso of PASOS) {
         if (abortRef.current) break
@@ -180,12 +231,20 @@ export function TabPipelineTodo() {
     } catch (e) {
       setMensajeError(e instanceof Error ? e.message : 'Error inesperado en el pipeline')
     } finally {
+      desuscribirCola()
       setEjecutando(false)
       await cargarConteos()
     }
   }
 
-  const detener = () => { abortRef.current = true }
+  const detener = () => {
+    abortRef.current = true
+    // Desbloquear cualquier espera Realtime pendiente
+    if (resolveColaRef.current) {
+      resolveColaRef.current()
+      resolveColaRef.current = null
+    }
+  }
 
   const formatTiempo = (seg: number) => {
     const m = Math.floor(seg / 60)
