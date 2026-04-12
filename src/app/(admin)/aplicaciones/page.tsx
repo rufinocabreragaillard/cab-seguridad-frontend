@@ -111,7 +111,10 @@ export default function PaginaAplicaciones() {
   }
 
   // ── Aplicacion: funciones ─────────────────────────────────────────────────
-  const funcionesDisponiblesApp = funciones.filter((f) => !funcionesApp.some((fa) => fa.codigo_funcion === f.codigo_funcion))
+  const funcionesDisponiblesApp = funciones.filter((f) =>
+    !funcionesApp.some((fa) => fa.codigo_funcion === f.codigo_funcion) &&
+    f.tipo === (appEditando?.tipo || 'NORMAL')
+  )
   const funcionesAppFiltradas = funcionesDisponiblesApp.filter((f) =>
     busquedaFuncionApp.length === 0 ||
     f.nombre.toLowerCase().includes(busquedaFuncionApp.toLowerCase()) ||
@@ -275,6 +278,7 @@ export default function PaginaAplicaciones() {
           </>)}
           {tabModalApp === 'funciones' && appEditando && (
             <div className="flex flex-col gap-4">
+              <p className="text-xs text-texto-muted">Solo se muestran funciones de tipo <span className="font-medium">{appEditando.tipo === 'RESTRINGIDA' ? 'RESTRINGIDA' : 'NORMAL'}</span> — las aplicaciones {appEditando.tipo === 'RESTRINGIDA' ? 'RESTRINGIDAS solo admiten funciones RESTRINGIDAS' : 'NORMALES solo admiten funciones NORMALES'}.</p>
               <div className="flex gap-2">
                 <div className="flex-1 relative" ref={dropdownFuncionAppRef}>
                   <div className="relative">
