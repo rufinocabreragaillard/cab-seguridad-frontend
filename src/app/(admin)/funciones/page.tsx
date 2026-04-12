@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState, useCallback } from 'react'
-import { Plus, Pencil, Trash2, X, Download, Search } from 'lucide-react'
+import { Plus, Pencil, Trash2, X, Download, Search, ArrowUp, ArrowDown } from 'lucide-react'
 import { Boton } from '@/components/ui/boton'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
@@ -108,22 +108,35 @@ export default function PaginaFunciones() {
     finally { setEliminando(false) }
   }
 
+  // ── Mover función (reordenar) ──────────────────────────────────────────────
+  const moverFuncionGlobal = async (index: number, direccion: 'arriba' | 'abajo') => {
+    const lista = [...funciones]
+    const swap = direccion === 'arriba' ? index - 1 : index + 1
+    if (swap < 0 || swap >= lista.length) return
+    const a = lista[index].orden ?? 0
+    const b = lista[swap].orden ?? 0
+    lista[index] = { ...lista[index], orden: b }
+    lista[swap] = { ...lista[swap], orden: a }
+    ;[lista[index], lista[swap]] = [lista[swap], lista[index]]
+    setFunciones(lista)
+    try {
+      await funcionesApi.reordenar(
+        lista.map((f) => ({ codigo_funcion: f.codigo_funcion, orden: f.orden ?? 0 })),
+      )
+    } catch {
+      cargar()
+    }
+  }
+
   // ── Listas derivadas ──────────────────────────────────────────────────────
   const appsDisponiblesFuncion = aplicaciones.filter((a) => !appsDeFuncion.some((af) => af.codigo_aplicacion === a.codigo_aplicacion))
   const mapaAppNombre = Object.fromEntries(aplicaciones.map((a) => [a.codigo_aplicacion, a.nombre]))
   const nombreApp = (codigo?: string | null) => (codigo ? (mapaAppNombre[codigo] || codigo) : '')
 
-  // Funciones: ordenar por (tipo NORMAL primero, nombre app origen, nombre funcion). Sin app al final.
-  const funcionesFiltradas = funciones.filter((f) => f.nombre.toLowerCase().includes(busqueda.toLowerCase()) || f.codigo_funcion.toLowerCase().includes(busqueda.toLowerCase()) || (f.alias_de_funcion || '').toLowerCase().includes(busqueda.toLowerCase())).sort((a, b) => {
-    const ta = (a.tipo || 'NORMAL') === 'RESTRINGIDA' ? 1 : 0
-    const tb = (b.tipo || 'NORMAL') === 'RESTRINGIDA' ? 1 : 0
-    if (ta !== tb) return ta - tb
-    const na = nombreApp(a.codigo_aplicacion_origen); const nb = nombreApp(b.codigo_aplicacion_origen)
-    const sa = na ? 0 : 1; const sb = nb ? 0 : 1
-    if (sa !== sb) return sa - sb
-    if (na !== nb) return na.localeCompare(nb)
-    return a.nombre.localeCompare(b.nombre)
-  })
+  // Funciones ya vienen ordenadas por `orden` del backend; solo filtrar por búsqueda
+  const funcionesFiltradas = busqueda
+    ? funciones.filter((f) => f.nombre.toLowerCase().includes(busqueda.toLowerCase()) || f.codigo_funcion.toLowerCase().includes(busqueda.toLowerCase()) || (f.alias_de_funcion || '').toLowerCase().includes(busqueda.toLowerCase()))
+    : funciones
 
   return (
     <div className="flex flex-col gap-6 max-w-6xl">
@@ -143,12 +156,32 @@ export default function PaginaFunciones() {
       </div>
 
       <Tabla>
-        <TablaCabecera><tr><TablaTh>App origen</TablaTh><TablaTh>Tipo</TablaTh><TablaTh>Alias</TablaTh><TablaTh>Nombre</TablaTh><TablaTh>Icono</TablaTh><TablaTh>URL</TablaTh><TablaTh>Codigo</TablaTh><TablaTh className="text-right">Acciones</TablaTh></tr></TablaCabecera>
+        <TablaCabecera><tr><TablaTh className="w-16">Orden</TablaTh><TablaTh>App origen</TablaTh><TablaTh>Tipo</TablaTh><TablaTh>Alias</TablaTh><TablaTh>Nombre</TablaTh><TablaTh>Icono</TablaTh><TablaTh>URL</TablaTh><TablaTh>Codigo</TablaTh><TablaTh className="text-right">Acciones</TablaTh></tr></TablaCabecera>
         <TablaCuerpo>
-          {cargando ? (<TablaFila><TablaTd className="py-8 text-center text-texto-muted" colSpan={8 as never}>Cargando...</TablaTd></TablaFila>
-          ) : funcionesFiltradas.length === 0 ? (<TablaFila><TablaTd className="py-8 text-center text-texto-muted" colSpan={8 as never}>No se encontraron funciones</TablaTd></TablaFila>
-          ) : funcionesFiltradas.map((f) => (
+          {cargando ? (<TablaFila><TablaTd className="py-8 text-center text-texto-muted" colSpan={9 as never}>Cargando...</TablaTd></TablaFila>
+          ) : funcionesFiltradas.length === 0 ? (<TablaFila><TablaTd className="py-8 text-center text-texto-muted" colSpan={9 as never}>No se encontraron funciones</TablaTd></TablaFila>
+          ) : funcionesFiltradas.map((f, idx) => (
             <TablaFila key={f.codigo_funcion}>
+              <TablaTd>
+                <div className="flex flex-col gap-0.5 items-center">
+                  <button
+                    type="button"
+                    onClick={() => moverFuncionGlobal(idx, 'arriba')}
+                    disabled={idx === 0 || !!busqueda}
+                    className="text-texto-muted hover:text-primario disabled:opacity-30"
+                  >
+                    <ArrowUp size={12} />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => moverFuncionGlobal(idx, 'abajo')}
+                    disabled={idx === funcionesFiltradas.length - 1 || !!busqueda}
+                    className="text-texto-muted hover:text-primario disabled:opacity-30"
+                  >
+                    <ArrowDown size={12} />
+                  </button>
+                </div>
+              </TablaTd>
               <TablaTd className="text-xs text-texto-muted">{nombreApp(f.codigo_aplicacion_origen) || '—'}</TablaTd>
               <TablaTd>{f.tipo === 'RESTRINGIDA' ? <Insignia variante="error">Restringida</Insignia> : <Insignia variante="exito">Normal</Insignia>}</TablaTd>
               <TablaTd className="text-sm">{f.alias_de_funcion || '—'}</TablaTd>

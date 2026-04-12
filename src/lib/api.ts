@@ -252,6 +252,8 @@ export const funcionesApi = {
     api.post(`/funciones/${id}/aplicaciones`, { codigo_aplicacion: codigoApp }),
   quitarAplicacion: (id: string, codigoApp: string) =>
     api.delete(`/funciones/${id}/aplicaciones/${codigoApp}`),
+  reordenar: (orden: { codigo_funcion: string; orden: number }[]) =>
+    api.put('/funciones/reordenar', orden),
 }
 
 // ─── Aplicaciones ─────────────────────────────────────────────────────────────

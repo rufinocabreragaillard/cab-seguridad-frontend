@@ -165,6 +165,7 @@ export interface Funcion {
   tipo?: 'NORMAL' | 'RESTRINGIDA'
   id_modelo?: number | null  // FK a registro_llm. NULL = sin LLM
   system_prompt?: string | null  // instrucciones extra al LLM
+  orden?: number
 }
 
 // ─── Chat con LLM ───────────────────────────────────────────────────────────

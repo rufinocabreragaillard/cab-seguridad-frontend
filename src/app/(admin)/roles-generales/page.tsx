@@ -159,25 +159,32 @@ function TabRolesGlobales() {
       f.codigo_funcion.toLowerCase().includes(busquedaFuncion.toLowerCase()),
   )
 
+  const moverRol = async (index: number, direccion: 'arriba' | 'abajo') => {
+    const lista = [...roles]
+    const swap = direccion === 'arriba' ? index - 1 : index + 1
+    if (swap < 0 || swap >= lista.length) return
+    const a = lista[index].orden
+    const b = lista[swap].orden
+    lista[index] = { ...lista[index], orden: b }
+    lista[swap] = { ...lista[swap], orden: a }
+    ;[lista[index], lista[swap]] = [lista[swap], lista[index]]
+    setRoles(lista)
+    try {
+      await rolesApi.reordenar(
+        lista.map((r) => ({ id_rol: r.id_rol, orden: r.orden })),
+      )
+    } catch {
+      cargar()
+    }
+  }
+
   const cargar = async () => {
     setCargando(true)
     try {
       const [data, apps] = await Promise.all([rolesApi.listarGlobales(), aplicacionesApi.listar()])
       setAplicaciones(apps)
-      // Orden por (nombre app origen, nombre rol). Sin app origen al final.
-      const mapaApp = Object.fromEntries(apps.map((a) => [a.codigo_aplicacion, a.nombre]))
-      // Orden: tipo (NORMAL primero), app origen, nombre
-      const ordenado = data.sort((a, b) => {
-        const ta = a.tipo === 'NORMAL' ? 0 : 1
-        const tb = b.tipo === 'NORMAL' ? 0 : 1
-        if (ta !== tb) return ta - tb
-        const na = a.codigo_aplicacion_origen ? (mapaApp[a.codigo_aplicacion_origen] || a.codigo_aplicacion_origen) : ''
-        const nb = b.codigo_aplicacion_origen ? (mapaApp[b.codigo_aplicacion_origen] || b.codigo_aplicacion_origen) : ''
-        const sa = na ? 0 : 1; const sb = nb ? 0 : 1
-        if (sa !== sb) return sa - sb
-        if (na !== nb) return na.localeCompare(nb, 'es')
-        return a.nombre.localeCompare(b.nombre, 'es')
-      })
+      // Ordenar por campo orden del backend
+      const ordenado = data.sort((a, b) => (a.orden ?? 0) - (b.orden ?? 0))
       setRoles(ordenado)
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Error al cargar roles generales')
@@ -289,6 +296,7 @@ function TabRolesGlobales() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-borde text-left text-xs uppercase text-texto-muted">
+                  <th className="py-2 pr-2 w-16">Orden</th>
                   <th className="py-2 pr-4">Tipo</th>
                   <th className="py-2 pr-4">App origen</th>
                   <th className="py-2 pr-4">Nombre</th>
@@ -299,12 +307,32 @@ function TabRolesGlobales() {
                 </tr>
               </thead>
               <tbody>
-                {roles.map((r) => {
+                {roles.map((r, idx) => {
                   const nombreAppOrigen = r.codigo_aplicacion_origen
                     ? (aplicaciones.find((a) => a.codigo_aplicacion === r.codigo_aplicacion_origen)?.nombre || r.codigo_aplicacion_origen)
                     : '—'
                   return (
                   <tr key={r.id_rol} className="border-b border-borde/50 hover:bg-surface-hover">
+                    <td className="py-2 pr-2">
+                      <div className="flex flex-col gap-0.5 items-center">
+                        <button
+                          type="button"
+                          onClick={() => moverRol(idx, 'arriba')}
+                          disabled={idx === 0}
+                          className="text-texto-muted hover:text-primario disabled:opacity-30"
+                        >
+                          <ArrowUp size={12} />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => moverRol(idx, 'abajo')}
+                          disabled={idx === roles.length - 1}
+                          className="text-texto-muted hover:text-primario disabled:opacity-30"
+                        >
+                          <ArrowDown size={12} />
+                        </button>
+                      </div>
+                    </td>
                     <td className="py-2 pr-4">
                       <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-medium ${
                         r.tipo === 'RESTRINGIDO'
