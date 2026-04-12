@@ -805,7 +805,7 @@ export default function PaginaProcesarDocumentos() {
   }
 
   return (
-    <div className="flex flex-col gap-6 max-w-6xl">
+    <div className="flex flex-col gap-6 w-full">
       <div>
         <h2 className="text-2xl font-bold text-texto">{t('titulo')}</h2>
         <p className="text-sm text-texto-muted mt-1">{t('subtitulo')}</p>
@@ -851,7 +851,7 @@ export default function PaginaProcesarDocumentos() {
       <Tarjeta>
         <TarjetaContenido>
           <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
-            <div className="flex flex-col gap-1.5">
+            <div className="flex flex-col gap-1.5 min-w-0">
               <label className="text-sm font-medium text-texto">{t('etiquetaProceso')}</label>
               <select value={procesoSel} onChange={(e) => setProcesoSel(e.target.value)} className={selectClass} disabled={ejecutando}>
                 <option value="">— Solo ver documentos —</option>
@@ -899,7 +899,7 @@ export default function PaginaProcesarDocumentos() {
               )}
             </div>
 
-            <div className="flex flex-col gap-1.5">
+            <div className="flex flex-col gap-1.5 min-w-0">
               <label className="text-sm font-medium text-texto">Estado (lista)</label>
               <select
                 value={estadoFiltro}
@@ -930,7 +930,7 @@ export default function PaginaProcesarDocumentos() {
               </select>
             </div>
 
-            <div className="flex flex-col gap-1.5">
+            <div className="flex flex-col gap-1.5 min-w-0">
               <label className="text-sm font-medium text-texto">{t('etiquetaAlcance')}</label>
               <select value={alcance} onChange={(e) => setAlcance(e.target.value as Alcance)} className={selectClass} disabled={ejecutando}>
                 <option value="pendientes">{t('todosPendientes')}</option>
@@ -939,7 +939,7 @@ export default function PaginaProcesarDocumentos() {
             </div>
 
             {alcance === 'ubicacion' ? (
-              <div className="flex flex-col gap-1.5">
+              <div className="flex flex-col gap-1.5 min-w-0">
                 <label className="text-sm font-medium text-texto">{t('etiquetaUbicacion')}</label>
                 <select value={ubicacionSel} onChange={(e) => setUbicacionSel(e.target.value)} className={selectClass} disabled={ejecutando}>
                   <option value="">{t('todas')}</option>
