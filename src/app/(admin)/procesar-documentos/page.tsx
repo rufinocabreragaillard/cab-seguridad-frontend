@@ -805,7 +805,7 @@ export default function PaginaProcesarDocumentos() {
   }
 
   return (
-    <div className="flex flex-col gap-6 w-full">
+    <div className="flex flex-col gap-6 w-full overflow-x-hidden">
       <div>
         <h2 className="text-2xl font-bold text-texto">{t('titulo')}</h2>
         <p className="text-sm text-texto-muted mt-1">{t('subtitulo')}</p>
@@ -1131,13 +1131,13 @@ export default function PaginaProcesarDocumentos() {
                     <input type="checkbox" checked={seleccionados.has(d.codigo_documento)}
                       onChange={() => toggleSeleccion(d.codigo_documento)} className="rounded border-borde" />
                   </TablaTd>
-                  <TablaTd>
-                    <div className="flex items-center gap-2">
+                  <TablaTd className="max-w-0 w-[40%]">
+                    <div className="flex items-center gap-2 min-w-0">
                       <FileText size={14} className="text-texto-muted shrink-0" />
-                      <span className="font-medium text-sm">{d.nombre_documento}</span>
+                      <span className="font-medium text-sm truncate" title={d.nombre_documento}>{d.nombre_documento}</span>
                     </div>
                   </TablaTd>
-                  <TablaTd className="text-xs text-texto-muted max-w-[250px] truncate">{d.ubicacion_documento || '—'}</TablaTd>
+                  <TablaTd className="text-xs text-texto-muted max-w-0 w-[30%] truncate" title={d.ubicacion_documento || ''}>{d.ubicacion_documento || '—'}</TablaTd>
                   <TablaTd>
                     <Insignia variante="advertencia">{d.codigo_estado_doc}</Insignia>
                   </TablaTd>
