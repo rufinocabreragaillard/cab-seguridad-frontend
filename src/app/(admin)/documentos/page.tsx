@@ -31,9 +31,14 @@ export default function PaginaDocumentos() {
   // ── State ─────────────────────────────────────────────────────────────────
   const [estados, setEstados] = useState<EstadoDoc[]>([])
   const [busqueda, setBusqueda] = useState('')
+  const [estadoFiltro, setEstadoFiltro] = useState('')
 
   // ── Paginación server-side ────────────────────────────────────────────────
-  const filtros = useMemo(() => ({ q: busqueda.trim() || undefined, activo: true }), [busqueda])
+  const filtros = useMemo(() => ({
+    q: busqueda.trim() || undefined,
+    activo: true,
+    codigo_estado_doc: estadoFiltro || undefined,
+  }), [busqueda, estadoFiltro])
   const fetcher = useCallback(
     (params: { page: number; limit: number; q?: string; activo?: boolean }) =>
       documentosApi.listarPaginado(params),
@@ -294,7 +299,7 @@ export default function PaginaDocumentos() {
       </div>
 
       {/* Toolbar */}
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-3 flex-wrap">
         <div className="max-w-sm flex-1">
           <Input
             placeholder={t('buscarPlaceholder')}
@@ -303,6 +308,18 @@ export default function PaginaDocumentos() {
             icono={<Search size={15} />}
           />
         </div>
+        <select
+          value={estadoFiltro}
+          onChange={(e) => setEstadoFiltro(e.target.value)}
+          className="text-sm border border-borde rounded-md px-3 py-2 bg-surface text-texto focus:outline-none focus:ring-2 focus:ring-primario"
+        >
+          <option value="">Todos los estados</option>
+          {estados.map((e) => (
+            <option key={e.codigo_estado_doc} value={e.codigo_estado_doc}>
+              {e.nombre_estado || e.codigo_estado_doc}
+            </option>
+          ))}
+        </select>
         <div className="flex gap-2 ml-auto">
           <Boton
             variante="contorno"
