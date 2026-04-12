@@ -903,7 +903,21 @@ export default function PaginaProcesarDocumentos() {
               <label className="text-sm font-medium text-texto">Estado (lista)</label>
               <select
                 value={estadoFiltro}
-                onChange={(e) => { setEstadoFiltro(e.target.value); setYaCargado(false) }}
+                onChange={(e) => {
+                  const nuevoEstado = e.target.value
+                  setEstadoFiltro(nuevoEstado)
+                  setYaCargado(false)
+                  // Auto-seleccionar proceso cuyo estado_origen coincida
+                  if (nuevoEstado && !procesoSel) {
+                    const TERMINALES = ['NO_ESCANEABLE', 'NO_ENCONTRADO']
+                    if (TERMINALES.includes(nuevoEstado)) {
+                      setProcesoSel(PROCESO_RESTABLECER)
+                    } else {
+                      const match = procesos.find((p) => p.pasos?.[0]?.estado_origen === nuevoEstado)
+                      if (match) setProcesoSel(match.codigo_proceso)
+                    }
+                  }
+                }}
                 className={selectClass}
                 disabled={ejecutando}
               >
