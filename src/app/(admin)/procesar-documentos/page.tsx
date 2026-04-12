@@ -10,10 +10,11 @@ import { Insignia } from '@/components/ui/insignia'
 import { Tarjeta, TarjetaContenido } from '@/components/ui/tarjeta'
 import { Tabla, TablaCabecera, TablaCuerpo, TablaFila, TablaTh, TablaTd } from '@/components/ui/tabla'
 import { ModalConfirmar } from '@/components/ui/modal-confirmar'
+import { Modal } from '@/components/ui/modal'
 import { documentosApi, ubicacionesDocsApi, colaEstadosDocsApi, estadosDocsApi, procesosApi, parametrosApi } from '@/lib/api'
 import type { Proceso as ProcesoCatalogo } from '@/lib/api'
 import { useAuth } from '@/context/AuthContext'
-import type { Documento, ColaEstadoDoc, EstadoDoc } from '@/lib/tipos'
+import type { Documento, ColaEstadoDoc, EstadoDoc, CategoriaConCaracteristicasDocs } from '@/lib/tipos'
 import { extraerTextoDeArchivo, abrirArchivoPorRuta, PdfProtegidoError, ArchivoNoEscaneable } from '@/lib/extraer-texto'
 
 import { getDirectoryHandle as idbGetHandle, setDirectoryHandle as idbSetHandle, ensureReadPermission } from '@/lib/file-handle-store'
@@ -29,6 +30,8 @@ const ESTADO_COLA_CONFIG: Record<string, { variante: 'exito' | 'error' | 'advert
 
 // Código especial fuera del catálogo: reset de docs en NO_ESCANEABLE/NO_ENCONTRADO.
 const PROCESO_RESTABLECER = '__RESTABLECER__'
+type TabDetalle = 'datos' | 'caracteristicas' | 'chunks'
+const ESTADOS_CON_CHUNKS = new Set(['CHUNKEADO', 'VECTORIZADO'])
 type Alcance = 'pendientes' | 'ubicacion'
 
 interface UbicacionOption {
@@ -134,6 +137,17 @@ export default function PaginaProcesarDocumentos() {
   // Tab principal: "Paso a Paso" (control granular) | "Todo" (pipeline completo)
   const [tabPrincipal, setTabPrincipal] = useState<'paso-a-paso' | 'todo'>('paso-a-paso')
 
+  // Modal detalle documento (inline, reemplaza navegación a /documentos)
+  const [docDetalle, setDocDetalle] = useState<Documento | null>(null)
+  const [tabDetalle, setTabDetalle] = useState<TabDetalle>('datos')
+  const [categoriasConCaract, setCategoriasConCaract] = useState<CategoriaConCaracteristicasDocs[]>([])
+  const [cargandoCaract, setCargandoCaract] = useState(false)
+  const [chunksData, setChunksData] = useState<Awaited<ReturnType<typeof documentosApi.listarChunks>> | null>(null)
+  const [cargandoChunks, setCargandoChunks] = useState(false)
+  const [busquedaChunk, setBusquedaChunk] = useState('')
+  const [busquedaChunkInput, setBusquedaChunkInput] = useState('')
+  const [paginaChunk, setPaginaChunk] = useState(1)
+
   const cargarCola = useCallback(async () => {
     setCargandoCola(true)
     try {
@@ -219,9 +233,8 @@ export default function PaginaProcesarDocumentos() {
           if (match) setProcesoSel(match.codigo_proceso)
           else if (procs.length > 0) setProcesoSel(procs[0].codigo_proceso)
         }
-      } else if (procs.length > 0 && !procesoSel) {
-        setProcesoSel(procs[0].codigo_proceso)
       }
+      // No default: el selector parte en blanco para usar la pantalla como visor
 
       setUbicaciones(
         (u as UbicacionOption[])
@@ -258,7 +271,8 @@ export default function PaginaProcesarDocumentos() {
 
   // Cargar documentos candidatos según el proceso seleccionado
   const cargarDocumentos = useCallback(async () => {
-    if (!procesoSel) return
+    // Requiere proceso seleccionado O filtro de estado manual
+    if (!procesoSel && !estadoFiltro) return
     setCargando(true)
     try {
       let todos: Documento[]
@@ -394,6 +408,61 @@ export default function PaginaProcesarDocumentos() {
       setProcesos((prev) => prev.map((p) => p.codigo_proceso === procesoSel ? { ...p, n_parallel: updated.n_parallel } : p))
     } finally {
       setGuardandoParalel(false)
+    }
+  }
+
+  // ── Modal detalle de documento ──────────────────────────────────────────
+  const cargarCaracteristicas = useCallback(async (idDocumento: number) => {
+    setCargandoCaract(true)
+    try {
+      const data = await documentosApi.listarCaracteristicas(idDocumento)
+      setCategoriasConCaract(data)
+    } finally {
+      setCargandoCaract(false)
+    }
+  }, [])
+
+  const cargarChunksDetalle = useCallback(async (idDocumento: number, q?: string, page = 1) => {
+    setCargandoChunks(true)
+    try {
+      const data = await documentosApi.listarChunks(idDocumento, { q: q || undefined, page, limit: 10 })
+      setChunksData(data)
+    } catch {
+      setChunksData(null)
+    } finally {
+      setCargandoChunks(false)
+    }
+  }, [])
+
+  const abrirDetalle = useCallback((d: Documento) => {
+    setDocDetalle(d)
+    setTabDetalle('datos')
+    setCategoriasConCaract([])
+    setChunksData(null)
+    setBusquedaChunk('')
+    setBusquedaChunkInput('')
+    setPaginaChunk(1)
+    cargarCaracteristicas(d.codigo_documento)
+  }, [cargarCaracteristicas])
+
+  const abrirDocumentoLocal = async (d: Documento) => {
+    if (!d.ubicacion_documento) return
+    const handle = await idbGetHandle()
+    if (!handle) {
+      alert('No hay carpeta raíz seleccionada. Selecciona el directorio raíz en esta pantalla primero.')
+      return
+    }
+    const ok = await ensureReadPermission(handle)
+    if (!ok) { alert('Permiso de lectura denegado.'); return }
+    try {
+      const fileHandle = await abrirArchivoPorRuta(handle, d.ubicacion_documento)
+      if (!fileHandle) { alert(`No se encontró: ${d.ubicacion_documento}`); return }
+      const file = await fileHandle.getFile()
+      const url = URL.createObjectURL(file)
+      window.open(url, '_blank', 'noopener,noreferrer')
+      setTimeout(() => URL.revokeObjectURL(url), 60_000)
+    } catch (e) {
+      alert(`Error al abrir: ${e instanceof Error ? e.message : e}`)
     }
   }
 
@@ -765,6 +834,7 @@ export default function PaginaProcesarDocumentos() {
             <div className="flex flex-col gap-1.5">
               <label className="text-sm font-medium text-texto">{t('etiquetaProceso')}</label>
               <select value={procesoSel} onChange={(e) => setProcesoSel(e.target.value)} className={selectClass} disabled={ejecutando}>
+                <option value="">— Solo ver documentos —</option>
                 {procesos.map((p) => {
                   const paso = p.pasos?.[0]
                   const flecha = paso ? `${paso.estado_origen || '—'} → ${paso.estado_destino}` : ''
@@ -1045,12 +1115,12 @@ export default function PaginaProcesarDocumentos() {
                           <FileText size={15} />
                         </button>
                       )}
-                      <a href={`/documentos?q=${encodeURIComponent(d.nombre_documento)}`}
-                        target="_blank"
+                      <button
+                        onClick={() => abrirDetalle(d)}
                         className="p-1.5 rounded-lg hover:bg-primario-muy-claro text-texto-muted hover:text-primario transition-colors"
-                        title="Ver en Documentos">
+                        title="Ver detalle">
                         <Eye size={15} />
-                      </a>
+                      </button>
                     </div>
                   </TablaTd>
                 </TablaFila>
@@ -1167,6 +1237,213 @@ export default function PaginaProcesarDocumentos() {
         textoConfirmar={tc('eliminar')}
         cargando={eliminando}
       />
+
+      {/* ── Modal detalle de documento ─────────────────────────────────── */}
+      <Modal
+        abierto={!!docDetalle}
+        alCerrar={() => setDocDetalle(null)}
+        titulo={docDetalle ? docDetalle.nombre_documento : ''}
+      >
+        {docDetalle && (
+          <div className="flex flex-col gap-4 w-[900px] max-w-full">
+            {/* Tabs */}
+            <div className="flex gap-1 border-b border-borde -mt-2">
+              {(['datos', 'caracteristicas'] as TabDetalle[]).map((tab) => (
+                <button key={tab} onClick={() => setTabDetalle(tab)}
+                  className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${tabDetalle === tab ? 'border-primario text-primario' : 'border-transparent text-texto-muted hover:text-texto'}`}>
+                  {tab === 'datos' ? 'Datos' : 'Características'}
+                </button>
+              ))}
+              {ESTADOS_CON_CHUNKS.has(docDetalle.codigo_estado_doc || '') && (
+                <button
+                  onClick={() => {
+                    setTabDetalle('chunks')
+                    if (!chunksData) cargarChunksDetalle(docDetalle.codigo_documento)
+                  }}
+                  className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${tabDetalle === 'chunks' ? 'border-primario text-primario' : 'border-transparent text-texto-muted hover:text-texto'}`}>
+                  Chunks {chunksData ? `(${chunksData.stats.total_chunks})` : ''}
+                </button>
+              )}
+            </div>
+
+            {/* Tab Datos — solo lectura */}
+            {tabDetalle === 'datos' && (
+              <div className="flex flex-col gap-3">
+                <div className="grid grid-cols-12 gap-x-4 gap-y-3">
+                  <div className="col-span-12 md:col-span-5">
+                    <p className="text-xs text-texto-muted mb-1">Nombre</p>
+                    <p className="text-sm font-medium text-texto">{docDetalle.nombre_documento}</p>
+                  </div>
+                  <div className="col-span-12 md:col-span-7">
+                    <p className="text-xs text-texto-muted mb-1">Ubicación</p>
+                    <div className="flex items-center gap-2">
+                      <p className="text-sm text-texto break-all">{docDetalle.ubicacion_documento || '—'}</p>
+                      {docDetalle.ubicacion_documento && /^https?:\/\//i.test(docDetalle.ubicacion_documento) && (
+                        <a href={docDetalle.ubicacion_documento} target="_blank" rel="noopener noreferrer"
+                          className="shrink-0 p-1 rounded hover:bg-primario-muy-claro text-texto-muted hover:text-primario" title="Abrir URL">
+                          <ExternalLink size={14} />
+                        </a>
+                      )}
+                      {docDetalle.ubicacion_documento && !/^https?:\/\//i.test(docDetalle.ubicacion_documento) && (
+                        <button onClick={() => abrirDocumentoLocal(docDetalle)}
+                          className="shrink-0 p-1 rounded hover:bg-primario-muy-claro text-texto-muted hover:text-primario" title="Abrir archivo local">
+                          <FileText size={14} />
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                  <div className="col-span-6 md:col-span-3">
+                    <p className="text-xs text-texto-muted mb-1">Estado</p>
+                    {docDetalle.codigo_estado_doc
+                      ? <Insignia variante="primario">{docDetalle.codigo_estado_doc}</Insignia>
+                      : <span className="text-sm text-texto-muted">—</span>}
+                  </div>
+                  <div className="col-span-6 md:col-span-3">
+                    <p className="text-xs text-texto-muted mb-1">Tamaño</p>
+                    <p className="text-sm text-texto">{docDetalle.tamano_kb != null ? `${docDetalle.tamano_kb} KB` : '—'}</p>
+                  </div>
+                  <div className="col-span-6 md:col-span-6">
+                    <p className="text-xs text-texto-muted mb-1">Modificado</p>
+                    <p className="text-sm text-texto">{docDetalle.fecha_modificacion ? new Date(docDetalle.fecha_modificacion).toLocaleString('es-CL') : '—'}</p>
+                  </div>
+                  {docDetalle.detalle_estado && (
+                    <div className="col-span-12">
+                      <p className="text-xs text-texto-muted mb-1">Detalle de estado</p>
+                      <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900 whitespace-pre-wrap">{docDetalle.detalle_estado}</div>
+                    </div>
+                  )}
+                  {docDetalle.resumen_documento && (
+                    <div className="col-span-12">
+                      <p className="text-xs text-texto-muted mb-1">Resumen</p>
+                      <div className="rounded-lg border border-borde bg-fondo px-3 py-2 text-sm text-texto whitespace-pre-wrap max-h-48 overflow-y-auto">{docDetalle.resumen_documento}</div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Tab Características */}
+            {tabDetalle === 'caracteristicas' && (
+              <div className="flex flex-col gap-3">
+                {cargandoCaract ? (
+                  <p className="text-sm text-texto-muted py-4 text-center">Cargando…</p>
+                ) : categoriasConCaract.filter((cc) => cc.caracteristicas.length > 0).length === 0 ? (
+                  <p className="text-sm text-texto-muted py-4 text-center">Sin características registradas.</p>
+                ) : (
+                  categoriasConCaract.filter((cc) => cc.caracteristicas.length > 0).map((cc) => {
+                    const cat = cc.categoria
+                    return (
+                      <div key={cat.codigo_cat_docs}>
+                        <div className="text-xs font-semibold text-texto-muted uppercase mb-1">{cat.nombre_cat_docs}</div>
+                        <div className="flex flex-col gap-1">
+                          {cc.caracteristicas.map((c) => {
+                            const tipoNombre = c.tipos_caract_docs?.nombre_tipo_docs || c.codigo_tipo_docs
+                            const valor = c.valor_texto_docs || c.valor_numerico_docs || c.valor_fecha_docs
+                            if (!valor) return null
+                            return (
+                              <div key={c.id_caracteristica_docs} className="text-sm flex items-start gap-2">
+                                <span className="text-texto-muted shrink-0">{tipoNombre}:</span>
+                                <span className="text-texto">{valor}</span>
+                              </div>
+                            )
+                          })}
+                        </div>
+                      </div>
+                    )
+                  })
+                )}
+              </div>
+            )}
+
+            {/* Tab Chunks */}
+            {tabDetalle === 'chunks' && (
+              <div className="flex flex-col gap-3">
+                <div className="flex gap-2">
+                  <div className="relative flex-1">
+                    <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-texto-muted" />
+                    <input
+                      className="w-full rounded-lg border border-borde bg-fondo-tarjeta pl-8 pr-3 py-2 text-sm text-texto placeholder:text-texto-muted focus:border-primario focus:ring-1 focus:ring-primario outline-none"
+                      placeholder="Buscar en chunks…"
+                      value={busquedaChunkInput}
+                      onChange={(e) => setBusquedaChunkInput(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          setBusquedaChunk(busquedaChunkInput)
+                          setPaginaChunk(1)
+                          cargarChunksDetalle(docDetalle.codigo_documento, busquedaChunkInput, 1)
+                        }
+                      }}
+                    />
+                  </div>
+                  <Boton variante="contorno" onClick={() => {
+                    setBusquedaChunk(busquedaChunkInput)
+                    setPaginaChunk(1)
+                    cargarChunksDetalle(docDetalle.codigo_documento, busquedaChunkInput, 1)
+                  }}>Buscar</Boton>
+                  {busquedaChunk && (
+                    <Boton variante="contorno" onClick={() => {
+                      setBusquedaChunk(''); setBusquedaChunkInput(''); setPaginaChunk(1)
+                      cargarChunksDetalle(docDetalle.codigo_documento, '', 1)
+                    }}>Limpiar</Boton>
+                  )}
+                </div>
+                {chunksData && (
+                  <div className="flex gap-4 text-xs text-texto-muted bg-fondo px-3 py-2 rounded-lg">
+                    <span><b className="text-texto">{chunksData.stats.total_chunks}</b> chunks</span>
+                    <span><b className="text-texto">{chunksData.stats.avg_chars.toLocaleString()}</b> chars promedio</span>
+                    <span><b className="text-texto">{(chunksData.stats.n_chars_total / 1000).toFixed(1)}k</b> chars total</span>
+                    {chunksData.stats.vectorizado
+                      ? <span className="text-green-600 font-medium">Vectorizado</span>
+                      : <span className="text-amber-600">Sin vectorizar</span>}
+                  </div>
+                )}
+                {cargandoChunks ? (
+                  <p className="text-sm text-texto-muted py-4 text-center">Cargando chunks…</p>
+                ) : !chunksData ? (
+                  <p className="text-sm text-texto-muted py-4 text-center">Sin datos de chunks.</p>
+                ) : chunksData.chunks.length === 0 ? (
+                  <p className="text-sm text-texto-muted py-4 text-center">Sin chunks{busquedaChunk ? ` para "${busquedaChunk}"` : ' generados'}.</p>
+                ) : (
+                  <div className="flex flex-col gap-2 max-h-[380px] overflow-y-auto pr-1">
+                    {chunksData.chunks.map((chunk) => {
+                      const texto = chunk.texto
+                      const mi = chunk.match_inicio
+                      const mf = chunk.match_fin
+                      const tieneMatch = mi >= 0 && mf > mi
+                      return (
+                        <div key={chunk.id_chunk} className="rounded-lg border border-borde bg-fondo px-3 py-2">
+                          <div className="flex items-center justify-between mb-1">
+                            <span className="text-xs font-semibold text-texto-muted">Chunk {chunk.nro_chunk}</span>
+                            <span className="text-xs text-texto-muted">{chunk.n_chars.toLocaleString()} chars</span>
+                          </div>
+                          <p className="text-xs text-texto leading-relaxed whitespace-pre-wrap break-words">
+                            {tieneMatch ? (
+                              <>
+                                {texto.slice(0, mi)}
+                                <mark className="bg-yellow-200 text-yellow-900 rounded px-0.5">{texto.slice(mi, mf)}</mark>
+                                {texto.slice(mf)}
+                              </>
+                            ) : (texto.length > 400 ? texto.slice(0, 400) + '…' : texto)}
+                          </p>
+                        </div>
+                      )
+                    })}
+                  </div>
+                )}
+                {chunksData && chunksData.busqueda.total_filtrado > 10 && (
+                  <div className="flex items-center justify-between text-xs text-texto-muted pt-1">
+                    <span>{((paginaChunk - 1) * 10) + 1}–{Math.min(paginaChunk * 10, chunksData.busqueda.total_filtrado)} de {chunksData.busqueda.total_filtrado}</span>
+                    <div className="flex gap-1">
+                      <Boton variante="contorno" disabled={paginaChunk <= 1} onClick={() => { const p = paginaChunk - 1; setPaginaChunk(p); cargarChunksDetalle(docDetalle.codigo_documento, busquedaChunk, p) }}>‹</Boton>
+                      <Boton variante="contorno" disabled={paginaChunk * 10 >= chunksData.busqueda.total_filtrado} onClick={() => { const p = paginaChunk + 1; setPaginaChunk(p); cargarChunksDetalle(docDetalle.codigo_documento, busquedaChunk, p) }}>›</Boton>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+      </Modal>
     </>)}
     </div>
   )
