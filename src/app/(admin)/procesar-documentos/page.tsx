@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback, useRef, useMemo, useLayoutEffect } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { useTranslations } from 'next-intl'
-import { Play, FileText, CheckCircle, XCircle, Loader2, FolderOpen, Clock, Square, Search, CheckSquare, SquareIcon, Trash2, AlertTriangle, ListOrdered, Cpu, Eye, ExternalLink } from 'lucide-react'
+import { Play, FileText, CheckCircle, XCircle, Loader2, FolderOpen, Clock, Square, Search, CheckSquare, SquareIcon, Trash2, AlertTriangle, ListOrdered, Cpu, Eye, ExternalLink, X, ChevronDown } from 'lucide-react'
 import { Boton } from '@/components/ui/boton'
 import { Input } from '@/components/ui/input'
 import { Insignia } from '@/components/ui/insignia'
@@ -61,7 +61,6 @@ export default function PaginaProcesarDocumentos() {
 
   // Tabs
   const [modoPipeline, setModoPipeline] = useState<'paso-a-paso' | 'todo'>('paso-a-paso')
-  const [tab, setTab] = useState<'procesar' | 'cola'>('procesar')
 
   // Config
   const [procesos, setProcesos] = useState<ProcesoCatalogo[]>([])
@@ -74,6 +73,9 @@ export default function PaginaProcesarDocumentos() {
   const [estadoFiltro, setEstadoFiltro] = useState<string>('')  // override de estado para la lista
   const [ubicaciones, setUbicaciones] = useState<UbicacionOption[]>([])
   const [ubicacionSel, setUbicacionSel] = useState('')
+  const [ubicBusqueda, setUbicBusqueda] = useState('')
+  const [ubicDropdownOpen, setUbicDropdownOpen] = useState(false)
+  const ubicDropdownRef = useRef<HTMLDivElement>(null)
 
   // Paso actual derivado del proceso seleccionado (primer paso por ahora).
   // Trae estado_origen/estado_destino y define el flujo a ejecutar.
@@ -164,8 +166,6 @@ export default function PaginaProcesarDocumentos() {
       setCargandoCola(false)
     }
   }, [])
-
-  useEffect(() => { if (tab === 'cola') cargarCola() }, [tab, cargarCola])
 
   const nombreEstadoDoc = (codigo: string | null | undefined) =>
     codigo ? (estadosDocs.find((e) => e.codigo_estado_doc === codigo)?.nombre_estado || codigo) : '—'
@@ -259,6 +259,17 @@ export default function PaginaProcesarDocumentos() {
     cargarDatosIniciales()
   }, [cargarDatosIniciales])
 
+  // Click-outside para cerrar dropdown de ubicación
+  useEffect(() => {
+    const handleClick = (e: MouseEvent) => {
+      if (ubicDropdownRef.current && !ubicDropdownRef.current.contains(e.target as Node)) {
+        setUbicDropdownOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClick)
+    return () => document.removeEventListener('mousedown', handleClick)
+  }, [])
+
   // Restaurar dirHandle persistido al entrar
   useEffect(() => {
     (async () => {
@@ -336,7 +347,7 @@ export default function PaginaProcesarDocumentos() {
     setDocumentos([])
     setSeleccionados(new Set())
     setYaCargado(false)
-    if (estadoFiltro) {
+    if (estadoFiltro || procesoSel) {
       cargarDocumentos()
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -831,23 +842,6 @@ export default function PaginaProcesarDocumentos() {
       {modoPipeline === 'todo' && <TabPipelineTodo />}
 
       {modoPipeline === 'paso-a-paso' && (<>
-      {/* Tabs internas */}
-      <div className="flex gap-1 border-b border-borde">
-        <button
-          onClick={() => setTab('procesar')}
-          className={`flex items-center gap-1.5 px-4 py-2 text-sm font-medium border-b-2 transition-colors ${tab === 'procesar' ? 'border-primario text-primario' : 'border-transparent text-texto-muted hover:text-texto'}`}
-        >
-          <Cpu size={15} />{t('tabProcesar')}
-        </button>
-        <button
-          onClick={() => setTab('cola')}
-          className={`flex items-center gap-1.5 px-4 py-2 text-sm font-medium border-b-2 transition-colors ${tab === 'cola' ? 'border-primario text-primario' : 'border-transparent text-texto-muted hover:text-texto'}`}
-        >
-          <ListOrdered size={15} />{t('tabCola')}{colaBackend.length > 0 && ` (${colaBackend.length})`}
-        </button>
-      </div>
-
-      {tab === 'procesar' && (<>
       {/* Error carga inicial */}
       {errorCargaInicial && (
         <div className="flex items-center gap-3 p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-error">
@@ -942,16 +936,63 @@ export default function PaginaProcesarDocumentos() {
               </select>
             </div>
 
-            <div className="flex flex-col gap-1.5 min-w-0">
+            <div className="flex flex-col gap-1.5 min-w-0" ref={ubicDropdownRef}>
               <label className="text-sm font-medium text-texto">{t('etiquetaUbicacion')}</label>
-              <select value={ubicacionSel} onChange={(e) => setUbicacionSel(e.target.value)} className={selectClass} disabled={ejecutando}>
-                <option value="">{t('todas')}</option>
-                {ubicaciones.map((u) => (
-                  <option key={u.codigo_ubicacion} value={u.codigo_ubicacion}>
-                    {'—'.repeat(u.nivel || 0)} {u.nombre_ubicacion}
-                  </option>
-                ))}
-              </select>
+              <div className="relative">
+                <div
+                  className={`flex items-center gap-2 rounded-lg border border-borde bg-surface px-3 py-2 text-sm text-texto cursor-text ${ejecutando ? 'opacity-50 pointer-events-none' : ''}`}
+                  onClick={() => !ejecutando && setUbicDropdownOpen(true)}
+                >
+                  <Search size={13} className="text-texto-muted shrink-0" />
+                  <input
+                    className="flex-1 bg-transparent outline-none text-texto placeholder:text-texto-muted text-sm min-w-0"
+                    placeholder={ubicacionSel
+                      ? (ubicaciones.find(u => u.codigo_ubicacion === ubicacionSel)?.nombre_ubicacion || t('todas'))
+                      : t('todas')}
+                    value={ubicBusqueda}
+                    onChange={(e) => { setUbicBusqueda(e.target.value); setUbicDropdownOpen(true) }}
+                    onFocus={() => setUbicDropdownOpen(true)}
+                    disabled={ejecutando}
+                  />
+                  {ubicacionSel ? (
+                    <button
+                      onClick={(e) => { e.stopPropagation(); setUbicacionSel(''); setUbicBusqueda('') }}
+                      className="text-texto-muted hover:text-error shrink-0"
+                    >
+                      <X size={13} />
+                    </button>
+                  ) : (
+                    <ChevronDown size={13} className="text-texto-muted shrink-0" />
+                  )}
+                </div>
+                {ubicDropdownOpen && (
+                  <div className="absolute top-full left-0 right-0 z-50 mt-1 max-h-64 overflow-y-auto bg-surface border border-borde rounded-lg shadow-lg">
+                    <div
+                      className="px-3 py-2 hover:bg-fondo cursor-pointer text-sm text-texto-muted border-b border-borde"
+                      onClick={() => { setUbicacionSel(''); setUbicBusqueda(''); setUbicDropdownOpen(false) }}
+                    >
+                      {t('todas')}
+                    </div>
+                    {ubicaciones
+                      .filter(u => !ubicBusqueda || u.nombre_ubicacion.toLowerCase().includes(ubicBusqueda.toLowerCase()) || u.ruta_completa.toLowerCase().includes(ubicBusqueda.toLowerCase()))
+                      .map(u => (
+                        <div
+                          key={u.codigo_ubicacion}
+                          className={`px-3 py-2 hover:bg-fondo cursor-pointer ${ubicacionSel === u.codigo_ubicacion ? 'bg-primario-muy-claro text-primario' : 'text-texto'}`}
+                          onClick={() => { setUbicacionSel(u.codigo_ubicacion); setUbicBusqueda(''); setUbicDropdownOpen(false) }}
+                        >
+                          <div className="text-sm font-medium">{u.nombre_ubicacion}</div>
+                          {u.ruta_completa && u.ruta_completa !== u.nombre_ubicacion && (
+                            <div className="text-xs text-texto-muted truncate">{u.ruta_completa}</div>
+                          )}
+                        </div>
+                      ))}
+                    {ubicaciones.filter(u => !ubicBusqueda || u.nombre_ubicacion.toLowerCase().includes(ubicBusqueda.toLowerCase()) || u.ruta_completa.toLowerCase().includes(ubicBusqueda.toLowerCase())).length === 0 && (
+                      <div className="px-3 py-4 text-sm text-texto-muted text-center">Sin coincidencias</div>
+                    )}
+                  </div>
+                )}
+              </div>
             </div>
           </div>
 
@@ -1180,9 +1221,8 @@ export default function PaginaProcesarDocumentos() {
           </Tabla>
         </>
       )}
-      </>)}
 
-      {tab === 'cola' && (
+      {false && (
         <>
           <div className="flex items-center gap-3 flex-wrap">
             <div className="max-w-sm flex-1">
@@ -1290,24 +1330,6 @@ export default function PaginaProcesarDocumentos() {
         }}
       />
 
-      <ModalConfirmar
-        abierto={confirmCerrar}
-        alCerrar={() => setConfirmCerrar(false)}
-        alConfirmar={ejecutarCerrarCola}
-        titulo={t('cerrarColaTitulo')}
-        mensaje={t('cerrarColaConfirm', { n: completadosCola })}
-        textoConfirmar={t('eliminarCompletados')}
-        cargando={cerrando}
-      />
-      <ModalConfirmar
-        abierto={!!confirmEliminar}
-        alCerrar={() => setConfirmEliminar(null)}
-        alConfirmar={ejecutarEliminarItem}
-        titulo={t('eliminarItemTitulo')}
-        mensaje={confirmEliminar ? t('eliminarItemConfirm', { id: confirmEliminar.id_cola }) : ''}
-        textoConfirmar={tc('eliminar')}
-        cargando={eliminando}
-      />
       <ModalConfirmar
         abierto={!!confirmEliminarDoc}
         alCerrar={() => setConfirmEliminarDoc(null)}

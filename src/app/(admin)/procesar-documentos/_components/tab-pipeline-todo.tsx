@@ -295,7 +295,7 @@ export function TabPipelineTodo() {
                 completados={prog.completados}
                 estado={prog.estado}
                 colorDisco={paso.colorDisco}
-                size={148}
+                size={99}
               />
               {i < PASOS.length - 1 && (
                 <div className="flex items-center px-2">
