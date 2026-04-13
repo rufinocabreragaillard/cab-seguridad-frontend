@@ -470,6 +470,8 @@ export const documentosApi = {
         match_fin: number
       }[]
     }>(`/documentos/${id}/chunks`, { params }).then((r) => r.data),
+  chatComando: (body: { mensaje: string; contexto: Record<string, unknown> }) =>
+    api.post<{ explicacion: string; acciones: { tipo: string; proceso?: string; estado_origen?: string; estado_destino?: string; ubicacion?: string; tope?: number }[]; ejecutado: boolean }>('/documentos/chat-comando', body).then((r) => r.data),
 }
 
 // ─── Procesos (catálogo genérico multi-dominio) ────────────────────────────

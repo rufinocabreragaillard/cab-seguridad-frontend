@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from 'react'
 import { MessageSquare, X, Send, Loader2, Bot, User } from 'lucide-react'
-import { api } from '@/lib/api'
+import { documentosApi } from '@/lib/api'
 import type { EstadoDoc } from '@/lib/tipos'
 
 interface UbicacionOption {
@@ -75,7 +75,7 @@ export function ChatProcesar({ procesos, ubicaciones, estadosDocs, onEjecutar, o
     setEnviando(true)
 
     try {
-      const res = await api.post<RespuestaChat>('/documentos/chat-comando', {
+      const data = await documentosApi.chatComando({
         mensaje: texto,
         contexto: {
           procesos: procesos.map((p) => ({
@@ -93,7 +93,6 @@ export function ChatProcesar({ procesos, ubicaciones, estadosDocs, onEjecutar, o
         },
       })
 
-      const data = res.data
       setMensajes((prev) => [...prev, {
         rol: 'assistant',
         texto: data.explicacion,
