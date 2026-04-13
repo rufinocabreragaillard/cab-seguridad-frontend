@@ -539,6 +539,8 @@ export interface ColaEstadoDoc {
   fecha_fin?: string | null
   codigo_usuario: string
   resultado?: string | null
+  mensaje_error?: string | null
+  modelo_usado?: string | null
   intentos: number
   max_intentos: number
   documentos?: { codigo_documento: number; nombre_documento: string; codigo_estado_doc: string | null } | null

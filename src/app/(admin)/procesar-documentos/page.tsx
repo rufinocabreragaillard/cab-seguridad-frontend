@@ -49,6 +49,7 @@ interface ItemCola {
   estado_cola: string
   resultado?: string | null
   tiempo_ms?: number
+  modelo_usado?: string | null
 }
 
 export default function PaginaProcesarDocumentos() {
@@ -782,6 +783,7 @@ export default function PaginaProcesarDocumentos() {
               estado_cola: nuevo.estado_cola,
               resultado: nuevo.resultado || c.resultado,
               tiempo_ms: tiempoMs,
+              modelo_usado: nuevo.modelo_usado ?? c.modelo_usado,
             }
           }))
           setProcesados(colaInicial.length - activos)
@@ -1094,6 +1096,7 @@ export default function PaginaProcesarDocumentos() {
                   <TablaTh className="w-10">{t('colEstado')}</TablaTh>
                   <TablaTh>{t('colDocumento')}</TablaTh>
                   <TablaTh>{t('colResultado')}</TablaTh>
+                  <TablaTh className="w-36">Modelo</TablaTh>
                   <TablaTh className="w-20">{t('colTiempo')}</TablaTh>
                 </tr>
               </TablaCabecera>
@@ -1112,6 +1115,7 @@ export default function PaginaProcesarDocumentos() {
                         {c.resultado || '—'}
                       </span>
                     </TablaTd>
+                    <TablaTd className="text-xs text-texto-muted font-mono">{c.modelo_usado || '—'}</TablaTd>
                     <TablaTd className="text-xs text-texto-muted">{c.tiempo_ms ? `${c.tiempo_ms}ms` : '—'}</TablaTd>
                   </TablaFila>
                 ))}
