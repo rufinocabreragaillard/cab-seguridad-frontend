@@ -108,6 +108,7 @@ export default function PaginaProcesarDocumentos() {
   // Cola y ejecución
   const [cola, setCola] = useState<ItemCola[]>([])
   const [ejecutando, setEjecutando] = useState(false)
+  const [chatAbierto, setChatAbierto] = useState(true)
   const [procesados, setProcesados] = useState(0)
   const [dirHandle, setDirHandle] = useState<FileSystemDirectoryHandle | null>(null)
   const [archivosEnDir, setArchivosEnDir] = useState<Set<string> | null>(null)
@@ -825,7 +826,7 @@ export default function PaginaProcesarDocumentos() {
   }
 
   return (
-    <div className="flex flex-col gap-6 w-full overflow-x-hidden">
+    <div className={`flex flex-col gap-6 w-full overflow-x-hidden${chatAbierto ? ' pb-80' : ''}`}>
       <div>
         <h2 className="text-2xl font-bold text-texto">{t('titulo')}</h2>
         <p className="text-sm text-texto-muted mt-1">{t('subtitulo')}</p>
@@ -1318,6 +1319,7 @@ export default function PaginaProcesarDocumentos() {
         procesos={procesos}
         ubicaciones={ubicaciones}
         estadosDocs={estadosDocs}
+        onAbiertoChange={setChatAbierto}
         onEjecutar={(proceso, tope, ubicacion) => {
           setProcesoSel(proceso)
           if (tope) setTope(String(tope))
