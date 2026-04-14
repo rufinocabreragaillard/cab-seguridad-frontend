@@ -413,6 +413,8 @@ export const documentosApi = {
   actualizar: (id: number, datos: Partial<Documento>) =>
     api.put<Documento>(`/documentos/${id}`, datos).then((r) => r.data),
   desactivar: (id: number) => api.delete(`/documentos/${id}`),
+  eliminarBulk: (ids: number[]) =>
+    api.post<{ eliminados: number }>('/documentos/eliminar-bulk', { codigos_documento: ids }).then((r) => r.data),
   // Restablecer documentos NO_ESCANEABLE / NO_ENCONTRADO a CARGADO/METADATA
   restablecerEstado: (codigos_documento: number[]) =>
     api.post<{ restablecidos: number; a_cargado: number; a_metadata: number; omitidos: number }>(

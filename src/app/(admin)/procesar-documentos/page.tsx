@@ -206,6 +206,11 @@ export default function PaginaProcesarDocumentos() {
   const [confirmEliminarDoc, setConfirmEliminarDoc] = useState<Documento | null>(null)
   const [eliminandoDoc, setEliminandoDoc] = useState(false)
 
+  // Selección y eliminación en bloque de docs sin archivo en disco
+  const [seleccionadosSinDisco, setSeleccionadosSinDisco] = useState<Set<number>>(new Set())
+  const [confirmEliminarBulkSinDisco, setConfirmEliminarBulkSinDisco] = useState(false)
+  const [eliminandoBulkSinDisco, setEliminandoBulkSinDisco] = useState(false)
+
   // Paginación de lista de documentos
   const [paginaDoc, setPaginaDoc] = useState(1)
   const [filtroUbicacion, setFiltroUbicacion] = useState('')
@@ -584,6 +589,23 @@ export default function PaginaProcesarDocumentos() {
       setConfirmEliminarDoc(null)
     } finally {
       setEliminandoDoc(false)
+    }
+  }
+
+  const ejecutarEliminarBulkSinDisco = async () => {
+    const ids = seleccionadosSinDisco.size > 0
+      ? Array.from(seleccionadosSinDisco)
+      : docsSinDisco.map((d) => d.codigo_documento)
+    if (ids.length === 0) return
+    setEliminandoBulkSinDisco(true)
+    try {
+      await documentosApi.eliminarBulk(ids)
+      const eliminados = new Set(ids)
+      setDocumentos((prev) => prev.filter((d) => !eliminados.has(d.codigo_documento)))
+      setSeleccionadosSinDisco(new Set())
+      setConfirmEliminarBulkSinDisco(false)
+    } finally {
+      setEliminandoBulkSinDisco(false)
     }
   }
 
@@ -1102,16 +1124,27 @@ export default function PaginaProcesarDocumentos() {
 
           <div className="flex items-center gap-3 mt-4 pt-4 border-t border-borde flex-wrap">
             <div className="ml-auto flex items-center gap-3">
-              <span className="text-sm text-texto-muted">
+              <span className="text-sm text-texto-muted flex items-center gap-2">
                 {(() => {
                   const topeNum = tope ? parseInt(tope) : 0
                   const efectivos = topeNum > 0 ? Math.min(seleccionados.size, topeNum) : seleccionados.size
-                  if (efectivos < seleccionados.size) {
-                    return `${efectivos} a procesar (de ${seleccionados.size}/${docsEnDisco.length} sel.)`
-                  }
-                  return t('xDeYSeleccionados', { x: seleccionados.size, y: docsEnDisco.length })
+                  const label = efectivos < seleccionados.size
+                    ? `${efectivos} a procesar (de ${seleccionados.size}/${docsEnDisco.length} sel.)`
+                    : t('xDeYSeleccionados', { x: seleccionados.size, y: docsEnDisco.length })
+                  return <span>{label}</span>
                 })()}
+                {docsSinDisco.length > 0 && (
+                  <span className="text-error font-medium">
+                    · {seleccionadosSinDisco.size > 0 ? `${seleccionadosSinDisco.size}/` : ''}{docsSinDisco.length} sin archivo
+                  </span>
+                )}
               </span>
+              {docsSinDisco.length > 0 && (
+                <Boton variante="peligro" onClick={() => setConfirmEliminarBulkSinDisco(true)} disabled={ejecutando}>
+                  <Trash2 size={14} />
+                  Eliminar sin archivo {seleccionadosSinDisco.size > 0 ? `(${seleccionadosSinDisco.size})` : `(${docsSinDisco.length})`}
+                </Boton>
+              )}
               <Boton variante="primario" onClick={ejecutar}
                 disabled={ejecutando || !procesoSel || ((esExtraer || esRestablecer) && seleccionados.size === 0)}>
                 {ejecutando ? <Loader2 size={16} className="animate-spin" /> : <Play size={16} />}
@@ -1316,39 +1349,52 @@ export default function PaginaProcesarDocumentos() {
                       </div>
                     </TablaTd>
                   </TablaFila>
-                  {docsSinDisco.map((d) => (
-                  <TablaFila key={d.codigo_documento} className="bg-red-50/60">
-                    <TablaTd>
-                      <input type="checkbox" disabled className="rounded border-borde opacity-30 cursor-not-allowed" />
-                    </TablaTd>
-                    <TablaTd className="max-w-0 w-[40%]">
-                      <div className="flex items-center gap-2 min-w-0">
-                        <AlertTriangle size={14} className="text-error shrink-0" />
-                        <span className="font-medium text-sm truncate text-error/80" title={d.nombre_documento}>{d.nombre_documento}</span>
-                      </div>
-                    </TablaTd>
-                    <TablaTd className="text-xs text-error/60 max-w-0 w-[30%] truncate" title={d.ubicacion_documento || ''}>{d.ubicacion_documento || '—'}</TablaTd>
-                    <TablaTd>
-                      <Insignia variante="error">{d.codigo_estado_doc}</Insignia>
-                    </TablaTd>
-                    <TablaTd>
-                      <div className="flex items-center justify-end gap-1">
-                        <BotonAccion
-                          tooltip="Ver detalle"
-                          onClick={() => abrirDetalle(d)}
-                          className="p-1.5 rounded-lg hover:bg-red-100 text-error/50 hover:text-error transition-colors">
-                          <Eye size={15} />
-                        </BotonAccion>
-                        <BotonAccion
-                          tooltip="Eliminar"
-                          onClick={() => setConfirmEliminarDoc(d)}
-                          className="p-1.5 rounded-lg hover:bg-red-100 text-error/50 hover:text-error transition-colors">
-                          <Trash2 size={15} />
-                        </BotonAccion>
-                      </div>
-                    </TablaTd>
-                  </TablaFila>
-                  ))}
+                  {docsSinDisco.map((d) => {
+                    const selSinDisco = seleccionadosSinDisco.has(d.codigo_documento)
+                    return (
+                    <TablaFila key={d.codigo_documento}>
+                      <TablaTd>
+                        <input
+                          type="checkbox"
+                          checked={selSinDisco}
+                          onChange={() => setSeleccionadosSinDisco((prev) => {
+                            const s = new Set(prev)
+                            if (s.has(d.codigo_documento)) s.delete(d.codigo_documento)
+                            else s.add(d.codigo_documento)
+                            return s
+                          })}
+                          className="rounded border-borde cursor-pointer"
+                        />
+                      </TablaTd>
+                      <TablaTd className="max-w-0 w-[40%]">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <AlertTriangle size={14} className="text-error shrink-0" />
+                          <span className="font-medium text-sm truncate" title={d.nombre_documento}>{d.nombre_documento}</span>
+                        </div>
+                      </TablaTd>
+                      <TablaTd className="text-xs max-w-0 w-[30%] truncate bg-red-50 text-error/70 font-medium" title={d.ubicacion_documento || ''}>{d.ubicacion_documento || '—'}</TablaTd>
+                      <TablaTd>
+                        <Insignia variante="error">{d.codigo_estado_doc}</Insignia>
+                      </TablaTd>
+                      <TablaTd>
+                        <div className="flex items-center justify-end gap-1">
+                          <BotonAccion
+                            tooltip="Ver detalle"
+                            onClick={() => abrirDetalle(d)}
+                            className="p-1.5 rounded-lg hover:bg-fondo text-texto-muted hover:text-primario transition-colors">
+                            <Eye size={15} />
+                          </BotonAccion>
+                          <BotonAccion
+                            tooltip="Eliminar"
+                            onClick={() => setConfirmEliminarDoc(d)}
+                            className="p-1.5 rounded-lg hover:bg-red-100 text-texto-muted hover:text-error transition-colors">
+                            <Trash2 size={15} />
+                          </BotonAccion>
+                        </div>
+                      </TablaTd>
+                    </TablaFila>
+                    )
+                  })}
                 </>)}
               </>)}
             </TablaCuerpo>
@@ -1491,6 +1537,16 @@ export default function PaginaProcesarDocumentos() {
         mensaje={confirmEliminarDoc ? `¿Eliminar "${confirmEliminarDoc.nombre_documento}"? Esta acción no se puede deshacer.` : ''}
         textoConfirmar={tc('eliminar')}
         cargando={eliminandoDoc}
+      />
+
+      <ModalConfirmar
+        abierto={confirmEliminarBulkSinDisco}
+        alCerrar={() => setConfirmEliminarBulkSinDisco(false)}
+        alConfirmar={ejecutarEliminarBulkSinDisco}
+        titulo="Eliminar archivos no encontrados"
+        mensaje={`¿Eliminar ${seleccionadosSinDisco.size > 0 ? seleccionadosSinDisco.size : docsSinDisco.length} documento(s) que no están en el directorio? Esta acción no se puede deshacer.`}
+        textoConfirmar={tc('eliminar')}
+        cargando={eliminandoBulkSinDisco}
       />
 
       {/* ── Modal detalle de documento ─────────────────────────────────── */}
