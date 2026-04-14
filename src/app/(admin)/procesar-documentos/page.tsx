@@ -100,6 +100,7 @@ interface UbicacionOption {
   nombre_ubicacion: string
   ruta_completa: string
   nivel: number
+  tipo_ubicacion?: 'AREA' | 'CONTENIDO'
 }
 
 interface ItemCola {
@@ -1031,36 +1032,6 @@ function PaginaProcesarDocumentosInterna() {
       <Tarjeta>
         <TarjetaContenido>
           <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
-            <div className="col-span-2 lg:col-span-3 flex flex-col gap-1.5">
-              <label className="text-sm font-medium text-texto">Filtro libre</label>
-              <div className="flex gap-2">
-                <input
-                  type="text"
-                  placeholder="Filtrar por nombre, directorio, estado o comentarios… (Enter para aplicar)"
-                  value={filtroLibreInput}
-                  onChange={(e) => setFiltroLibreInput(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') {
-                      setFiltroLibre(filtroLibreInput)
-                      setYaCargado(false)
-                    }
-                  }}
-                  disabled={ejecutando}
-                  className="flex-1 text-sm border border-borde rounded-lg px-3 py-2 bg-surface text-texto focus:outline-none focus:ring-2 focus:ring-primario disabled:opacity-50 placeholder:text-texto-muted"
-                />
-                {filtroLibreInput && (
-                  <button
-                    type="button"
-                    onClick={() => { setFiltroLibreInput(''); setFiltroLibre(''); setYaCargado(false) }}
-                    disabled={ejecutando}
-                    className="px-2 rounded-lg border border-borde text-texto-muted hover:text-error hover:border-error transition-colors disabled:opacity-50"
-                    title="Limpiar filtro"
-                  >
-                    <X size={15} />
-                  </button>
-                )}
-              </div>
-            </div>
             <div className="flex flex-col gap-1.5 min-w-0">
               <label className="text-sm font-medium text-texto">{t('etiquetaProceso')}</label>
               <select value={procesoSel} onChange={(e) => setProcesoSel(e.target.value)} className={selectClass} disabled={ejecutando || cargandoInicial}>
@@ -1168,32 +1139,89 @@ function PaginaProcesarDocumentosInterna() {
                   )}
                 </button>
                 {ubicDropdownOpen && (
-                  <div className="absolute top-full left-0 right-0 z-50 mt-1 max-h-64 overflow-y-auto bg-surface border border-borde rounded-lg shadow-lg">
-                    <div
-                      className="px-3 py-2 hover:bg-fondo cursor-pointer text-sm text-texto-muted border-b border-borde"
-                      onClick={() => { setUbicacionSel(''); setUbicBusqueda(''); setUbicDropdownOpen(false) }}
-                    >
-                      Todas
+                  <div className="absolute top-full left-0 right-0 z-50 mt-1 bg-surface border border-borde rounded-lg shadow-lg flex flex-col" style={{ maxHeight: '18rem' }}>
+                    {/* Input de búsqueda fijo arriba */}
+                    <div className="p-2 border-b border-borde shrink-0">
+                      <input
+                        type="text"
+                        placeholder="Buscar ubicación…"
+                        value={ubicBusqueda}
+                        onChange={(e) => setUbicBusqueda(e.target.value)}
+                        onClick={(e) => e.stopPropagation()}
+                        className="w-full text-sm border border-borde rounded px-2 py-1 bg-fondo text-texto focus:outline-none focus:ring-1 focus:ring-primario placeholder:text-texto-muted"
+                        autoFocus
+                      />
                     </div>
-                    {ubicaciones
-                      .filter(u => !ubicBusqueda || u.nombre_ubicacion.toLowerCase().includes(ubicBusqueda.toLowerCase()) || u.ruta_completa.toLowerCase().includes(ubicBusqueda.toLowerCase()))
-                      .map(u => (
-                        <div
-                          key={u.codigo_ubicacion}
-                          className={`flex items-center gap-2 py-1.5 pr-3 hover:bg-fondo cursor-pointer ${ubicacionSel === u.codigo_ubicacion ? 'bg-primario-muy-claro text-primario' : 'text-texto'}`}
-                          style={{ paddingLeft: `${(u.nivel || 0) * 16 + 12}px` }}
-                          onClick={() => { setUbicacionSel(u.codigo_ubicacion); setUbicBusqueda(''); setUbicDropdownOpen(false) }}
-                        >
-                          <FolderOpen size={13} className={ubicacionSel === u.codigo_ubicacion ? 'text-primario shrink-0' : 'text-texto-muted shrink-0'} />
-                          <span className="text-sm truncate">{u.nombre_ubicacion}</span>
-                        </div>
-                      ))}
-                    {ubicaciones.filter(u => !ubicBusqueda || u.nombre_ubicacion.toLowerCase().includes(ubicBusqueda.toLowerCase()) || u.ruta_completa.toLowerCase().includes(ubicBusqueda.toLowerCase())).length === 0 && (
-                      <div className="px-3 py-4 text-sm text-texto-muted text-center">Sin coincidencias</div>
-                    )}
+                    {/* Lista scrolleable */}
+                    <div className="overflow-y-auto flex-1">
+                      <div
+                        className="px-3 py-2 hover:bg-fondo cursor-pointer text-sm text-texto-muted border-b border-borde"
+                        onClick={() => { setUbicacionSel(''); setUbicBusqueda(''); setUbicDropdownOpen(false) }}
+                      >
+                        Todas
+                      </div>
+                      {ubicaciones
+                        .filter(u => !ubicBusqueda || u.nombre_ubicacion.toLowerCase().includes(ubicBusqueda.toLowerCase()) || u.ruta_completa.toLowerCase().includes(ubicBusqueda.toLowerCase()))
+                        .map(u => {
+                          const esArea = u.tipo_ubicacion === 'AREA'
+                          const selec = ubicacionSel === u.codigo_ubicacion
+                          return (
+                            <div
+                              key={u.codigo_ubicacion}
+                              className={`flex items-center gap-2 py-1.5 pr-3 hover:bg-fondo cursor-pointer ${selec ? 'bg-primario-muy-claro' : ''}`}
+                              style={{ paddingLeft: `${(u.nivel || 0) * 16 + 12}px` }}
+                              onClick={() => { setUbicacionSel(u.codigo_ubicacion); setUbicBusqueda(''); setUbicDropdownOpen(false) }}
+                            >
+                              <FolderOpen
+                                size={13}
+                                className={`shrink-0 ${selec ? 'text-primario' : esArea ? 'text-sky-500' : 'text-amber-400'}`}
+                              />
+                              <span className={`text-sm truncate flex-1 ${selec ? 'text-primario font-medium' : 'text-texto'}`}>{u.nombre_ubicacion}</span>
+                              <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-full shrink-0 ${esArea ? 'bg-sky-100 text-sky-600' : 'bg-amber-100 text-amber-600'}`}>
+                                {esArea ? 'Área' : 'Contenido'}
+                              </span>
+                            </div>
+                          )
+                        })}
+                      {ubicaciones.filter(u => !ubicBusqueda || u.nombre_ubicacion.toLowerCase().includes(ubicBusqueda.toLowerCase()) || u.ruta_completa.toLowerCase().includes(ubicBusqueda.toLowerCase())).length === 0 && (
+                        <div className="px-3 py-4 text-sm text-texto-muted text-center">Sin coincidencias</div>
+                      )}
+                    </div>
                   </div>
                 )}
               </div>
+            </div>
+          </div>
+
+          {/* Filtro libre — debajo de los selectores principales */}
+          <div className="flex flex-col gap-1.5 mt-3">
+            <label className="text-sm font-medium text-texto">Filtro libre</label>
+            <div className="flex gap-2">
+              <input
+                type="text"
+                placeholder="Filtrar por nombre, directorio, estado o comentarios… (Enter para aplicar)"
+                value={filtroLibreInput}
+                onChange={(e) => setFiltroLibreInput(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    setFiltroLibre(filtroLibreInput)
+                    setYaCargado(false)
+                  }
+                }}
+                disabled={ejecutando}
+                className="flex-1 text-sm border border-borde rounded-lg px-3 py-2 bg-surface text-texto focus:outline-none focus:ring-2 focus:ring-primario disabled:opacity-50 placeholder:text-texto-muted"
+              />
+              {filtroLibreInput && (
+                <button
+                  type="button"
+                  onClick={() => { setFiltroLibreInput(''); setFiltroLibre(''); setYaCargado(false) }}
+                  disabled={ejecutando}
+                  className="px-2 rounded-lg border border-borde text-texto-muted hover:text-error hover:border-error transition-colors disabled:opacity-50"
+                  title="Limpiar filtro"
+                >
+                  <X size={15} />
+                </button>
+              )}
             </div>
           </div>
 
