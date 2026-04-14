@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback, useMemo } from 'react'
 import { useTranslations } from 'next-intl'
 import { Plus, Trash2, Download, Search, Eye, ExternalLink, FileText } from 'lucide-react'
+import { iconoTipoArchivo } from '@/lib/icono-tipo-archivo'
 import { Boton } from '@/components/ui/boton'
 import { Input } from '@/components/ui/input'
 import { Insignia } from '@/components/ui/insignia'
@@ -384,9 +385,12 @@ export default function PaginaDocumentos() {
                   </code>
                 </TablaTd>
                 <TablaTd className="max-w-[250px]">
-                  <span className="font-medium truncate block" title={d.nombre_documento}>
-                    {d.nombre_documento}
-                  </span>
+                  <div className="flex items-center gap-2 min-w-0">
+                    {iconoTipoArchivo(d.nombre_documento, 16)}
+                    <span className="font-medium truncate" title={d.nombre_documento}>
+                      {d.nombre_documento}
+                    </span>
+                  </div>
                 </TablaTd>
                 <TablaTd className="text-sm text-texto-muted max-w-[250px] truncate">
                   {d.ubicacion_documento ? (

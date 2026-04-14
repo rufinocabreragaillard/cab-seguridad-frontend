@@ -3,7 +3,8 @@
 import { useEffect, useState, useCallback, useRef, useMemo, useLayoutEffect } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { useTranslations } from 'next-intl'
-import { Play, FileText, CheckCircle, XCircle, Loader2, FolderOpen, Clock, Square, Search, CheckSquare, SquareIcon, Trash2, AlertTriangle, ListOrdered, Cpu, Eye, ExternalLink, X, ChevronDown, Image as ImageIcon, FileSpreadsheet, FileArchive, FileCode, File, Copy, Check, MapPin } from 'lucide-react'
+import { Play, FileText, CheckCircle, XCircle, Loader2, FolderOpen, Clock, Square, Search, CheckSquare, SquareIcon, Trash2, AlertTriangle, ListOrdered, Cpu, Eye, ExternalLink, X, ChevronDown, Copy, Check, MapPin } from 'lucide-react'
+import { iconoTipoArchivo } from '@/lib/icono-tipo-archivo'
 import { Boton } from '@/components/ui/boton'
 import { Input } from '@/components/ui/input'
 import { Insignia } from '@/components/ui/insignia'
@@ -22,28 +23,6 @@ import { TabPipelineTodo } from './_components/tab-pipeline-todo'
 import { ChatProcesar } from './_components/chat-procesar'
 import { useColaRealtime } from '@/hooks/useColaRealtime'
 
-/** Icono según extensión del archivo */
-function iconoTipoArchivo(nombre: string, size = 14, className = 'text-texto-muted shrink-0') {
-  const ext = nombre.split('.').pop()?.toLowerCase() || ''
-  switch (ext) {
-    case 'pdf':
-      return <FileText size={size} className={`text-red-400 shrink-0`} />
-    case 'png': case 'jpg': case 'jpeg': case 'gif': case 'webp': case 'bmp': case 'svg': case 'tiff': case 'tif':
-      return <ImageIcon size={size} className={`text-blue-400 shrink-0`} />
-    case 'xls': case 'xlsx': case 'csv':
-      return <FileSpreadsheet size={size} className={`text-green-500 shrink-0`} />
-    case 'zip': case 'rar': case '7z': case 'tar': case 'gz':
-      return <FileArchive size={size} className={`text-amber-500 shrink-0`} />
-    case 'pptx': case 'potx': case 'ppsx': case 'ppt':
-      return <FileText size={size} className={`text-orange-500 shrink-0`} />
-    case 'html': case 'xml': case 'json': case 'js': case 'ts': case 'py':
-      return <FileCode size={size} className={`text-purple-400 shrink-0`} />
-    case 'doc': case 'docx':
-      return <FileText size={size} className={`text-blue-500 shrink-0`} />
-    default:
-      return <File size={size} className={className} />
-  }
-}
 
 /** Botón de acción con tooltip inferior */
 function BotonAccion({ tooltip, onClick, className, children }: {
