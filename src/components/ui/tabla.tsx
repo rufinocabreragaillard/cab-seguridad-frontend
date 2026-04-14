@@ -40,6 +40,6 @@ export function TablaTh({ className, children }: { className?: string; children?
   )
 }
 
-export function TablaTd({ className, children, colSpan }: { className?: string; children?: ReactNode; colSpan?: number }) {
-  return <td colSpan={colSpan} className={cn('px-4 py-3 text-texto', className)}>{children}</td>
+export function TablaTd({ className, children, colSpan, title }: { className?: string; children?: ReactNode; colSpan?: number; title?: string }) {
+  return <td colSpan={colSpan} title={title} className={cn('px-4 py-3 text-texto', className)}>{children}</td>
 }

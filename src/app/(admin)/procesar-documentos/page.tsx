@@ -217,6 +217,7 @@ export default function PaginaProcesarDocumentos() {
 
   // Modal detalle documento (inline, reemplaza navegación a /documentos)
   const [docDetalle, setDocDetalle] = useState<Documento | null>(null)
+  const [colaItemDetalle, setColaItemDetalle] = useState<ColaEstadoDoc | null>(null)
   const [tabDetalle, setTabDetalle] = useState<TabDetalle>('datos')
   const [categoriasConCaract, setCategoriasConCaract] = useState<CategoriaConCaracteristicasDocs[]>([])
   const [cargandoCaract, setCargandoCaract] = useState(false)
@@ -386,12 +387,27 @@ export default function PaginaProcesarDocumentos() {
         // Resetear a CARGADO: listar todos los documentos activos (cualquier estado)
         todos = await documentosApi.listar({ activo: true, q: busqueda.trim() || undefined })
       } else if (pasoActual?.estado_origen) {
-        // Filtrar por el estado_origen del paso actual del proceso seleccionado
-        todos = await documentosApi.listar({
-          codigo_estado_doc: pasoActual.estado_origen,
-          activo: true,
-          q: busqueda.trim() || undefined,
-        })
+        // Filtrar por el estado_origen del paso actual. Además, excluir docs que
+        // el proceso anterior marcó como inválidos (error en cola o resultado
+        // NO_ESCANEABLE/NO_ENCONTRADO/VACIO para ese destino).
+        const estadoOrigenFiltro = pasoActual.estado_origen
+        const [docsRaw, colaRaw] = await Promise.all([
+          documentosApi.listar({ codigo_estado_doc: estadoOrigenFiltro, activo: true, q: busqueda.trim() || undefined }),
+          colaEstadosDocsApi.listar(),
+        ])
+        const INVALIDOS_RE = /NO_ESCANEABLE|NO_ENCONTRADO|VACIO/i
+        const idsInvalidos = new Set(
+          colaRaw
+            .filter(c =>
+              c.codigo_estado_doc_destino === estadoOrigenFiltro &&
+              (c.estado_cola === 'ERROR' ||
+               (c.estado_cola === 'COMPLETADO' && c.resultado && INVALIDOS_RE.test(c.resultado)))
+            )
+            .map(c => c.codigo_documento)
+        )
+        todos = idsInvalidos.size > 0
+          ? docsRaw.filter(d => !idsInvalidos.has(d.codigo_documento))
+          : docsRaw
       } else {
         // "— Solo ver documentos —" (sin proceso ni estado): listar todos los activos,
         // aplicando solo los filtros de búsqueda/ubicación.
@@ -547,7 +563,7 @@ export default function PaginaProcesarDocumentos() {
     }
   }, [])
 
-  const abrirDetalle = useCallback((d: Documento) => {
+  const abrirDetalle = useCallback(async (d: Documento) => {
     setDocDetalle(d)
     setTabDetalle('datos')
     setCategoriasConCaract([])
@@ -555,6 +571,15 @@ export default function PaginaProcesarDocumentos() {
     setBusquedaChunk('')
     setBusquedaChunkInput('')
     setPaginaChunk(1)
+    setColaItemDetalle(null)
+    // Cargar cola para obtener datos frescos de procesamiento
+    try {
+      const colaFresca = await colaEstadosDocsApi.listar()
+      setColaBackend(colaFresca)
+      const itemsDoc = colaFresca.filter(c => c.codigo_documento === d.codigo_documento)
+      const ultimo = itemsDoc.sort((a, b) => (b.id_cola || 0) - (a.id_cola || 0))[0]
+      setColaItemDetalle(ultimo ?? null)
+    } catch { /* mostrar sin datos de cola */ }
     cargarCaracteristicas(d.codigo_documento)
   }, [cargarCaracteristicas])
 
@@ -1195,14 +1220,16 @@ export default function PaginaProcesarDocumentos() {
                 … {ocultos} documentos procesados anteriores ocultos (mostrando últimos {MAX_FILAS})
               </p>
             )}
-            <Tabla>
+            <Tabla className="table-fixed">
               <TablaCabecera>
                 <tr>
-                  <TablaTh className="w-10">{t('colEstado')}</TablaTh>
-                  <TablaTh>{t('colDocumento')}</TablaTh>
+                  <TablaTh className="w-8">{t('colEstado')}</TablaTh>
+                  <TablaTh className="w-[30%]">{t('colDocumento')}</TablaTh>
                   <TablaTh>{t('colResultado')}</TablaTh>
-                  <TablaTh className="w-36">Modelo</TablaTh>
-                  <TablaTh className="w-20">{t('colTiempo')}</TablaTh>
+                  <TablaTh className="w-40">
+                    <span title="Modelo de lenguaje (LLM) usado para procesar el documento">Modelo LLM</span>
+                  </TablaTh>
+                  <TablaTh className="w-24">{t('colTiempo')}</TablaTh>
                 </tr>
               </TablaCabecera>
               <TablaCuerpo>
@@ -1210,18 +1237,18 @@ export default function PaginaProcesarDocumentos() {
                   <TablaFila key={c.id_cola} className={c.estado_cola === 'COMPLETADO' ? 'bg-green-50/50' : c.estado_cola === 'ERROR' ? 'bg-red-50/50' : ''}>
                     <TablaTd>{iconoEstado(c.estado_cola)}</TablaTd>
                     <TablaTd>
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 min-w-0">
                         {iconoTipoArchivo(c.nombre_documento)}
-                        <span className="font-medium text-sm">{c.nombre_documento}</span>
+                        <span className="font-medium text-sm truncate">{c.nombre_documento}</span>
                       </div>
                     </TablaTd>
                     <TablaTd>
-                      <span className={`text-xs max-w-[400px] truncate block ${c.estado_cola === 'ERROR' ? 'text-error' : 'text-texto-muted'}`}>
+                      <span className={`text-xs truncate block ${c.estado_cola === 'ERROR' ? 'text-error' : 'text-texto-muted'}`}>
                         {c.resultado || '—'}
                       </span>
                     </TablaTd>
-                    <TablaTd className="text-xs text-texto-muted font-mono">{c.modelo_usado || '—'}</TablaTd>
-                    <TablaTd className="text-xs text-texto-muted">{c.tiempo_ms ? `${c.tiempo_ms}ms` : '—'}</TablaTd>
+                    <TablaTd className="text-xs text-texto-muted font-mono truncate">{c.modelo_usado || '—'}</TablaTd>
+                    <TablaTd className="text-xs text-texto-muted tabular-nums">{c.tiempo_ms ? `${(c.tiempo_ms / 1000).toFixed(1)}s` : '—'}</TablaTd>
                   </TablaFila>
                 ))}
               </TablaCuerpo>
@@ -1652,6 +1679,51 @@ export default function PaginaProcesarDocumentos() {
                     </div>
                   )}
                 </div>
+
+                {/* Datos del último procesamiento en cola */}
+                {colaItemDetalle && (
+                  <div className="mt-2 rounded-lg border border-borde bg-fondo px-4 py-3 flex flex-col gap-2">
+                    <p className="text-xs font-semibold text-texto-muted uppercase tracking-wide">Último proceso</p>
+                    <div className="grid grid-cols-2 gap-x-6 gap-y-1.5 text-sm">
+                      <div>
+                        <span className="text-xs text-texto-muted block">Proceso</span>
+                        <span className="font-medium">{colaItemDetalle.codigo_estado_doc_destino || '—'}</span>
+                      </div>
+                      <div>
+                        <span className="text-xs text-texto-muted block">Resultado</span>
+                        <span className={colaItemDetalle.estado_cola === 'ERROR' ? 'text-error font-medium' : 'font-medium'}>{colaItemDetalle.estado_cola}</span>
+                      </div>
+                      <div>
+                        <span className="text-xs text-texto-muted block">Inicio</span>
+                        <span>{colaItemDetalle.fecha_inicio ? new Date(colaItemDetalle.fecha_inicio).toLocaleString('es-CL') : '—'}</span>
+                      </div>
+                      <div>
+                        <span className="text-xs text-texto-muted block">Término</span>
+                        <span>{colaItemDetalle.fecha_fin ? new Date(colaItemDetalle.fecha_fin).toLocaleString('es-CL') : '—'}</span>
+                      </div>
+                      <div>
+                        <span className="text-xs text-texto-muted block">Duración</span>
+                        <span>
+                          {colaItemDetalle.fecha_inicio && colaItemDetalle.fecha_fin
+                            ? (() => { const ms = new Date(colaItemDetalle.fecha_fin).getTime() - new Date(colaItemDetalle.fecha_inicio).getTime(); return ms >= 60000 ? `${Math.floor(ms / 60000)}m ${Math.floor((ms % 60000) / 1000)}s` : `${(ms / 1000).toFixed(1)}s` })()
+                            : '—'}
+                        </span>
+                      </div>
+                      {colaItemDetalle.modelo_usado && (
+                        <div>
+                          <span className="text-xs text-texto-muted block">Modelo LLM</span>
+                          <span className="font-mono text-xs">{colaItemDetalle.modelo_usado}</span>
+                        </div>
+                      )}
+                    </div>
+                    {colaItemDetalle.resultado && (
+                      <div>
+                        <span className="text-xs text-texto-muted block mb-1">Detalle resultado</span>
+                        <p className="text-xs text-texto-muted">{colaItemDetalle.resultado}</p>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             )}
 
