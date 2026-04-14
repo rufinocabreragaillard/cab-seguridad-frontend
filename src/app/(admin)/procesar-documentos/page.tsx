@@ -456,8 +456,15 @@ export default function PaginaProcesarDocumentos() {
   // independientemente de si están en el directorio local o no.
   // Los que no están en disco se muestran al final en rojo (no se ocultan).
   const docsFiltrados = documentos.filter((d) => {
-    if (busqueda && !d.nombre_documento.toLowerCase().includes(busqueda.toLowerCase()) &&
-        !(d.ubicacion_documento || '').toLowerCase().includes(busqueda.toLowerCase())) return false
+    if (busqueda) {
+      const q = busqueda.toLowerCase()
+      const coincide =
+        d.nombre_documento.toLowerCase().includes(q) ||
+        (d.ubicacion_documento || '').toLowerCase().includes(q) ||
+        (d.codigo_estado_doc || '').toLowerCase().includes(q) ||
+        (d.detalle_estado || '').toLowerCase().includes(q)
+      if (!coincide) return false
+    }
     if (filtroUbicacion && !(d.ubicacion_documento || '').toLowerCase().includes(filtroUbicacion.toLowerCase())) return false
     return true
   })
