@@ -1335,11 +1335,11 @@ export default function PaginaProcesarDocumentos() {
                   </TablaTd>
                   <TablaTd className="text-xs text-texto-muted max-w-0 w-[30%] truncate" title={d.ubicacion_documento || ''}>{d.ubicacion_documento || '—'}</TablaTd>
                   <TablaTd>
-                    <div className="flex flex-col gap-0.5">
+                    <div className="flex items-center gap-2">
                       <Insignia variante="advertencia">{d.codigo_estado_doc}</Insignia>
                       {d.detalle_estado && (
-                        <span className="text-xs text-texto-muted" title={d.detalle_estado}>
-                          {d.detalle_estado.length > 40 ? d.detalle_estado.slice(0, 40) + '…' : d.detalle_estado}
+                        <span className="text-xs text-texto-muted italic" title={d.detalle_estado}>
+                          {d.detalle_estado.length > 35 ? d.detalle_estado.slice(0, 35) + '…' : d.detalle_estado}
                         </span>
                       )}
                     </div>
@@ -1412,11 +1412,11 @@ export default function PaginaProcesarDocumentos() {
                       </TablaTd>
                       <TablaTd className="text-xs max-w-0 w-[30%] truncate bg-red-50 text-error/70 font-medium" title={d.ubicacion_documento || ''}>{d.ubicacion_documento || '—'}</TablaTd>
                       <TablaTd>
-                        <div className="flex flex-col gap-0.5">
+                        <div className="flex items-center gap-2">
                           <Insignia variante="error">{d.codigo_estado_doc}</Insignia>
                           {d.detalle_estado && (
-                            <span className="text-xs text-texto-muted" title={d.detalle_estado}>
-                              {d.detalle_estado.length > 40 ? d.detalle_estado.slice(0, 40) + '…' : d.detalle_estado}
+                            <span className="text-xs text-texto-muted italic" title={d.detalle_estado}>
+                              {d.detalle_estado.length > 35 ? d.detalle_estado.slice(0, 35) + '…' : d.detalle_estado}
                             </span>
                           )}
                         </div>
