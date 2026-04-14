@@ -328,7 +328,7 @@ export default function PaginaProcesarDocumentos() {
       if (ubicacionSel) {
         const ubic = ubicaciones.find((u) => u.codigo_ubicacion === ubicacionSel)
         if (ubic?.ruta_completa) {
-          filtrados = filtrados.filter((d) => d.ubicacion_documento?.includes(ubic.ruta_completa))
+          filtrados = filtrados.filter((d) => d.ubicacion_documento?.startsWith(ubic.ruta_completa))
         }
       }
 
@@ -542,8 +542,9 @@ export default function PaginaProcesarDocumentos() {
 
     // ── EXTRAER (client-side): CARGADO → METADATA ─────────────────────────
     if (esExtraer) {
-      // Usar handle guardado si existe y tiene permisos; si no, correr sin él
-      // (los docs sin archivo local quedarán marcados como NO_ENCONTRADO).
+      // 1. Handle activo con permisos vigentes
+      // 2. Handle guardado en IndexedDB (banner silencioso del browser)
+      // 3. Primera vez: showDirectoryPicker (abre Finder una sola vez, luego queda guardado)
       let handleEfectivo: FileSystemDirectoryHandle | null = dirHandle
       if (!handleEfectivo || !(await ensureReadPermission(handleEfectivo))) {
         const stored = await idbGetHandle()
@@ -551,11 +552,27 @@ export default function PaginaProcesarDocumentos() {
           handleEfectivo = stored
           setDirHandle(stored)
         } else {
-          handleEfectivo = null
+          try {
+            const opts: Record<string, unknown> = { mode: 'read', id: 'cab-procesar-docs' }
+            handleEfectivo = await (window as unknown as { showDirectoryPicker: (opts?: Record<string, unknown>) => Promise<FileSystemDirectoryHandle> }).showDirectoryPicker(opts)
+            setDirHandle(handleEfectivo)
+            idbSetHandle(handleEfectivo)
+            setEscaneandoDir(true)
+            try {
+              const archivos = await escanearDirectorio(handleEfectivo)
+              setArchivosEnDir(archivos)
+            } finally {
+              setEscaneandoDir(false)
+            }
+          } catch {
+            setEjecutando(false)
+            return
+          }
         }
       }
 
-      const ids = Array.from(seleccionados)
+      let ids = Array.from(seleccionados)
+      if (tope) ids = ids.slice(0, parseInt(tope))
       const colaInicial: ItemCola[] = ids.map((id) => {
         const doc = documentos.find((d) => d.codigo_documento === id)
         return {
@@ -578,13 +595,13 @@ export default function PaginaProcesarDocumentos() {
         setCola((prev) => prev.map((c, j) => j === idx ? { ...c, estado_cola: 'EN_PROCESO' } : c))
         const t0 = Date.now()
         try {
-          if (!item.ubicacion_documento || !handleEfectivo) {
+          if (!item.ubicacion_documento) {
             await documentosApi.subirTexto(item.codigo_documento, {
               texto_fuente: '', archivo_no_encontrado: true,
             })
             setCola((prev) => prev.map((c, j) => j === idx ? { ...c, estado_cola: 'COMPLETADO', resultado: 'NO_ENCONTRADO (sin ubicación)', tiempo_ms: Date.now() - t0 } : c))
           } else {
-            const fileHandle = await abrirArchivoPorRuta(handleEfectivo, item.ubicacion_documento)
+            const fileHandle = await abrirArchivoPorRuta(handleEfectivo!, item.ubicacion_documento)
             if (!fileHandle) {
               await documentosApi.subirTexto(item.codigo_documento, { texto_fuente: '', archivo_no_encontrado: true })
               setCola((prev) => prev.map((c, j) => j === idx ? { ...c, estado_cola: 'COMPLETADO', resultado: 'NO_ENCONTRADO', tiempo_ms: Date.now() - t0 } : c))
@@ -668,36 +685,25 @@ export default function PaginaProcesarDocumentos() {
     }
     const estadoDestino = pasoActual.estado_destino
 
-    // 1. Encolar — usar inicializarPorEstado para evitar el límite de 1000 filas de Supabase.
-    // El backend consulta directamente todos los docs en el estado origen sin restricciones.
-    const estadoOrigen = pasoActual.estado_origen
+    // 1. Encolar solo los docs seleccionados en la tabla (con tope aplicado)
     try {
-      if (estadoOrigen) {
-        const ubicacionFiltro = ubicacionSel ? ubicacionSel : null
-        await colaEstadosDocsApi.inicializarPorEstado(estadoOrigen, estadoDestino, undefined, tope ? parseInt(tope) : null, ubicacionFiltro)
-      } else {
-        // Fallback: encolar solo los seleccionados (no debería ocurrir en procesos normales)
-        const items = Array.from(seleccionados).map((id) => ({
-          codigo_documento: id,
-          codigo_estado_doc_destino: estadoDestino,
-        }))
-        await colaEstadosDocsApi.inicializar(items)
-      }
+      let ids = Array.from(seleccionados)
+      if (tope) ids = ids.slice(0, parseInt(tope))
+      const items = ids.map((id) => ({
+        codigo_documento: id,
+        codigo_estado_doc_destino: estadoDestino,
+      }))
+      await colaEstadosDocsApi.inicializar(items)
     } catch {
       setEjecutando(false)
       return
     }
 
-    // 2. Cargar cola inicial para mostrar en UI.
-    // Para procesos LLM mostramos TODOS los ítems activos del grupo para ese
-    // destino, independientemente de qué docs tenga el usuario seleccionados en
-    // la tabla. El worker backend procesa todos los PENDIENTE; limitar por
-    // seleccionados hacía que la UI quedara vacía cuando los ítems ya existían
-    // en la cola (encolados=0) y los docs seleccionados no coincidían con los
-    // de la cola (ej. docs filtrados por nombre vs cola completa).
+    // 2. Cargar cola inicial — solo los docs encolados en esta ejecución
+    const idsSeleccionados = new Set(Array.from(seleccionados).slice(0, tope ? parseInt(tope) : undefined))
     const pendientes = await colaEstadosDocsApi.listar()
     const misItems = pendientes.filter((p) =>
-      p.codigo_estado_doc_destino === estadoDestino,
+      p.codigo_estado_doc_destino === estadoDestino && idsSeleccionados.has(p.codigo_documento),
     )
     const colaInicial: ItemCola[] = misItems.map((p) => {
       const doc = documentos.find((d) => d.codigo_documento === p.codigo_documento)
