@@ -1680,50 +1680,46 @@ export default function PaginaProcesarDocumentos() {
                   )}
                 </div>
 
-                {/* Datos del último procesamiento en cola */}
-                {colaItemDetalle && (
-                  <div className="mt-2 rounded-lg border border-borde bg-fondo px-4 py-3 flex flex-col gap-2">
-                    <p className="text-xs font-semibold text-texto-muted uppercase tracking-wide">Último proceso</p>
-                    <div className="grid grid-cols-2 gap-x-6 gap-y-1.5 text-sm">
-                      <div>
-                        <span className="text-xs text-texto-muted block">Proceso</span>
-                        <span className="font-medium">{colaItemDetalle.codigo_estado_doc_destino || '—'}</span>
-                      </div>
-                      <div>
-                        <span className="text-xs text-texto-muted block">Resultado</span>
-                        <span className={colaItemDetalle.estado_cola === 'ERROR' ? 'text-error font-medium' : 'font-medium'}>{colaItemDetalle.estado_cola}</span>
-                      </div>
-                      <div>
-                        <span className="text-xs text-texto-muted block">Inicio</span>
-                        <span>{colaItemDetalle.fecha_inicio ? new Date(colaItemDetalle.fecha_inicio).toLocaleString('es-CL') : '—'}</span>
-                      </div>
-                      <div>
-                        <span className="text-xs text-texto-muted block">Término</span>
-                        <span>{colaItemDetalle.fecha_fin ? new Date(colaItemDetalle.fecha_fin).toLocaleString('es-CL') : '—'}</span>
-                      </div>
-                      <div>
-                        <span className="text-xs text-texto-muted block">Duración</span>
-                        <span>
-                          {colaItemDetalle.fecha_inicio && colaItemDetalle.fecha_fin
-                            ? (() => { const ms = new Date(colaItemDetalle.fecha_fin).getTime() - new Date(colaItemDetalle.fecha_inicio).getTime(); return ms >= 60000 ? `${Math.floor(ms / 60000)}m ${Math.floor((ms % 60000) / 1000)}s` : `${(ms / 1000).toFixed(1)}s` })()
-                            : '—'}
-                        </span>
-                      </div>
-                      {colaItemDetalle.modelo_usado && (
-                        <div>
-                          <span className="text-xs text-texto-muted block">LLM</span>
-                          <span className="font-mono text-xs">{colaItemDetalle.modelo_usado}</span>
-                        </div>
-                      )}
+                {/* Datos del último procesamiento en cola — siempre visible */}
+                <div className="mt-2 rounded-lg border border-borde bg-fondo px-4 py-3 flex flex-col gap-2">
+                  <p className="text-xs font-semibold text-texto-muted uppercase tracking-wide">Último proceso</p>
+                  <div className="grid grid-cols-2 gap-x-6 gap-y-1.5 text-sm">
+                    <div>
+                      <span className="text-xs text-texto-muted block">Proceso</span>
+                      <span className="font-medium">{colaItemDetalle?.codigo_estado_doc_destino || '—'}</span>
                     </div>
-                    {colaItemDetalle.resultado && (
-                      <div>
-                        <span className="text-xs text-texto-muted block mb-1">Detalle resultado</span>
-                        <p className="text-xs text-texto-muted">{colaItemDetalle.resultado}</p>
-                      </div>
-                    )}
+                    <div>
+                      <span className="text-xs text-texto-muted block">Resultado</span>
+                      <span className={colaItemDetalle?.estado_cola === 'ERROR' ? 'text-error font-medium' : 'font-medium'}>{colaItemDetalle?.estado_cola || '—'}</span>
+                    </div>
+                    <div>
+                      <span className="text-xs text-texto-muted block">Inicio</span>
+                      <span>{colaItemDetalle?.fecha_inicio ? new Date(colaItemDetalle.fecha_inicio).toLocaleString('es-CL') : '—'}</span>
+                    </div>
+                    <div>
+                      <span className="text-xs text-texto-muted block">Término</span>
+                      <span>{colaItemDetalle?.fecha_fin ? new Date(colaItemDetalle.fecha_fin).toLocaleString('es-CL') : '—'}</span>
+                    </div>
+                    <div>
+                      <span className="text-xs text-texto-muted block">Duración</span>
+                      <span>
+                        {colaItemDetalle?.fecha_inicio && colaItemDetalle?.fecha_fin
+                          ? (() => { const ms = new Date(colaItemDetalle.fecha_fin).getTime() - new Date(colaItemDetalle.fecha_inicio).getTime(); return ms >= 60000 ? `${Math.floor(ms / 60000)}m ${Math.floor((ms % 60000) / 1000)}s` : `${(ms / 1000).toFixed(1)}s` })()
+                          : '—'}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-xs text-texto-muted block">LLM</span>
+                      <span className="font-mono text-xs">{colaItemDetalle?.modelo_usado || '—'}</span>
+                    </div>
                   </div>
-                )}
+                  {colaItemDetalle?.resultado && (
+                    <div>
+                      <span className="text-xs text-texto-muted block mb-1">Detalle resultado</span>
+                      <p className="text-xs text-texto-muted">{colaItemDetalle.resultado}</p>
+                    </div>
+                  )}
+                </div>
               </div>
             )}
 
