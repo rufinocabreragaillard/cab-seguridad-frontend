@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback, useRef, useMemo, useLayoutEffect } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { useTranslations } from 'next-intl'
-import { Play, FileText, CheckCircle, XCircle, Loader2, FolderOpen, Clock, Square, Search, CheckSquare, SquareIcon, Trash2, AlertTriangle, ListOrdered, Cpu, Eye, ExternalLink, X, ChevronDown, Image as ImageIcon, FileSpreadsheet, FileArchive, FileCode, File } from 'lucide-react'
+import { Play, FileText, CheckCircle, XCircle, Loader2, FolderOpen, Clock, Square, Search, CheckSquare, SquareIcon, Trash2, AlertTriangle, ListOrdered, Cpu, Eye, ExternalLink, X, ChevronDown, Image as ImageIcon, FileSpreadsheet, FileArchive, FileCode, File, Copy, Check, MapPin } from 'lucide-react'
 import { Boton } from '@/components/ui/boton'
 import { Input } from '@/components/ui/input'
 import { Insignia } from '@/components/ui/insignia'
@@ -84,6 +84,24 @@ function LinkAccion({ tooltip, href, className, children }: {
     </div>
   )
 }
+
+/** Botón copiar al portapapeles */
+function BotonCopiar({ texto }: { texto: string }) {
+  const [copiado, setCopiado] = useState(false)
+  const copiar = () => {
+    navigator.clipboard.writeText(texto).then(() => {
+      setCopiado(true)
+      setTimeout(() => setCopiado(false), 1500)
+    })
+  }
+  return (
+    <button onClick={copiar} className="shrink-0 p-1 rounded hover:bg-primario-muy-claro text-texto-muted hover:text-primario transition-colors" title="Copiar">
+      {copiado ? <Check size={13} className="text-green-500" /> : <Copy size={13} />}
+    </button>
+  )
+}
+
+const DOCS_POR_PAGINA_DEFAULT = 20
 
 const ESTADO_COLA_CONFIG: Record<string, { variante: 'exito' | 'error' | 'advertencia' | 'neutro'; icono: typeof Clock }> = {
   PENDIENTE: { variante: 'neutro', icono: Clock },
@@ -208,6 +226,10 @@ export default function PaginaProcesarDocumentos() {
   // Confirmación para eliminar documento individual de la lista
   const [confirmEliminarDoc, setConfirmEliminarDoc] = useState<Documento | null>(null)
   const [eliminandoDoc, setEliminandoDoc] = useState(false)
+
+  // Paginación de lista de documentos
+  const [paginaDoc, setPaginaDoc] = useState(1)
+  const [filtroUbicacion, setFiltroUbicacion] = useState('')
 
   // Modal detalle documento (inline, reemplaza navegación a /documentos)
   const [docDetalle, setDocDetalle] = useState<Documento | null>(null)
@@ -434,6 +456,7 @@ export default function PaginaProcesarDocumentos() {
   const docsFiltrados = documentos.filter((d) => {
     if (busqueda && !d.nombre_documento.toLowerCase().includes(busqueda.toLowerCase()) &&
         !(d.ubicacion_documento || '').toLowerCase().includes(busqueda.toLowerCase())) return false
+    if (filtroUbicacion && !(d.ubicacion_documento || '').toLowerCase().includes(filtroUbicacion.toLowerCase())) return false
     return true
   })
 
@@ -445,6 +468,11 @@ export default function PaginaProcesarDocumentos() {
   const docsSinDisco = esExtraer && archivosEnDir
     ? docsFiltrados.filter((d) => !archivosEnDir.has(d.nombre_documento))
     : []
+
+  // Paginación
+  const totalPaginas = Math.max(1, Math.ceil(docsEnDisco.length / DOCS_POR_PAGINA_DEFAULT))
+  const paginaActual = Math.min(paginaDoc, totalPaginas)
+  const docsEnDiscoPaginados = docsEnDisco.slice((paginaActual - 1) * DOCS_POR_PAGINA_DEFAULT, paginaActual * DOCS_POR_PAGINA_DEFAULT)
 
   // Cuando se escanea un directorio en modo EXTRAER, marcar automáticamente los encontrados
   useEffect(() => {
@@ -1187,7 +1215,7 @@ export default function PaginaProcesarDocumentos() {
       {/* Lista de documentos candidatos (visible antes de ejecución) */}
       {cola.length === 0 && (
         <>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 flex-wrap">
             <div className="flex gap-2">
               <Boton variante="contorno" tamano="sm" onClick={seleccionarTodos} disabled={ejecutando || docsFiltrados.length === 0}>
                 <CheckSquare size={14} />{t('todos')}
@@ -1196,7 +1224,7 @@ export default function PaginaProcesarDocumentos() {
                 <SquareIcon size={14} />{t('ninguno')}
               </Boton>
             </div>
-            <div className="max-w-sm flex-1">
+            <div className="max-w-xs flex-1">
               <Input
                 placeholder={t('buscarPlaceholder')}
                 value={busqueda}
@@ -1205,9 +1233,24 @@ export default function PaginaProcesarDocumentos() {
                 icono={<Search size={15} />}
               />
             </div>
+            <div className="max-w-xs flex-1">
+              <Input
+                placeholder="Filtrar por ubicación..."
+                value={filtroUbicacion}
+                onChange={(e) => { setFiltroUbicacion(e.target.value); setPaginaDoc(1) }}
+                icono={<MapPin size={15} />}
+              />
+            </div>
             <Boton variante="contorno" tamano="sm" onClick={cargarDocumentos} disabled={cargando}>
               {cargando ? <Loader2 size={14} className="animate-spin" /> : <Search size={14} />}{t('buscar')}
             </Boton>
+            {documentos.length > 0 && (
+              <span className="text-xs text-texto-muted ml-auto">
+                {docsFiltrados.length === documentos.length
+                  ? `${documentos.length} documentos`
+                  : `${docsFiltrados.length} de ${documentos.length} documentos`}
+              </span>
+            )}
           </div>
           <Tabla>
             <TablaCabecera>
@@ -1231,7 +1274,7 @@ export default function PaginaProcesarDocumentos() {
                     : t('sinResultadosBusqueda')}
                 </TablaTd></TablaFila>
               ) : (<>
-                {docsEnDisco.map((d) => (
+                {docsEnDiscoPaginados.map((d) => (
                 <TablaFila key={d.codigo_documento}>
                   <TablaTd>
                     <input type="checkbox" checked={seleccionados.has(d.codigo_documento)}
@@ -1327,6 +1370,25 @@ export default function PaginaProcesarDocumentos() {
               </>)}
             </TablaCuerpo>
           </Tabla>
+          {/* Paginación */}
+          {docsEnDisco.length > DOCS_POR_PAGINA_DEFAULT && (
+            <div className="flex items-center justify-between text-xs text-texto-muted mt-1">
+              <span>
+                {(paginaActual - 1) * DOCS_POR_PAGINA_DEFAULT + 1}–{Math.min(paginaActual * DOCS_POR_PAGINA_DEFAULT, docsEnDisco.length)} de {docsEnDisco.length}
+              </span>
+              <div className="flex gap-1">
+                <button disabled={paginaActual <= 1} onClick={() => setPaginaDoc(1)}
+                  className="px-2 py-1 rounded border border-borde hover:bg-fondo disabled:opacity-30 disabled:cursor-not-allowed">«</button>
+                <button disabled={paginaActual <= 1} onClick={() => setPaginaDoc((p) => p - 1)}
+                  className="px-2 py-1 rounded border border-borde hover:bg-fondo disabled:opacity-30 disabled:cursor-not-allowed">‹</button>
+                <span className="px-3 py-1">{paginaActual} / {totalPaginas}</span>
+                <button disabled={paginaActual >= totalPaginas} onClick={() => setPaginaDoc((p) => p + 1)}
+                  className="px-2 py-1 rounded border border-borde hover:bg-fondo disabled:opacity-30 disabled:cursor-not-allowed">›</button>
+                <button disabled={paginaActual >= totalPaginas} onClick={() => setPaginaDoc(totalPaginas)}
+                  className="px-2 py-1 rounded border border-borde hover:bg-fondo disabled:opacity-30 disabled:cursor-not-allowed">»</button>
+              </div>
+            </div>
+          )}
         </>
       )}
 
@@ -1453,9 +1515,10 @@ export default function PaginaProcesarDocumentos() {
         abierto={!!docDetalle}
         alCerrar={() => setDocDetalle(null)}
         titulo={docDetalle ? docDetalle.nombre_documento : ''}
+        className="max-w-4xl"
       >
         {docDetalle && (
-          <div className="flex flex-col gap-4 w-[900px] max-w-full">
+          <div className="flex flex-col gap-4">
             {/* Tabs */}
             <div className="flex gap-1 border-b border-borde -mt-2">
               {(['datos', 'caracteristicas'] as TabDetalle[]).map((tab) => (
@@ -1480,14 +1543,19 @@ export default function PaginaProcesarDocumentos() {
             {tabDetalle === 'datos' && (
               <div className="flex flex-col gap-3">
                 <div className="grid grid-cols-12 gap-x-4 gap-y-3">
-                  <div className="col-span-12 md:col-span-5">
+                  <div className="col-span-12">
                     <p className="text-xs text-texto-muted mb-1">Nombre</p>
-                    <p className="text-sm font-medium text-texto">{docDetalle.nombre_documento}</p>
+                    <div className="flex items-center gap-2">
+                      {iconoTipoArchivo(docDetalle.nombre_documento, 16)}
+                      <p className="text-sm font-medium text-texto">{docDetalle.nombre_documento}</p>
+                      <BotonCopiar texto={docDetalle.nombre_documento} />
+                    </div>
                   </div>
-                  <div className="col-span-12 md:col-span-7">
+                  <div className="col-span-12">
                     <p className="text-xs text-texto-muted mb-1">Ubicación</p>
                     <div className="flex items-center gap-2">
                       <p className="text-sm text-texto break-all">{docDetalle.ubicacion_documento || '—'}</p>
+                      {docDetalle.ubicacion_documento && <BotonCopiar texto={docDetalle.ubicacion_documento} />}
                       {docDetalle.ubicacion_documento && /^https?:\/\//i.test(docDetalle.ubicacion_documento) && (
                         <a href={docDetalle.ubicacion_documento} target="_blank" rel="noopener noreferrer"
                           className="shrink-0 p-1 rounded hover:bg-primario-muy-claro text-texto-muted hover:text-primario" title="Abrir URL">
@@ -1502,24 +1570,36 @@ export default function PaginaProcesarDocumentos() {
                       )}
                     </div>
                   </div>
-                  <div className="col-span-6 md:col-span-3">
+                  <div className="col-span-4 md:col-span-3 flex flex-col">
                     <p className="text-xs text-texto-muted mb-1">Estado</p>
-                    {docDetalle.codigo_estado_doc
-                      ? <Insignia variante="primario">{docDetalle.codigo_estado_doc}</Insignia>
-                      : <span className="text-sm text-texto-muted">—</span>}
+                    <div className="flex items-end flex-1">
+                      {docDetalle.codigo_estado_doc
+                        ? <Insignia variante={['NO_ESCANEABLE', 'NO_ENCONTRADO'].includes(docDetalle.codigo_estado_doc) ? 'error' : 'primario'}>{docDetalle.codigo_estado_doc}</Insignia>
+                        : <span className="text-sm text-texto-muted">—</span>}
+                    </div>
                   </div>
-                  <div className="col-span-6 md:col-span-3">
+                  <div className="col-span-4 md:col-span-3 flex flex-col">
                     <p className="text-xs text-texto-muted mb-1">Tamaño</p>
-                    <p className="text-sm text-texto">{docDetalle.tamano_kb != null ? `${docDetalle.tamano_kb} KB` : '—'}</p>
+                    <div className="flex items-end flex-1">
+                      <p className="text-sm text-texto">{docDetalle.tamano_kb != null ? `${docDetalle.tamano_kb} KB` : '—'}</p>
+                    </div>
                   </div>
-                  <div className="col-span-6 md:col-span-6">
+                  <div className="col-span-4 md:col-span-6 flex flex-col">
                     <p className="text-xs text-texto-muted mb-1">Modificado</p>
-                    <p className="text-sm text-texto">{docDetalle.fecha_modificacion ? new Date(docDetalle.fecha_modificacion).toLocaleString('es-CL') : '—'}</p>
+                    <div className="flex items-end flex-1">
+                      <p className="text-sm text-texto">{docDetalle.fecha_modificacion ? new Date(docDetalle.fecha_modificacion).toLocaleString('es-CL') : '—'}</p>
+                    </div>
                   </div>
                   {docDetalle.detalle_estado && (
                     <div className="col-span-12">
-                      <p className="text-xs text-texto-muted mb-1">Detalle de estado</p>
+                      <p className="text-xs text-texto-muted mb-1">Razón del estado</p>
                       <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900 whitespace-pre-wrap">{docDetalle.detalle_estado}</div>
+                    </div>
+                  )}
+                  {!docDetalle.detalle_estado && ['NO_ESCANEABLE', 'NO_ENCONTRADO', 'VACIO'].includes(docDetalle.codigo_estado_doc || '') && (
+                    <div className="col-span-12">
+                      <p className="text-xs text-texto-muted mb-1">Razón del estado</p>
+                      <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">Sin detalle registrado. Restablece el documento y reprocésalo para obtener el motivo.</div>
                     </div>
                   )}
                   {docDetalle.resumen_documento && (
