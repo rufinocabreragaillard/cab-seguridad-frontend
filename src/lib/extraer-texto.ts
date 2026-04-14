@@ -1,11 +1,13 @@
 /**
  * Utilidad para extraer texto de archivos usando File System Access API.
- * Soporta: PDF, DOCX, XLSX, XLS, TXT, CSV, MD, JSON, XML, HTML
+ * Soporta: PDF, DOCX, PPTX/POTX, XLSX, XLS, TXT, CSV, MD, JSON, XML, HTML
  */
 
 const EXTENSIONES_TEXTO = new Set([
   'txt', 'csv', 'md', 'json', 'xml', 'html', 'htm', 'log', 'sql', 'py', 'js', 'ts', 'yaml', 'yml', 'ini', 'cfg',
 ])
+
+const EXTENSIONES_PPTX = new Set(['pptx', 'potx', 'ppsx'])
 
 /**
  * Lee un archivo del filesystem y extrae su contenido como texto.
@@ -29,6 +31,11 @@ export async function extraerTextoDeArchivo(fileHandle: FileSystemFileHandle): P
   // Excel (.xlsx / .xls / .xlsm)
   if (ext === 'xlsx' || ext === 'xls' || ext === 'xlsm') {
     return extraerTextoExcel(file)
+  }
+
+  // PowerPoint (.pptx / .potx / .ppsx) — son ZIP con XML internos
+  if (EXTENSIONES_PPTX.has(ext)) {
+    return extraerTextoPPTX(file)
   }
 
   // Archivos de texto plano
@@ -161,6 +168,60 @@ async function extraerTextoExcel(file: File): Promise<string> {
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e)
     throw new ArchivoNoEscaneable(`Excel corrupto: ${msg}`)
+  }
+}
+
+/**
+ * Extrae texto de un archivo PowerPoint (.pptx/.potx/.ppsx) usando JSZip.
+ * Los archivos PPTX son ZIPs que contienen slides XML en ppt/slides/slideN.xml.
+ * Extraemos el texto de los nodos <a:t> de cada slide.
+ */
+async function extraerTextoPPTX(file: File): Promise<string> {
+  try {
+    const JSZip = (await import('jszip')).default
+    const arrayBuffer = await file.arrayBuffer()
+    const zip = await JSZip.loadAsync(arrayBuffer)
+
+    // Encontrar todos los slides (ppt/slides/slide1.xml, slide2.xml, ...)
+    const slideFiles = Object.keys(zip.files)
+      .filter((name) => /^ppt\/slides\/slide\d+\.xml$/i.test(name))
+      .sort((a, b) => {
+        const na = parseInt(a.match(/slide(\d+)/)?.[1] || '0')
+        const nb = parseInt(b.match(/slide(\d+)/)?.[1] || '0')
+        return na - nb
+      })
+
+    if (slideFiles.length === 0) {
+      throw new ArchivoNoEscaneable('PPTX sin slides')
+    }
+
+    const partes: string[] = []
+    for (const slidePath of slideFiles) {
+      const xml = await zip.files[slidePath].async('text')
+      // Extraer texto de nodos <a:t>...</a:t> (texto dentro de shapes)
+      const textos: string[] = []
+      const regex = /<a:t>(.*?)<\/a:t>/gs
+      let match
+      while ((match = regex.exec(xml)) !== null) {
+        const texto = match[1]
+          .replace(/&amp;/g, '&')
+          .replace(/&lt;/g, '<')
+          .replace(/&gt;/g, '>')
+          .replace(/&quot;/g, '"')
+          .replace(/&apos;/g, "'")
+        if (texto.trim()) textos.push(texto)
+      }
+      if (textos.length > 0) {
+        const numSlide = slidePath.match(/slide(\d+)/)?.[1] || '?'
+        partes.push(`### Slide ${numSlide}\n${textos.join(' ')}`)
+      }
+    }
+
+    return partes.join('\n\n')
+  } catch (e) {
+    if (e instanceof ArchivoNoEscaneable) throw e
+    const msg = e instanceof Error ? e.message : String(e)
+    throw new ArchivoNoEscaneable(`PPTX corrupto: ${msg}`)
   }
 }
 
