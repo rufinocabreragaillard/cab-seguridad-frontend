@@ -104,7 +104,7 @@ export default function PaginaLogin() {
             }}
           />
           <p className="font-semibold tracking-wide" style={{ fontSize: '1.45rem', color: '#5a5a5a', textAlign: 'center' }}>
-            RAG Framework
+            {t('tagline')}
           </p>
         </div>
       </div>
