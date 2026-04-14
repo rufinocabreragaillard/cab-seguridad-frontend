@@ -15,6 +15,7 @@ import { usePaginacion } from '@/hooks/usePaginacion'
 import { usuariosApi, rolesApi, entidadesApi, aplicacionesApi, gruposApi } from '@/lib/api'
 import { useAuth } from '@/context/AuthContext'
 import type { Usuario, Rol, Entidad, Area, Aplicacion, Grupo } from '@/lib/tipos'
+import { normalizarTipo, etiquetaTipo, varianteTipo } from '@/lib/tipo-elemento'
 import { exportarExcel } from '@/lib/exportar-excel'
 
 type RolAsignado = {
@@ -436,14 +437,14 @@ export default function PaginaUsuarios() {
   const ROLES_PROTEGIDOS = new Set(['SEG_ADMIN_GRUPO', 'ADMIN'])
   const esSuperAdmin = (usuarioActual?.grupos || []).some((g) => g.codigo_grupo === 'ADMIN')
   const mapaAppNombre = Object.fromEntries(catalogoApps.map((a) => [a.codigo_aplicacion, a.nombre]))
-  const tipoGrupoActivo = catalogoGrupos.find((g) => g.codigo_grupo === grupoActivo)?.tipo || 'NORMAL'
+  const tipoGrupoActivo = normalizarTipo(catalogoGrupos.find((g) => g.codigo_grupo === grupoActivo)?.tipo)
   const rolesDisponibles = roles
     .filter((r) =>
       !ROLES_PROTEGIDOS.has(r.codigo_rol) &&
       (r.codigo_grupo === grupoActivo || r.codigo_grupo == null) &&
       !rolesUsuario.some((ra) => ra.codigo_grupo === grupoActivo && ra.id_rol === r.id_rol) &&
-      // Filtro tipo: grupo RESTRINGIDO → solo roles RESTRINGIDO; grupo NORMAL → solo roles NORMAL
-      (r.tipo || 'NORMAL') === tipoGrupoActivo
+      // Filtro tipo: el rol debe tener el mismo tipo que el grupo activo
+      normalizarTipo(r.tipo) === tipoGrupoActivo
     )
     // Orden: nombre app origen → nombre rol. Sin app origen al final.
     .sort((a, b) => {
@@ -602,9 +603,7 @@ export default function PaginaUsuarios() {
                   <TablaTd className="text-texto-muted">{u.codigo_usuario}</TablaTd>
                   <TablaTd>{u.codigo_rol_principal || <span className="text-texto-light">—</span>}</TablaTd>
                   <TablaTd>
-                    <Insignia variante={u.tipo === 'USUARIO' ? 'exito' : u.tipo === 'ADMINISTRADOR' ? 'advertencia' : u.tipo === 'RESTRINGIDO' ? 'error' : 'neutro'}>
-                      {u.tipo || '—'}
-                    </Insignia>
+                    <Insignia variante={varianteTipo(u.tipo)}>{etiquetaTipo(u.tipo)}</Insignia>
                   </TablaTd>
                   <TablaTd>
                     <Insignia variante={u.activo ? 'exito' : 'error'}>

@@ -13,6 +13,7 @@ import { gruposApi, usuariosApi, entidadesApi } from '@/lib/api'
 import { ModalConfirmar } from '@/components/ui/modal-confirmar'
 import { useAuth } from '@/context/AuthContext'
 import type { Grupo, Entidad, Usuario } from '@/lib/tipos'
+import { etiquetaTipo, varianteTipo, normalizarTipo, type TipoElemento } from '@/lib/tipo-elemento'
 import { exportarExcel } from '@/lib/exportar-excel'
 import { useTranslations } from 'next-intl'
 
@@ -36,7 +37,7 @@ export default function PaginaGrupos() {
 
   const [modalGrupo, setModalGrupo] = useState(false)
   const [grupoEditando, setGrupoEditando] = useState<Grupo | null>(null)
-  const [formGrupo, setFormGrupo] = useState({ codigo_grupo: '', nombre: '', descripcion: '', tipo: 'NORMAL' as 'NORMAL' | 'RESTRINGIDO', prompt: '', system_prompt: '' })
+  const [formGrupo, setFormGrupo] = useState({ codigo_grupo: '', nombre: '', descripcion: '', tipo: 'USUARIO' as TipoElemento, prompt: '', system_prompt: '' })
   const [tabModalGrupo, setTabModalGrupo] = useState<'datos' | 'prompt' | 'system_prompt'>('datos')
   const [guardando, setGuardando] = useState(false)
   const [error, setError] = useState('')
@@ -101,7 +102,7 @@ export default function PaginaGrupos() {
 
   const abrirNuevoGrupo = () => {
     setGrupoEditando(null)
-    setFormGrupo({ codigo_grupo: '', nombre: '', descripcion: '', tipo: 'NORMAL', prompt: '', system_prompt: '' })
+    setFormGrupo({ codigo_grupo: '', nombre: '', descripcion: '', tipo: 'USUARIO', prompt: '', system_prompt: '' })
     setTabModalGrupo('datos')
     setError('')
     setModalGrupo(true)
@@ -109,7 +110,7 @@ export default function PaginaGrupos() {
 
   const abrirEditarGrupo = (g: Grupo) => {
     setGrupoEditando(g)
-    setFormGrupo({ codigo_grupo: g.codigo_grupo, nombre: g.nombre, descripcion: g.descripcion || '', tipo: g.tipo || 'NORMAL', prompt: g.prompt || '', system_prompt: g.system_prompt || '' })
+    setFormGrupo({ codigo_grupo: g.codigo_grupo, nombre: g.nombre, descripcion: g.descripcion || '', tipo: normalizarTipo(g.tipo), prompt: g.prompt || '', system_prompt: g.system_prompt || '' })
     setTabModalGrupo('datos')
     setError('')
     setModalGrupo(true)
@@ -337,8 +338,8 @@ export default function PaginaGrupos() {
             g.nombre.toLowerCase().includes(busquedaGrupos.toLowerCase()) ||
             g.codigo_grupo.toLowerCase().includes(busquedaGrupos.toLowerCase())
           ).sort((a, b) => {
-            const tipoOrd = (t?: string) => t === 'RESTRINGIDO' ? 1 : 0
-            const dt = tipoOrd(a.tipo) - tipoOrd(b.tipo)
+            const peso = (t?: string | null) => { const n = normalizarTipo(t); return n === 'USUARIO' ? 0 : n === 'PRUEBAS' ? 1 : n === 'ADMINISTRADOR' ? 2 : 3 }
+            const dt = peso(a.tipo) - peso(b.tipo)
             return dt !== 0 ? dt : a.nombre.localeCompare(b.nombre)
           }).map((g) => (
             <button
@@ -361,9 +362,7 @@ export default function PaginaGrupos() {
                 <p className="text-sm font-medium text-texto truncate">{g.nombre}</p>
                 <div className="flex items-center gap-2">
                   <p className="text-xs text-texto-muted">{g.codigo_grupo}</p>
-                  {g.tipo === 'RESTRINGIDO'
-                    ? <Insignia variante="error">Restringido</Insignia>
-                    : <Insignia variante="exito">Normal</Insignia>}
+                  <Insignia variante={varianteTipo(g.tipo)}>{etiquetaTipo(g.tipo)}</Insignia>
                 </div>
               </div>
               <button
@@ -626,9 +625,7 @@ export default function PaginaGrupos() {
               <div className="flex flex-col gap-1">
                 <label className="text-sm font-medium text-texto">Tipo</label>
                 <div className="flex items-center gap-2 py-1">
-                  {formGrupo.tipo === 'RESTRINGIDO'
-                    ? <Insignia variante="error">Restringido</Insignia>
-                    : <Insignia variante="exito">Normal</Insignia>}
+                  <Insignia variante={varianteTipo(formGrupo.tipo)}>{etiquetaTipo(formGrupo.tipo)}</Insignia>
                   <span className="text-xs text-texto-muted">Solo modificable desde la base de datos</span>
                 </div>
               </div>

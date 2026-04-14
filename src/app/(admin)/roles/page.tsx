@@ -14,6 +14,7 @@ import { rolesApi, funcionesApi, aplicacionesApi, registroLLMApi } from '@/lib/a
 import { useAuth } from '@/context/AuthContext'
 import type { Rol, Funcion, Aplicacion, RegistroLLM } from '@/lib/tipos'
 import { exportarExcel } from '@/lib/exportar-excel'
+import { etiquetaTipo, varianteTipo, normalizarTipo, type TipoElemento } from '@/lib/tipo-elemento'
 
 type FuncionAsignada = { codigo_funcion: string; orden: number; funciones: { nombre_funcion: string } }
 
@@ -31,7 +32,7 @@ export default function PaginaRoles() {
   // Modal rol
   const [modalRol, setModalRol] = useState(false)
   const [rolEditando, setRolEditando] = useState<Rol | null>(null)
-  const [formRol, setFormRol] = useState({ codigo_rol: '', nombre: '', alias_de_rol: '', descripcion: '', url_inicio: '', funcion_por_defecto: '', codigo_aplicacion_origen: '', tipo: 'NORMAL' as 'NORMAL' | 'RESTRINGIDO' | 'GRUPO', prompt: '', system_prompt: '' })
+  const [formRol, setFormRol] = useState({ codigo_rol: '', nombre: '', alias_de_rol: '', descripcion: '', url_inicio: '', funcion_por_defecto: '', codigo_aplicacion_origen: '', tipo: 'USUARIO' as TipoElemento, prompt: '', system_prompt: '' })
   const [tabModalRol, setTabModalRol] = useState<'datos' | 'funciones' | 'prompt' | 'system_prompt'>('datos')
 
   // Funciones del rol en edición
@@ -116,7 +117,7 @@ export default function PaginaRoles() {
 
   const abrirNuevoRol = () => {
     setRolEditando(null)
-    setFormRol({ codigo_rol: '', nombre: '', alias_de_rol: '', descripcion: '', url_inicio: '', funcion_por_defecto: '', codigo_aplicacion_origen: aplicacionActiva || '', tipo: 'NORMAL', prompt: '', system_prompt: '' })
+    setFormRol({ codigo_rol: '', nombre: '', alias_de_rol: '', descripcion: '', url_inicio: '', funcion_por_defecto: '', codigo_aplicacion_origen: aplicacionActiva || '', tipo: 'USUARIO', prompt: '', system_prompt: '' })
     setError('')
     setTabModalRol('datos')
     setModalRol(true)
@@ -124,7 +125,7 @@ export default function PaginaRoles() {
 
   const abrirEditarRol = (r: Rol) => {
     setRolEditando(r)
-    setFormRol({ codigo_rol: r.codigo_rol, nombre: r.nombre, alias_de_rol: r.alias_de_rol || '', descripcion: r.descripcion || '', url_inicio: r.url_inicio || '', funcion_por_defecto: r.funcion_por_defecto || '', codigo_aplicacion_origen: r.codigo_aplicacion_origen || '', tipo: (r.tipo as 'NORMAL' | 'RESTRINGIDO' | 'GRUPO') || 'NORMAL', prompt: (r as Record<string, unknown>).prompt as string || '', system_prompt: (r as Record<string, unknown>).system_prompt as string || '' })
+    setFormRol({ codigo_rol: r.codigo_rol, nombre: r.nombre, alias_de_rol: r.alias_de_rol || '', descripcion: r.descripcion || '', url_inicio: r.url_inicio || '', funcion_por_defecto: r.funcion_por_defecto || '', codigo_aplicacion_origen: r.codigo_aplicacion_origen || '', tipo: normalizarTipo(r.tipo), prompt: (r as Record<string, unknown>).prompt as string || '', system_prompt: (r as Record<string, unknown>).system_prompt as string || '' })
     setError('')
     setTabModalRol('datos')
     setFuncionNueva('')
@@ -456,7 +457,7 @@ export default function PaginaRoles() {
                     </div>
                   </TablaTd>
                   <TablaTd className="text-xs text-texto-muted">{nombreApp(r.codigo_aplicacion_origen) || '—'}</TablaTd>
-                  <TablaTd>{r.tipo === 'RESTRINGIDO' ? <Insignia variante="error">Restringido</Insignia> : r.tipo === 'GRUPO' ? <Insignia variante="advertencia">Grupo</Insignia> : <Insignia variante="exito">Normal</Insignia>}</TablaTd>
+                  <TablaTd><Insignia variante={varianteTipo(r.tipo)}>{etiquetaTipo(r.tipo)}</Insignia></TablaTd>
                   <TablaTd className="text-sm">{r.alias_de_rol || '—'}</TablaTd>
                   <TablaTd className="font-medium">{r.nombre}</TablaTd>
                   <TablaTd className="text-texto-muted text-xs">{r.url_inicio || '—'}</TablaTd>
@@ -530,7 +531,7 @@ export default function PaginaRoles() {
               ) : funcionesFiltradas.map((f) => (
                 <TablaFila key={f.codigo_funcion}>
                   <TablaTd className="text-xs text-texto-muted">{nombreApp(f.codigo_aplicacion_origen) || '—'}</TablaTd>
-                  <TablaTd>{f.tipo === 'RESTRINGIDA' ? <Insignia variante="error">Restringida</Insignia> : <Insignia variante="exito">Normal</Insignia>}</TablaTd>
+                  <TablaTd><Insignia variante={varianteTipo(f.tipo)}>{etiquetaTipo(f.tipo)}</Insignia></TablaTd>
                   <TablaTd className="text-sm">{f.alias_de_funcion || '—'}</TablaTd>
                   <TablaTd className="font-medium">{f.nombre}</TablaTd>
                   <TablaTd className="text-texto-muted text-xs">{f.icono_de_funcion || '—'}</TablaTd>
@@ -589,8 +590,9 @@ export default function PaginaRoles() {
                   <select value={formRol.codigo_aplicacion_origen} onChange={(e) => setFormRol({ ...formRol, codigo_aplicacion_origen: e.target.value })} className="w-full rounded-lg border border-borde bg-surface px-3 py-2 text-sm text-texto focus:outline-none focus:ring-2 focus:ring-primario">
                     <option value="">— sin asignar —</option>
                     {[...todasApps].sort((a, b) => {
-                      const ta = a.tipo === 'NORMAL' ? 0 : 1
-                      const tb = b.tipo === 'NORMAL' ? 0 : 1
+                      const peso = (t?: string | null) => { const n = normalizarTipo(t); return n === 'USUARIO' ? 0 : n === 'PRUEBAS' ? 1 : n === 'ADMINISTRADOR' ? 2 : 3 }
+                      const ta = peso(a.tipo)
+                      const tb = peso(b.tipo)
                       if (ta !== tb) return ta - tb
                       return a.nombre.localeCompare(b.nombre, 'es')
                     }).map((a) => (
@@ -601,9 +603,7 @@ export default function PaginaRoles() {
                 <div className="flex flex-col gap-1">
                   <label className="text-sm font-medium text-texto">Tipo</label>
                   <div className="flex items-center gap-2 py-1">
-                    {formRol.tipo === 'RESTRINGIDO'
-                      ? <Insignia variante="advertencia">Restringido</Insignia>
-                      : <Insignia variante="exito">Normal</Insignia>}
+                    <Insignia variante={varianteTipo(formRol.tipo)}>{etiquetaTipo(formRol.tipo)}</Insignia>
                     <span className="text-xs text-texto-muted">Solo modificable desde la base de datos</span>
                   </div>
                 </div>

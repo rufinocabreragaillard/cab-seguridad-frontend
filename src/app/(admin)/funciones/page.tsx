@@ -13,15 +13,14 @@ import { useAuth } from '@/context/AuthContext'
 import type { Aplicacion, Funcion, RegistroLLM } from '@/lib/tipos'
 import { exportarExcel } from '@/lib/exportar-excel'
 import { useTranslations } from 'next-intl'
+import { TIPOS_ELEMENTO, ETIQUETA_TIPO, etiquetaTipo, varianteTipo, normalizarTipo, type TipoElemento } from '@/lib/tipo-elemento'
 
 type AppDeFuncion = { codigo_aplicacion: string; aplicaciones?: { nombre_aplicacion: string } }
 
-type TipoFuncion = 'NORMAL' | 'RESTRINGIDA' | 'GRUPO'
+type TipoFuncion = TipoElemento
 
 function badgeTipo(tipo?: string) {
-  if (tipo === 'RESTRINGIDA') return <Insignia variante="error">Restringida</Insignia>
-  if (tipo === 'GRUPO') return <Insignia variante="advertencia">Grupo</Insignia>
-  return <Insignia variante="exito">Normal</Insignia>
+  return <Insignia variante={varianteTipo(tipo)}>{etiquetaTipo(tipo)}</Insignia>
 }
 
 export default function PaginaFunciones() {
@@ -56,7 +55,7 @@ export default function PaginaFunciones() {
   }>({
     codigo_funcion: '', nombre: '', descripcion: '', url_funcion: '',
     alias_de_funcion: '', icono_de_funcion: '', codigo_aplicacion_origen: '',
-    tipo: 'NORMAL', id_modelo: '', system_prompt: '', prompt: '',
+    tipo: 'USUARIO', id_modelo: '', system_prompt: '', prompt: '',
     perm_select: true, perm_insert: true, perm_update: true, perm_delete: true,
   })
   const [tabModalFuncion, setTabModalFuncion] = useState<'datos' | 'aplicaciones' | 'prompt' | 'system_prompt' | 'llm'>('datos')
@@ -99,7 +98,7 @@ export default function PaginaFunciones() {
       codigo_funcion: '', nombre: '', descripcion: '', url_funcion: '',
       alias_de_funcion: '', icono_de_funcion: '',
       codigo_aplicacion_origen: aplicacionActiva || '',
-      tipo: 'NORMAL', id_modelo: '', system_prompt: '', prompt: '',
+      tipo: 'USUARIO', id_modelo: '', system_prompt: '', prompt: '',
       perm_select: true, perm_insert: true, perm_update: true, perm_delete: true,
     })
     setErrorFuncion(''); setTabModalFuncion('datos'); setModalFuncion(true)
@@ -114,7 +113,7 @@ export default function PaginaFunciones() {
       alias_de_funcion: f.alias_de_funcion || '',
       icono_de_funcion: f.icono_de_funcion || '',
       codigo_aplicacion_origen: f.codigo_aplicacion_origen || '',
-      tipo: (f.tipo as TipoFuncion) || 'NORMAL',
+      tipo: normalizarTipo(f.tipo),
       id_modelo: f.id_modelo ? String(f.id_modelo) : '',
       system_prompt: (f as Funcion & { system_prompt?: string }).system_prompt || '',
       prompt: (f as Funcion & { prompt?: string }).prompt || '',
@@ -299,9 +298,9 @@ export default function PaginaFunciones() {
               <div>
                 <label className="text-sm font-medium text-texto">Tipo</label>
                 <select value={formFuncion.tipo} onChange={(e) => setFormFuncion({ ...formFuncion, tipo: e.target.value as TipoFuncion })} className={selectClass}>
-                  <option value="NORMAL">Normal</option>
-                  <option value="GRUPO">Grupo</option>
-                  <option value="RESTRINGIDA">Restringida</option>
+                  {TIPOS_ELEMENTO.map((t) => (
+                    <option key={t} value={t}>{ETIQUETA_TIPO[t]}</option>
+                  ))}
                 </select>
               </div>
               <div className="col-span-2">

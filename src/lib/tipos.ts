@@ -165,7 +165,7 @@ export interface Rol {
   funcion_por_defecto?: string
   codigo_aplicacion_origen?: string | null  // FK a aplicaciones, agrupa para ordenar/filtrar
   orden?: number
-  tipo?: 'NORMAL' | 'RESTRINGIDO' | 'GRUPO'
+  tipo?: 'USUARIO' | 'ADMINISTRADOR' | 'PRUEBAS' | 'RESTRINGIDO'
   prompt?: string | null
   system_prompt?: string | null
 }
@@ -178,7 +178,7 @@ export interface Funcion {
   alias_de_funcion?: string
   icono_de_funcion?: string
   codigo_aplicacion_origen?: string | null  // FK a aplicaciones, agrupa para ordenar/filtrar
-  tipo?: 'NORMAL' | 'RESTRINGIDA' | 'GRUPO'
+  tipo?: 'USUARIO' | 'ADMINISTRADOR' | 'PRUEBAS' | 'RESTRINGIDO'
   id_modelo?: number | null  // FK a registro_llm. NULL = sin LLM
   prompt?: string | null
   system_prompt?: string | null  // instrucciones extra al LLM
@@ -222,7 +222,7 @@ export interface Aplicacion {
   codigo_aplicacion: string
   nombre: string
   descripcion?: string
-  tipo?: 'NORMAL' | 'RESTRINGIDA' | 'GRUPO'
+  tipo?: 'USUARIO' | 'ADMINISTRADOR' | 'PRUEBAS' | 'RESTRINGIDO'
   sidebar_ancho?: boolean
   orden?: number
   prompt?: string | null

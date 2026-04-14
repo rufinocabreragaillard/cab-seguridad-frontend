@@ -23,6 +23,7 @@ import { Tabla, TablaCabecera, TablaCuerpo, TablaFila, TablaTh, TablaTd } from '
 import { usuariosApi, gruposApi, entidadesApi, rolesApi, aplicacionesApi } from '@/lib/api'
 import { useAuth } from '@/context/AuthContext'
 import type { Usuario, Grupo, Entidad, Rol, Aplicacion, Area } from '@/lib/tipos'
+import { normalizarTipo, etiquetaTipo, varianteTipo } from '@/lib/tipo-elemento'
 
 type RolAsignado = {
   codigo_grupo: string
@@ -410,12 +411,12 @@ export default function PaginaUsuariosSemilla() {
   // Grupo RESTRINGIDO → solo roles RESTRINGIDO; Grupo NORMAL → solo roles NORMAL
   const grupoForm = form.grupo_por_defecto
   const mapaAppNombre = Object.fromEntries(aplicaciones.map((a) => [a.codigo_aplicacion, a.nombre]))
-  const tipoGrupoForm = grupos.find((g) => g.codigo_grupo === grupoForm)?.tipo || 'NORMAL'
+  const tipoGrupoForm = normalizarTipo(grupos.find((g) => g.codigo_grupo === grupoForm)?.tipo)
   const rolesDisponibles = rolesGrupo
     .filter((r) =>
       (r.codigo_grupo === grupoForm || r.codigo_grupo == null) &&
       !rolesUsuario.some((ra) => ra.codigo_grupo === grupoForm && ra.id_rol === r.id_rol) &&
-      (r.tipo || 'NORMAL') === tipoGrupoForm
+      normalizarTipo(r.tipo) === tipoGrupoForm
     )
     .sort((a, b) => {
       const na = a.codigo_aplicacion_origen ? (mapaAppNombre[a.codigo_aplicacion_origen] || a.codigo_aplicacion_origen) : ''
@@ -509,17 +510,13 @@ export default function PaginaUsuariosSemilla() {
                 <TablaTd className="text-sm text-texto-muted">{u.codigo_usuario}</TablaTd>
                 <TablaTd>{u.grupo_por_defecto ? <span className="text-sm">{nombreGrupo(u.grupo_por_defecto)}</span> : <span className="text-texto-muted">—</span>}</TablaTd>
                 <TablaTd>
-                  {grupoInfo?.tipo === 'RESTRINGIDO'
-                    ? <Insignia variante="advertencia">Restringido</Insignia>
-                    : grupoInfo
-                      ? <Insignia variante="primario">Normal</Insignia>
-                      : <span className="text-texto-muted text-sm">—</span>
+                  {grupoInfo
+                    ? <Insignia variante={varianteTipo(grupoInfo.tipo)}>{etiquetaTipo(grupoInfo.tipo)}</Insignia>
+                    : <span className="text-texto-muted text-sm">—</span>
                   }
                 </TablaTd>
                 <TablaTd>
-                  <Insignia variante={u.tipo === 'USUARIO' ? 'exito' : u.tipo === 'ADMINISTRADOR' ? 'advertencia' : u.tipo === 'RESTRINGIDO' ? 'error' : 'neutro'}>
-                    {u.tipo || '—'}
-                  </Insignia>
+                  <Insignia variante={varianteTipo(u.tipo)}>{etiquetaTipo(u.tipo)}</Insignia>
                 </TablaTd>
                 <TablaTd><Insignia variante={u.activo ? 'exito' : 'error'}>{u.activo ? 'Activo' : 'Inactivo'}</Insignia></TablaTd>
                 <TablaTd>
@@ -639,7 +636,7 @@ export default function PaginaUsuariosSemilla() {
                         className="w-full text-left px-3 py-2 text-sm hover:bg-primario-muy-claro hover:text-primario transition-colors flex items-center gap-2">
                         <span className="font-medium">{g.nombre}</span>
                         <span className="text-texto-muted text-xs">{g.codigo_grupo}</span>
-                        {g.tipo === 'RESTRINGIDO' && <span className="ml-auto text-xs bg-error/10 text-error px-1.5 py-0.5 rounded">Restringido</span>}
+                        {(g.tipo === 'RESTRINGIDO' || g.tipo === 'ADMINISTRADOR') && <span className="ml-auto text-xs bg-error/10 text-error px-1.5 py-0.5 rounded">{etiquetaTipo(g.tipo)}</span>}
                       </button>
                     ))}
                   {grupos.filter((g) => !busquedaGrupoForm || g.nombre.toLowerCase().includes(busquedaGrupoForm.toLowerCase()) || g.codigo_grupo.toLowerCase().includes(busquedaGrupoForm.toLowerCase())).length === 0 && (
@@ -720,8 +717,8 @@ export default function PaginaUsuariosSemilla() {
                   {dropdownRolPpalAbierto && (
                     <div className="absolute z-50 w-full mt-1 bg-surface border border-borde rounded-lg shadow-lg max-h-48 overflow-y-auto">
                       {[{ id_rol: 0, nombre: '— Sin rol —', codigo_rol: '', codigo_grupo: null, tipo: tipoGrupoForm } as Rol,
-                        // Filtrar por tipo del grupo: RESTRINGIDO → solo roles RESTRINGIDO; NORMAL → solo roles NORMAL
-                        ...rolesGrupo.filter((r) => (r.tipo || 'NORMAL') === tipoGrupoForm)]
+                        // Filtrar roles al mismo tipo del grupo del formulario
+                        ...rolesGrupo.filter((r) => normalizarTipo(r.tipo) === tipoGrupoForm)]
                         .filter((r) => r.id_rol === 0 || !busquedaRolPpal || r.nombre.toLowerCase().includes(busquedaRolPpal.toLowerCase()) || r.codigo_rol.toLowerCase().includes(busquedaRolPpal.toLowerCase()))
                         .slice(0, 21).map((r) => (
                           <button key={r.id_rol} type="button"
@@ -752,10 +749,13 @@ export default function PaginaUsuariosSemilla() {
                   {dropdownAppFormAbierto && (
                     <div className="absolute z-50 w-full mt-1 bg-surface border border-borde rounded-lg shadow-lg max-h-48 overflow-y-auto">
                       {[{ codigo_aplicacion: '', nombre: '— Sin aplicación —', tipo: tipoGrupoForm } as Aplicacion,
-                        // Filtrar apps por tipo de grupo: RESTRINGIDO → incluye RESTRINGIDA; NORMAL → solo NORMAL
-                        ...(appsGrupo.length > 0 ? appsGrupo : aplicaciones).filter((a) =>
-                          tipoGrupoForm === 'RESTRINGIDO' || (a.tipo || 'NORMAL') === 'NORMAL'
-                        )]
+                        // Apps del mismo tipo que el grupo. Grupo RESTRINGIDO/ADMINISTRADOR: también ve apps USUARIO
+                        ...(appsGrupo.length > 0 ? appsGrupo : aplicaciones).filter((a) => {
+                          const at = normalizarTipo(a.tipo)
+                          if (at === tipoGrupoForm) return true
+                          if ((tipoGrupoForm === 'RESTRINGIDO' || tipoGrupoForm === 'ADMINISTRADOR') && at === 'USUARIO') return true
+                          return false
+                        })]
                         .filter((a) => !a.codigo_aplicacion || !busquedaAppForm || a.nombre.toLowerCase().includes(busquedaAppForm.toLowerCase()))
                         .slice(0, 21).map((a) => (
                           <button key={a.codigo_aplicacion || '__sin'} type="button"

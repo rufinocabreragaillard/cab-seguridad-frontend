@@ -13,6 +13,7 @@ import { useAuth } from '@/context/AuthContext'
 import type { Aplicacion, Funcion, Grupo } from '@/lib/tipos'
 import { exportarExcel } from '@/lib/exportar-excel'
 import { useTranslations } from 'next-intl'
+import { TIPOS_ELEMENTO, ETIQUETA_TIPO, DESCRIPCION_TIPO, etiquetaTipo, varianteTipo, normalizarTipo, type TipoElemento } from '@/lib/tipo-elemento'
 
 type FuncionApp = { codigo_funcion: string; orden: number; funciones: { nombre_funcion: string } }
 type GrupoApp = { codigo_grupo: string; grupos_entidades: { nombre_grupo: string } }
@@ -29,7 +30,7 @@ export default function PaginaAplicaciones() {
   // ── Modal Aplicacion ──────────────────────────────────────────────────────
   const [modalApp, setModalApp] = useState(false)
   const [appEditando, setAppEditando] = useState<Aplicacion | null>(null)
-  const [formApp, setFormApp] = useState<{ codigo_aplicacion: string; nombre: string; descripcion: string; tipo: 'NORMAL' | 'RESTRINGIDA' | 'GRUPO'; sidebar_ancho: boolean; prompt: string; system_prompt: string }>({ codigo_aplicacion: '', nombre: '', descripcion: '', tipo: 'NORMAL', sidebar_ancho: true, prompt: '', system_prompt: '' })
+  const [formApp, setFormApp] = useState<{ codigo_aplicacion: string; nombre: string; descripcion: string; tipo: TipoElemento; sidebar_ancho: boolean; prompt: string; system_prompt: string }>({ codigo_aplicacion: '', nombre: '', descripcion: '', tipo: 'USUARIO', sidebar_ancho: true, prompt: '', system_prompt: '' })
   const [tabModalApp, setTabModalApp] = useState<'datos' | 'funciones' | 'grupos' | 'prompt' | 'system_prompt'>('datos')
   const [guardandoApp, setGuardandoApp] = useState(false)
   const [errorApp, setErrorApp] = useState('')
@@ -95,11 +96,11 @@ export default function PaginaAplicaciones() {
 
   // ── Aplicacion: CRUD ──────────────────────────────────────────────────────
   const abrirNuevaApp = () => {
-    setAppEditando(null); setFormApp({ codigo_aplicacion: '', nombre: '', descripcion: '', tipo: 'NORMAL', sidebar_ancho: true, prompt: '', system_prompt: '' })
+    setAppEditando(null); setFormApp({ codigo_aplicacion: '', nombre: '', descripcion: '', tipo: 'USUARIO', sidebar_ancho: true, prompt: '', system_prompt: '' })
     setErrorApp(''); setTabModalApp('datos'); setModalApp(true)
   }
   const abrirEditarApp = (a: Aplicacion) => {
-    setAppEditando(a); setFormApp({ codigo_aplicacion: a.codigo_aplicacion, nombre: a.nombre, descripcion: a.descripcion || '', tipo: (a.tipo as 'NORMAL' | 'RESTRINGIDA' | 'GRUPO') || 'NORMAL', sidebar_ancho: a.sidebar_ancho !== false, prompt: (a as Record<string, unknown>).prompt as string || '', system_prompt: (a as Record<string, unknown>).system_prompt as string || '' })
+    setAppEditando(a); setFormApp({ codigo_aplicacion: a.codigo_aplicacion, nombre: a.nombre, descripcion: a.descripcion || '', tipo: normalizarTipo(a.tipo), sidebar_ancho: a.sidebar_ancho !== false, prompt: (a as Record<string, unknown>).prompt as string || '', system_prompt: (a as Record<string, unknown>).system_prompt as string || '' })
     setErrorApp(''); setTabModalApp('datos'); cargarFuncionesApp(a.codigo_aplicacion); cargarGruposApp(a.codigo_aplicacion); setModalApp(true)
   }
   const guardarApp = async () => {
@@ -116,7 +117,7 @@ export default function PaginaAplicaciones() {
   // ── Aplicacion: funciones ─────────────────────────────────────────────────
   const funcionesDisponiblesApp = funciones.filter((f) =>
     !funcionesApp.some((fa) => fa.codigo_funcion === f.codigo_funcion) &&
-    f.tipo === (appEditando?.tipo || 'NORMAL')
+    normalizarTipo(f.tipo) === normalizarTipo(appEditando?.tipo)
   )
   const funcionesAppFiltradas = funcionesDisponiblesApp.filter((f) =>
     busquedaFuncionApp.length === 0 ||
@@ -236,7 +237,7 @@ export default function PaginaAplicaciones() {
               </TablaTd>
               <TablaTd><code className="text-xs bg-fondo px-2 py-1 rounded font-mono">{a.codigo_aplicacion}</code></TablaTd>
               <TablaTd className="font-medium">{a.nombre}</TablaTd>
-              <TablaTd>{a.tipo === 'RESTRINGIDA' ? <Insignia variante="error">Restringida</Insignia> : a.tipo === 'GRUPO' ? <Insignia variante="advertencia">Grupo</Insignia> : <Insignia variante="exito">Normal</Insignia>}</TablaTd>
+              <TablaTd><Insignia variante={varianteTipo(a.tipo)}>{etiquetaTipo(a.tipo)}</Insignia></TablaTd>
               <TablaTd className="text-texto-muted text-sm">{a.descripcion || '—'}</TablaTd>
               <TablaTd>
                 <div className="flex items-center justify-end gap-1">
@@ -272,10 +273,10 @@ export default function PaginaAplicaciones() {
             <Input etiqueta={t('etiquetaNombre')} value={formApp.nombre} onChange={(e) => setFormApp({ ...formApp, nombre: e.target.value })} placeholder={t('placeholderNombre')} />
             <div>
               <label className="block text-sm font-medium text-texto mb-1">Tipo *</label>
-              <select value={formApp.tipo} onChange={(e) => setFormApp({ ...formApp, tipo: e.target.value as 'NORMAL' | 'RESTRINGIDA' | 'GRUPO' })} className={selectClass}>
-                <option value="NORMAL">Normal — visible para asignar a cualquier usuario</option>
-                <option value="GRUPO">Grupo — funciones de administración de grupo</option>
-                <option value="RESTRINGIDA">Restringida — solo super-admin puede asignar sus roles</option>
+              <select value={formApp.tipo} onChange={(e) => setFormApp({ ...formApp, tipo: e.target.value as TipoElemento })} className={selectClass}>
+                {TIPOS_ELEMENTO.map((t) => (
+                  <option key={t} value={t}>{DESCRIPCION_TIPO[t]}</option>
+                ))}
               </select>
             </div>
             <Input etiqueta="Descripcion" value={formApp.descripcion} onChange={(e) => setFormApp({ ...formApp, descripcion: e.target.value })} />
@@ -288,7 +289,7 @@ export default function PaginaAplicaciones() {
           </>)}
           {tabModalApp === 'funciones' && appEditando && (
             <div className="flex flex-col gap-4">
-              <p className="text-xs text-texto-muted">Solo se muestran funciones de tipo <span className="font-medium">{appEditando.tipo === 'RESTRINGIDA' ? 'RESTRINGIDA' : 'NORMAL'}</span> — las aplicaciones {appEditando.tipo === 'RESTRINGIDA' ? 'RESTRINGIDAS solo admiten funciones RESTRINGIDAS' : 'NORMALES solo admiten funciones NORMALES'}.</p>
+              <p className="text-xs text-texto-muted">Solo se muestran funciones de tipo <span className="font-medium">{ETIQUETA_TIPO[normalizarTipo(appEditando.tipo)]}</span> — una aplicación solo admite funciones de su mismo tipo.</p>
               <div className="flex gap-2">
                 <div className="flex-1 relative" ref={dropdownFuncionAppRef}>
                   <div className="relative">

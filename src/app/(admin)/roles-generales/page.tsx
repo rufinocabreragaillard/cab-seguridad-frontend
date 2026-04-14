@@ -11,6 +11,8 @@ import { ModalConfirmar } from '@/components/ui/modal-confirmar'
 import { rolesApi, gruposApi, funcionesApi, aplicacionesApi } from '@/lib/api'
 import { useAuth } from '@/context/AuthContext'
 import type { Rol, Grupo, Funcion, Aplicacion } from '@/lib/tipos'
+import { etiquetaTipo, varianteTipo, normalizarTipo } from '@/lib/tipo-elemento'
+import { Insignia } from '@/components/ui/insignia'
 
 type FuncionAsignada = { codigo_funcion: string; orden: number; funciones: { nombre_funcion: string } }
 
@@ -338,13 +340,7 @@ function TabRolesGlobales() {
                       </div>
                     </td>
                     <td className="py-2 pr-4">
-                      <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-medium ${
-                        r.tipo === 'RESTRINGIDO'
-                          ? 'bg-red-100 text-error'
-                          : 'bg-green-100 text-green-700'
-                      }`}>
-                        {r.tipo === 'RESTRINGIDO' ? 'Restringido' : 'Normal'}
-                      </span>
+                      <Insignia variante={varianteTipo(r.tipo)}>{etiquetaTipo(r.tipo)}</Insignia>
                     </td>
                     <td className="py-2 pr-4 text-xs text-texto-muted">{nombreAppOrigen}</td>
                     <td className="py-2 pr-4">{r.nombre}</td>
@@ -457,8 +453,9 @@ function TabRolesGlobales() {
                   >
                     <option value="">— sin asignar —</option>
                     {[...aplicaciones].sort((a, b) => {
-                      const ta = a.tipo === 'NORMAL' ? 0 : 1
-                      const tb = b.tipo === 'NORMAL' ? 0 : 1
+                      const peso = (t?: string | null) => { const n = normalizarTipo(t); return n === 'USUARIO' ? 0 : n === 'PRUEBAS' ? 1 : n === 'ADMINISTRADOR' ? 2 : 3 }
+                      const ta = peso(a.tipo)
+                      const tb = peso(b.tipo)
                       if (ta !== tb) return ta - tb
                       return a.nombre.localeCompare(b.nombre, 'es')
                     }).map((a) => (
