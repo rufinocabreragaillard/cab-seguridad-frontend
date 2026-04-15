@@ -251,7 +251,7 @@ export default function PaginaFunciones() {
               <TablaTd className="text-sm">{f.alias_de_funcion || '—'}</TablaTd>
               <TablaTd className="font-medium">{f.nombre}</TablaTd>
               <TablaTd className="text-texto-muted text-xs">{f.icono_de_funcion || '—'}</TablaTd>
-              <TablaTd className="text-texto-muted text-xs">{f.url_funcion || '—'}</TablaTd>
+              <TablaTd className="text-xs">{f.url_funcion ? <a href={f.url_funcion} target="_blank" rel="noopener noreferrer" className="text-primario hover:underline">{f.url_funcion}</a> : <span className="text-texto-muted">—</span>}</TablaTd>
               <TablaTd><code className="text-xs bg-fondo px-2 py-1 rounded font-mono">{f.codigo_funcion}</code></TablaTd>
               <TablaTd>
                 <div className="flex items-center justify-end gap-1">
