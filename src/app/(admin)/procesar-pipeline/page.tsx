@@ -7,7 +7,6 @@ import {
   ChevronRight, ChevronDown, ToggleLeft, ToggleRight, Shuffle, Plus, Pencil, Trash2,
 } from 'lucide-react'
 import { Boton } from '@/components/ui/boton'
-import { CirculoProgreso } from '@/components/ui/circulo-progreso'
 import { Insignia } from '@/components/ui/insignia'
 import { Modal } from '@/components/ui/modal'
 import { ModalConfirmar } from '@/components/ui/modal-confirmar'
@@ -27,11 +26,14 @@ import type { UbicacionDoc } from '@/lib/tipos'
 // ── Pipeline ──────────────────────────────────────────────────────────────────
 
 const PASOS = [
-  { key: 'EXTRAER',    nombre: 'EXTRAER',    estadoOrigen: 'CARGADO',   estadoDestino: 'METADATA',    colorDisco: '#EF4444', clienteSide: true },
-  { key: 'ANALIZAR',   nombre: 'ANALIZAR',   estadoOrigen: 'METADATA',  estadoDestino: 'ESCANEADO',   colorDisco: '#F97316', clienteSide: false },
-  { key: 'CHUNKEAR',   nombre: 'CHUNKEAR',   estadoOrigen: 'ESCANEADO', estadoDestino: 'CHUNKEADO',   colorDisco: '#84CC16', clienteSide: false },
-  { key: 'VECTORIZAR', nombre: 'VECTORIZAR', estadoOrigen: 'CHUNKEADO', estadoDestino: 'VECTORIZADO', colorDisco: '#22C55E', clienteSide: false },
+  { key: 'EXTRAER',  nombre: 'EXTRAER',  estadoOrigen: 'CARGADO',   estadoDestino: 'METADATA',  colorBarra: '#074B91', clienteSide: true  },
+  { key: 'ANALIZAR', nombre: 'ANALIZAR', estadoOrigen: 'METADATA',  estadoDestino: 'ESCANEADO', colorBarra: '#F97316', clienteSide: false },
+  { key: 'CHUNKEAR', nombre: 'CHUNKEAR', estadoOrigen: 'ESCANEADO', estadoDestino: 'CHUNKEADO', colorBarra: '#22C55E', clienteSide: false },
 ] as const
+
+// Estados válidos (documentos que avanzaron correctamente) e inválidos (rechazados)
+const ESTADOS_VALIDOS = ['METADATA', 'ESCANEADO', 'CHUNKEADO', 'VECTORIZADO']
+const ESTADOS_INVALIDOS = ['NO_ANALIZABLE', 'NO_ESCANEABLE']
 
 type EstadoPaso = 'esperando' | 'activo' | 'listo' | 'error'
 interface ProgresoPaso { total: number; completados: number; estado: EstadoPaso }
@@ -268,7 +270,9 @@ export default function PaginaCargaDocsUsuario() {
   const [tiempoInicio, setTiempoInicio] = useState<number | null>(null)
   const [tiempoTranscurrido, setTiempoTranscurrido] = useState(0)
   const [mensajeError, setMensajeError] = useState('')
-  const [carpetaRaiz, setCarpetaRaiz] = useState<string>('')
+  const [totalDocs, setTotalDocs] = useState(0)
+  const [docsValidos, setDocsValidos] = useState(0)
+  const [docsRechazados, setDocsRechazados] = useState(0)
 
   const abortRef = useRef(false)
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null)
@@ -294,18 +298,18 @@ export default function PaginaCargaDocsUsuario() {
         for (const paso of PASOS) next[paso.key] = { ...next[paso.key], total: conteos[paso.estadoOrigen] ?? 0, completados: 0, estado: 'esperando' }
         return next
       })
+      const validos = ESTADOS_VALIDOS.reduce((acc, e) => acc + (conteos[e] ?? 0), 0)
+      const rechazados = ESTADOS_INVALIDOS.reduce((acc, e) => acc + (conteos[e] ?? 0), 0)
+      const total = Object.values(conteos as Record<string, number>).reduce((a, b) => a + b, 0)
+      setTotalDocs(total)
+      setDocsValidos(validos)
+      setDocsRechazados(rechazados)
     } catch { /* ignorar */ }
   }, [])
 
   useEffect(() => {
     getDirectoryHandle().then((h) => { if (h) setDirHandleState(h) })
     cargarConteos()
-    ubicacionesDocsApi.listar().then((ubs) => {
-      if (!ubs?.length) return
-      const raiz = (ubs as { nivel: number; ruta_completa?: string }[]).reduce((min, u) => u.nivel < min.nivel ? u : min, ubs[0] as { nivel: number; ruta_completa?: string })
-      const nombre = raiz?.ruta_completa?.split('/').filter(Boolean)[0] ?? ''
-      if (nombre) setCarpetaRaiz(nombre)
-    }).catch(() => {})
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [grupoActivo])
 
@@ -404,6 +408,22 @@ export default function PaginaCargaDocsUsuario() {
   const todosListos = PASOS.every((p) => progresos[p.key]?.estado === 'listo')
   const etapa2Estado: EstadoEtapa = ejecutando ? 'activo' : todosListos ? 'completado' : 'pendiente'
 
+  // Barra de progreso individual
+  const BarraPaso = ({ pasoKey, color }: { pasoKey: string; color: string }) => {
+    const prog = progresos[pasoKey]
+    const estado = prog?.estado ?? 'esperando'
+    const pct = (prog?.total ?? 0) > 0 ? Math.min(100, Math.round(((prog?.completados ?? 0) / (prog?.total ?? 1)) * 100)) : (estado === 'listo' ? 100 : 0)
+    const pulso = estado === 'activo' ? 'animate-pulse' : ''
+    return (
+      <div className="flex-1 h-5 rounded-full overflow-hidden bg-gray-100">
+        <div
+          className={`h-full rounded-full transition-all duration-500 ${pulso}`}
+          style={{ width: `${pct}%`, backgroundColor: estado === 'esperando' ? '#D1D5DB' : color }}
+        />
+      </div>
+    )
+  }
+
   // ── Círculo de etapa ──────────────────────────────────────────────────────
   const circuloEtapa = (num: number, estado: EstadoEtapa) => {
     const bg = estado === 'completado' ? 'bg-green-500' : estado === 'activo' ? 'bg-primario' : 'bg-gray-300'
@@ -494,25 +514,18 @@ export default function PaginaCargaDocsUsuario() {
             {/* Selector de directorio */}
             <div className="flex items-center justify-between gap-3 flex-wrap">
               <p className="text-sm font-medium text-texto">Directorio de documentos</p>
-              <div className="flex flex-col items-end gap-1">
-                <button
-                  onClick={async () => {
-                    try {
-                      const h = await (window as unknown as { showDirectoryPicker: () => Promise<FileSystemDirectoryHandle> }).showDirectoryPicker()
-                      setDirHandleState(h); await setDirectoryHandle(h)
-                    } catch { /* cancelado */ }
-                  }}
-                  className="flex items-center gap-2 rounded-lg border border-borde bg-surface px-3 py-1.5 text-sm text-texto hover:border-primario transition-colors"
-                >
-                  <FolderOpen size={15} className={dirHandle ? 'text-primario' : 'text-texto-muted'} />
-                  {dirHandle ? dirHandle.name : 'Seleccionar directorio'}
-                </button>
-                {!dirHandle && carpetaRaiz && (
-                  <span className="text-xs text-texto-muted text-right">
-                    Al ejecutar se pedirá acceso a: <strong className="text-texto">{carpetaRaiz}</strong>
-                  </span>
-                )}
-              </div>
+              <button
+                onClick={async () => {
+                  try {
+                    const h = await (window as unknown as { showDirectoryPicker: () => Promise<FileSystemDirectoryHandle> }).showDirectoryPicker()
+                    setDirHandleState(h); await setDirectoryHandle(h)
+                  } catch { /* cancelado */ }
+                }}
+                className="flex items-center gap-2 rounded-lg border border-borde bg-surface px-3 py-1.5 text-sm text-texto hover:border-primario transition-colors"
+              >
+                <FolderOpen size={15} className={dirHandle ? 'text-primario' : 'text-texto-muted'} />
+                {dirHandle ? dirHandle.name : 'Seleccionar directorio'}
+              </button>
             </div>
 
             {mensajeError && (
@@ -521,31 +534,30 @@ export default function PaginaCargaDocsUsuario() {
               </div>
             )}
 
-            {/* Pipeline visual — círculos horizontales */}
-            <div className="flex items-center justify-center gap-0 flex-wrap">
-              {PASOS.map((paso, i) => {
-                const prog = progresos[paso.key]
-                return (
-                  <div key={paso.key} className="flex items-center">
-                    <CirculoProgreso
-                      nombre={paso.nombre}
-                      total={prog?.total ?? 0}
-                      completados={prog?.completados ?? 0}
-                      estado={prog?.estado ?? 'esperando'}
-                      colorDisco={paso.colorDisco}
-                      size={88}
-                    />
-                    {i < PASOS.length - 1 && (
-                      <div className="flex items-center self-center px-0.5">
-                        <svg width="32" height="18" viewBox="0 0 32 18">
-                          <line x1="0" y1="9" x2="20" y2="9" stroke="#9CA3AF" strokeWidth="3" strokeLinecap="round" />
-                          <polygon points="18,3 30,9 18,15" fill="#9CA3AF" />
-                        </svg>
-                      </div>
-                    )}
-                  </div>
-                )
-              })}
+            {/* Barras de progreso del pipeline */}
+            <div className="flex items-center gap-2">
+              {PASOS.map((paso, i) => (
+                <div key={paso.key} className="flex items-center gap-2 flex-1">
+                  <BarraPaso pasoKey={paso.key} color={paso.colorBarra} />
+                  {i < PASOS.length - 1 && <div className="w-2 h-0.5 bg-gray-300 shrink-0" />}
+                </div>
+              ))}
+            </div>
+
+            {/* Contadores */}
+            <div className="grid grid-cols-3 gap-4 pt-1">
+              <div className="flex flex-col items-center gap-0.5">
+                <span className="text-2xl font-bold text-texto">{totalDocs}</span>
+                <span className="text-xs text-texto-muted">Documentos totales</span>
+              </div>
+              <div className="flex flex-col items-center gap-0.5">
+                <span className="text-2xl font-bold text-green-600">{docsValidos}</span>
+                <span className="text-xs text-texto-muted">Procesados correctamente</span>
+              </div>
+              <div className="flex flex-col items-center gap-0.5">
+                <span className="text-2xl font-bold text-red-500">{docsRechazados}</span>
+                <span className="text-xs text-texto-muted">Rechazados</span>
+              </div>
             </div>
 
             {/* Timer */}
