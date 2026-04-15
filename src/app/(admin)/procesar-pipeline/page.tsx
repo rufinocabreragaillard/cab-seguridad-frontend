@@ -357,9 +357,31 @@ export default function PaginaCargaDocsUsuario() {
   const setPaso = (key: string, patch: Partial<ProgresoPaso>) =>
     setProgresos((prev) => ({ ...prev, [key]: { ...prev[key], ...patch } }))
 
-  const ejecutarExtraer = async (handle: FileSystemDirectoryHandle): Promise<boolean> => {
+  const ejecutarExtraer = async (): Promise<boolean> => {
     const docs = await documentosApi.listar({ codigo_estado_doc: 'CARGADO', activo: true })
     if (!docs.length) { setPaso('EXTRAER', { estado: 'listo' }); return true }
+
+    // Solo pedimos handle cuando hay docs CARGADO que necesitan lectura física
+    let handle = dirHandle
+    if (!handle || !(await ensureReadPermission(handle))) {
+      const stored = await getDirectoryHandle()
+      if (stored && (await ensureReadPermission(stored))) {
+        handle = stored; setDirHandleState(stored); await setDirectoryHandle(stored)
+      } else {
+        try {
+          handle = await (window as unknown as { showDirectoryPicker: () => Promise<FileSystemDirectoryHandle> }).showDirectoryPicker()
+          setDirHandleState(handle); await setDirectoryHandle(handle)
+        } catch {
+          // Sin permiso: marcar todos como no encontrados
+          for (const doc of docs) {
+            await documentosApi.subirTexto(doc.codigo_documento, { texto_fuente: '', archivo_no_encontrado: true }).catch(() => {})
+          }
+          setPaso('EXTRAER', { completados: docs.length, estado: 'listo' })
+          return true
+        }
+      }
+    }
+
     setPaso('EXTRAER', { total: docs.length, completados: 0, estado: 'activo' })
     let completados = 0
     for (const doc of docs) {
@@ -419,21 +441,11 @@ export default function PaginaCargaDocsUsuario() {
   }
 
   const ejecutarPipeline = async () => {
-    let handleEfectivo = dirHandle
-    if (!handleEfectivo || !(await ensureReadPermission(handleEfectivo))) {
-      const stored = await getDirectoryHandle()
-      if (stored && (await ensureReadPermission(stored))) { handleEfectivo = stored; setDirHandleState(stored); await setDirectoryHandle(stored) }
-      else {
-        try { handleEfectivo = await (window as unknown as { showDirectoryPicker: () => Promise<FileSystemDirectoryHandle> }).showDirectoryPicker(); setDirHandleState(handleEfectivo); await setDirectoryHandle(handleEfectivo) }
-        catch { return }
-      }
-    }
-    if (!(await ensureReadPermission(handleEfectivo))) { setMensajeError('Sin permiso de lectura sobre el directorio.'); return }
     setMensajeError(''); abortRef.current = false; setEjecutando(true); setTiempoInicio(Date.now()); setTiempoTranscurrido(0); setProgresos(progresosIniciales()); suscribirCola()
     try {
       for (const paso of PASOS) {
         if (abortRef.current) break
-        const ok = paso.clienteSide ? await ejecutarExtraer(handleEfectivo) : await ejecutarPasoBackend(paso.key, paso.estadoOrigen, paso.estadoDestino)
+        const ok = paso.clienteSide ? await ejecutarExtraer() : await ejecutarPasoBackend(paso.key, paso.estadoOrigen, paso.estadoDestino)
         if (!ok) break
       }
     } catch (e) { setMensajeError(e instanceof Error ? e.message : 'Error inesperado') }

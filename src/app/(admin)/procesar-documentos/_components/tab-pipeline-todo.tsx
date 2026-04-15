@@ -154,7 +154,7 @@ export function TabPipelineTodo({ procesos = [], estadosDocs = [], ubicaciones: 
   const setPaso = (key: string, patch: Partial<ProgresoPaso>) =>
     setProgresos((prev) => ({ ...prev, [key]: { ...prev[key], ...patch } }))
 
-  const ejecutarExtraer = async (handle: FileSystemDirectoryHandle): Promise<boolean> => {
+  const ejecutarExtraer = async (): Promise<boolean> => {
     const params: Record<string, unknown> = { codigo_estado_doc: 'CARGADO', activo: true }
     if (ubicacionSel) params.codigo_ubicacion = ubicacionSel
     if (filtroLibre.trim()) params.q = filtroLibre.trim()
@@ -162,6 +162,28 @@ export function TabPipelineTodo({ procesos = [], estadosDocs = [], ubicaciones: 
     const docs = await documentosApi.listar(params as Parameters<typeof documentosApi.listar>[0])
     const docsFinal = topeNum > 0 ? docs.slice(0, topeNum) : docs
     if (docsFinal.length === 0) { setPaso('EXTRAER', { estado: 'listo' }); return true }
+
+    // Solo pedimos handle cuando hay docs CARGADO que necesitan lectura física
+    let handle = dirHandle
+    if (!handle || !(await ensureReadPermission(handle))) {
+      const stored = await getDirectoryHandle()
+      if (stored && (await ensureReadPermission(stored))) {
+        handle = stored; setDirHandleState(stored); await setDirectoryHandle(stored)
+      } else {
+        try {
+          handle = await (window as unknown as { showDirectoryPicker: () => Promise<FileSystemDirectoryHandle> }).showDirectoryPicker()
+          setDirHandleState(handle); await setDirectoryHandle(handle)
+        } catch {
+          // Sin permiso: marcar todos como no encontrados
+          for (const doc of docsFinal) {
+            await documentosApi.subirTexto(doc.codigo_documento, { texto_fuente: '', archivo_no_encontrado: true }).catch(() => {})
+          }
+          setPaso('EXTRAER', { completados: docsFinal.length, estado: 'listo' })
+          return true
+        }
+      }
+    }
+
     setPaso('EXTRAER', { total: docsFinal.length, completados: 0, estado: 'activo' })
     let completados = 0
     for (const doc of docsFinal) {
@@ -252,25 +274,6 @@ export function TabPipelineTodo({ procesos = [], estadosDocs = [], ubicaciones: 
   }
 
   const ejecutarPipeline = async () => {
-    let handleEfectivo = dirHandle
-    if (!handleEfectivo || !(await ensureReadPermission(handleEfectivo))) {
-      const stored = await getDirectoryHandle()
-      if (stored && (await ensureReadPermission(stored))) {
-        handleEfectivo = stored
-        setDirHandleState(stored)
-        await setDirectoryHandle(stored)
-      } else {
-        try {
-          handleEfectivo = await (window as unknown as { showDirectoryPicker: () => Promise<FileSystemDirectoryHandle> }).showDirectoryPicker()
-          setDirHandleState(handleEfectivo)
-          await setDirectoryHandle(handleEfectivo)
-        } catch { return }
-      }
-    }
-    if (!(await ensureReadPermission(handleEfectivo))) {
-      setMensajeError('Sin permiso de lectura sobre el directorio seleccionado.')
-      return
-    }
     setMensajeError('')
     abortRef.current = false
     setEjecutando(true)
@@ -289,7 +292,7 @@ export function TabPipelineTodo({ procesos = [], estadosDocs = [], ubicaciones: 
       for (const paso of pasosAEjecutar) {
         if (abortRef.current) break
         const ok = paso.clienteSide
-          ? await ejecutarExtraer(handleEfectivo)
+          ? await ejecutarExtraer()
           : await ejecutarPasoBackend(paso.key, paso.estadoOrigen, paso.estadoDestino)
         if (!ok) break
       }
