@@ -642,6 +642,10 @@ export default function PaginaCargaDocsUsuario() {
                           })
                         }
                         // Sin búsqueda: árbol colapsado — solo raíces y nodos expandidos
+                        const toggleExpandirDoc = (e: React.MouseEvent, cod: string) => {
+                          e.stopPropagation()
+                          setUbicDocExpandidos(prev => { const next = new Set(prev); next.has(cod) ? next.delete(cod) : next.add(cod); return next })
+                        }
                         const renderNodoDropdown = (u: UbicacionDoc): React.ReactNode => {
                           const tieneHijos = tieneHijosDoc(u.codigo_ubicacion)
                           const expandido = ubicDocExpandidos.has(u.codigo_ubicacion)
@@ -658,20 +662,11 @@ export default function PaginaCargaDocsUsuario() {
                                 className={`flex items-center gap-2 py-1.5 pr-3 hover:bg-fondo cursor-pointer select-none ${selec ? 'bg-primario-muy-claro' : ''}`}
                                 style={{ paddingLeft: `${(u.nivel || 0) * 16 + 12}px` }}
                                 onClick={() => { setUbicacionDocSel(u.codigo_ubicacion); setUbicDocBusqueda(''); setUbicDocDropdownOpen(false) }}
-                                onDoubleClick={(e) => {
-                                  e.stopPropagation()
-                                  if (tieneHijos) {
-                                    setUbicDocExpandidos(prev => {
-                                      const next = new Set(prev)
-                                      next.has(u.codigo_ubicacion) ? next.delete(u.codigo_ubicacion) : next.add(u.codigo_ubicacion)
-                                      return next
-                                    })
-                                  }
-                                }}
-                                title={tieneHijos ? 'Doble clic para expandir/colapsar' : undefined}
                               >
                                 {tieneHijos
-                                  ? (expandido ? <ChevronDown size={12} className="shrink-0 text-texto-muted" /> : <ChevronRight size={12} className="shrink-0 text-texto-muted" />)
+                                  ? <button onClick={(e) => toggleExpandirDoc(e, u.codigo_ubicacion)} className="shrink-0 hover:text-primario text-texto-muted p-0.5 -ml-0.5 rounded">
+                                      {expandido ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
+                                    </button>
                                   : <span className="w-3 shrink-0" />
                                 }
                                 <FolderOpen size={13} className={`shrink-0 ${selec ? 'text-primario' : esArea ? 'text-sky-500' : 'text-amber-400'}`} />
