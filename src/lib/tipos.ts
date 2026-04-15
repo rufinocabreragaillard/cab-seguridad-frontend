@@ -614,6 +614,29 @@ export interface RolCargo {
   }
 }
 
+// ─── Espacios de Trabajo ─────────────────────────────────────────────────────
+
+export interface EspacioTrabajo {
+  id_espacio: number
+  nombre_espacio: string
+  descripcion?: string | null
+  tipo_espacio: 'TEMPORAL' | 'GUARDADO'
+  codigo_grupo: string
+  codigo_entidad: string
+  codigo_usuario: string
+  fecha_creacion: string
+  fecha_termino?: string | null
+  total_documentos?: number
+}
+
+export interface DocumentoEspacio {
+  codigo_documento: number
+  nombre_documento: string
+  ubicacion_documento?: string | null
+  codigo_estado_doc?: string | null
+  fecha_agregado?: string | null
+}
+
 // ─── Utilitarios ─────────────────────────────────────────────────────────────
 
 export interface RespuestaPaginada<T> {
