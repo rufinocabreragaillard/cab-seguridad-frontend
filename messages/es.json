@@ -590,7 +590,7 @@
     "soloRaiz": "Solo raíz",
     "hastaXNiveles": "Hasta {n} niveles",
     "correrServidor": "Corre en el servidor (modelo configurado por paso). Puedes cerrar la pestaña, el avance sigue.",
-    "xDeYSeleccionados": "{x}/{y} seleccionados",
+    "xDeYSeleccionados": "Total docs: {y}, Seleccionados: {x}",
     "filtradoPorDirectorio": "(filtrado por directorio)",
     "ejecutando": "Procesando...",
     "ejecutar": "Ejecutar",

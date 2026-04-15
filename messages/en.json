@@ -511,7 +511,7 @@
     "soloRaiz": "Root only",
     "hastaXNiveles": "Up to {n} levels",
     "correrServidor": "Runs on the server (model configured per step). You can close the tab, progress continues.",
-    "xDeYSeleccionados": "{x}/{y} selected",
+    "xDeYSeleccionados": "Total docs: {y}, Selected: {x}",
     "filtradoPorDirectorio": "(filtered by directory)",
     "ejecutando": "Processing...",
     "ejecutar": "Execute",

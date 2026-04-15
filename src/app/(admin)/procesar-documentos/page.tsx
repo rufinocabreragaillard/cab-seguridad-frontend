@@ -1232,7 +1232,7 @@ function PaginaProcesarDocumentosInterna() {
                   const topeNum = tope ? parseInt(tope) : 0
                   const efectivos = topeNum > 0 ? Math.min(seleccionados.size, topeNum) : seleccionados.size
                   const label = efectivos < seleccionados.size
-                    ? `${efectivos} a procesar (de ${seleccionados.size}/${docsEnDisco.length} sel.)`
+                    ? `${efectivos} a procesar (Total docs: ${docsEnDisco.length}, Seleccionados: ${seleccionados.size})`
                     : t('xDeYSeleccionados', { x: seleccionados.size, y: docsEnDisco.length })
                   return <span>{label}</span>
                 })()}

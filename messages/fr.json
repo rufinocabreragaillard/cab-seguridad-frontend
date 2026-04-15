@@ -586,7 +586,7 @@
     "soloRaiz": "Racine uniquement",
     "hastaXNiveles": "Jusqu'à {n} niveaux",
     "correrServidor": "S'exécute sur le serveur (modèle configuré par étape). Vous pouvez fermer l'onglet, la progression continue.",
-    "xDeYSeleccionados": "{x}/{y} sélectionnés",
+    "xDeYSeleccionados": "Total docs: {y}, Sélectionnés: {x}",
     "filtradoPorDirectorio": "(filtré par répertoire)",
     "ejecutando": "Traitement en cours...",
     "ejecutar": "Exécuter",

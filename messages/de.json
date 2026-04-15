@@ -586,7 +586,7 @@
     "soloRaiz": "Nur Stamm",
     "hastaXNiveles": "Bis {n} Ebenen",
     "correrServidor": "Läuft auf dem Server (nach Schritt konfiguriertes Modell). Sie können die Registerkarte schließen, der Fortschritt wird fortgesetzt.",
-    "xDeYSeleccionados": "{x}/{y} ausgewählt",
+    "xDeYSeleccionados": "Total docs: {y}, Ausgewählt: {x}",
     "filtradoPorDirectorio": "(nach Verzeichnis gefiltert)",
     "ejecutando": "Wird verarbeitet...",
     "ejecutar": "Ausführen",
