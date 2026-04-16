@@ -24,7 +24,7 @@ import {
 } from '@/lib/api'
 import { useAuth } from '@/context/AuthContext'
 
-type Proveedor = 'anthropic' | 'google'
+type Proveedor = 'anthropic' | 'google' | 'openai' | 'deepseek'
 
 export default function PaginaLLMConfiguracion() {
   const t = useTranslations('llmConfiguracion')
@@ -420,6 +420,8 @@ export default function PaginaLLMConfiguracion() {
               >
                 <option value="anthropic">Anthropic</option>
                 <option value="google">Google</option>
+                <option value="openai">OpenAI</option>
+                <option value="deepseek">DeepSeek</option>
               </select>
             </div>
 
