@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback, useMemo } from 'react'
 import { useTranslations } from 'next-intl'
-import { Plus, Trash2, Download, Search, Eye, ExternalLink, FileText } from 'lucide-react'
+import { Plus, Trash2, Download, Search, Eye, ExternalLink, FileText, XCircle } from 'lucide-react'
 import { iconoTipoArchivo } from '@/lib/icono-tipo-archivo'
 import { Boton } from '@/components/ui/boton'
 import { Input } from '@/components/ui/input'
@@ -460,10 +460,10 @@ export default function PaginaDocumentos() {
                     </button>
                     <button
                       onClick={() => setConfirmacion(d)}
-                      className="p-1.5 rounded-lg hover:bg-red-50 text-texto-muted hover:text-error transition-colors"
-                      title="Desactivar"
+                      className="p-1.5 rounded-lg hover:bg-orange-50 text-texto-muted hover:text-orange-500 transition-colors"
+                      title="Quitar de la BD"
                     >
-                      <Trash2 size={14} />
+                      <XCircle size={14} />
                     </button>
                   </div>
                 </TablaTd>
