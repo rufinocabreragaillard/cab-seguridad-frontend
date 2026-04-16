@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState, useCallback } from 'react'
-import { Plus, Pencil, Trash2, Download, Search, ChevronRight, ChevronDown, FolderTree, Folder, FolderOpen, FolderInput, FolderPlus, RefreshCw, ToggleLeft, ToggleRight, Shuffle } from 'lucide-react'
+import { Pencil, Trash2, Download, Search, ChevronRight, ChevronDown, FolderTree, Folder, FolderOpen, FolderInput, FolderPlus, RefreshCw, ToggleLeft, ToggleRight, Shuffle } from 'lucide-react'
 import { useTranslations } from 'next-intl'
 import { Boton } from '@/components/ui/boton'
 import { Input } from '@/components/ui/input'
@@ -121,23 +121,6 @@ export default function PaginaUbicacionesDocs() {
   }
 
   // ── CRUD ──────────────────────────────────────────────────────────────────
-  const abrirNuevo = (padre?: string) => {
-    setEditando(null)
-    setForm({
-      codigo_ubicacion: '',
-      nombre_ubicacion: '',
-      alias_ubicacion: '',
-      descripcion: '',
-      codigo_ubicacion_superior: padre || '',
-      ubicacion_habilitada: true,
-      prompt: '',
-      system_prompt: '',
-    })
-    setTabModal('datos')
-    setError('')
-    setModal(true)
-  }
-
   const abrirEditar = (u: UbicacionDoc) => {
     setEditando(u)
     setForm({
@@ -156,49 +139,24 @@ export default function PaginaUbicacionesDocs() {
   }
 
   const guardar = async (cerrar: boolean) => {
-    if (!form.nombre_ubicacion.trim()) {
+    if (!editando || !form.nombre_ubicacion.trim()) {
       setError(t('errorNombreObligatorio'))
       return
     }
     setGuardando(true)
     try {
-      if (editando) {
-        await ubicacionesDocsApi.actualizar(editando.codigo_ubicacion, {
-          nombre_ubicacion: form.nombre_ubicacion,
-          alias_ubicacion: form.alias_ubicacion || undefined,
-          descripcion: form.descripcion || undefined,
-          codigo_ubicacion_superior: form.codigo_ubicacion_superior || undefined,
-          ubicacion_habilitada: form.ubicacion_habilitada,
-          ...(editando.tipo_ubicacion === 'AREA' ? {
-            prompt: form.prompt || undefined,
-            system_prompt: form.system_prompt || undefined,
-          } : {}),
-        })
-        if (cerrar) setModal(false)
-      } else {
-        const nueva = await ubicacionesDocsApi.crear({
-          codigo_grupo: grupoActivo!,
-          nombre_ubicacion: form.nombre_ubicacion,
-          alias_ubicacion: form.alias_ubicacion || undefined,
-          descripcion: form.descripcion || undefined,
-          codigo_ubicacion_superior: form.codigo_ubicacion_superior || undefined,
-        })
-        if (cerrar) {
-          setModal(false)
-        } else {
-          setEditando(nueva)
-          setForm({
-            codigo_ubicacion: nueva.codigo_ubicacion,
-            nombre_ubicacion: nueva.nombre_ubicacion,
-            alias_ubicacion: nueva.alias_ubicacion || '',
-            descripcion: nueva.descripcion || '',
-            codigo_ubicacion_superior: nueva.codigo_ubicacion_superior || '',
-            ubicacion_habilitada: nueva.ubicacion_habilitada,
-            prompt: nueva.prompt || '',
-            system_prompt: nueva.system_prompt || '',
-          })
-        }
-      }
+      await ubicacionesDocsApi.actualizar(editando.codigo_ubicacion, {
+        nombre_ubicacion: form.nombre_ubicacion,
+        alias_ubicacion: form.alias_ubicacion || undefined,
+        descripcion: form.descripcion || undefined,
+        codigo_ubicacion_superior: form.codigo_ubicacion_superior || undefined,
+        ubicacion_habilitada: form.ubicacion_habilitada,
+        ...(editando.tipo_ubicacion === 'AREA' ? {
+          prompt: form.prompt || undefined,
+          system_prompt: form.system_prompt || undefined,
+        } : {}),
+      })
+      if (cerrar) setModal(false)
       cargar()
     } catch (e) {
       setError(e instanceof Error ? e.message : tc('errorAlGuardar'))
@@ -460,13 +418,6 @@ export default function PaginaUbicacionesDocs() {
               <Shuffle size={14} />
             </button>
             <button
-              onClick={() => abrirNuevo(u.codigo_ubicacion)}
-              className="p-1.5 rounded-lg hover:bg-primario-muy-claro text-texto-muted hover:text-primario transition-colors"
-              title="Crear subdirectorio"
-            >
-              <Plus size={14} />
-            </button>
-            <button
               onClick={() => abrirEditar(u)}
               className="p-1.5 rounded-lg hover:bg-primario-muy-claro text-texto-muted hover:text-primario transition-colors"
               title="Editar"
@@ -546,17 +497,13 @@ export default function PaginaUbicacionesDocs() {
             <Download size={15} />
             Excel
           </Boton>
-          <Boton variante="contorno" onClick={cargarUbicacionIndividual} cargando={cargandoUbicacion}>
+          <Boton variante="contorno" onClick={cargarUbicacionIndividual} cargando={cargandoUbicacion} title="Carga solamente el directorio seleccionado, sin incluir subdirectorios">
             <FolderPlus size={16} />
             {t('cargarUbicacion')}
           </Boton>
-          <Boton variante="contorno" onClick={iniciarEscaneo} cargando={escaneando}>
+          <Boton variante="contorno" onClick={iniciarEscaneo} cargando={escaneando} title="Carga el directorio seleccionado y todos sus subdirectorios de forma recursiva">
             <FolderInput size={16} />
             {t('cargarDesdeDirectorioTitulo')}
-          </Boton>
-          <Boton variante="primario" onClick={() => abrirNuevo()}>
-            <Plus size={16} />
-            {t('nuevaUbicacion')}
           </Boton>
         </div>
       </div>
@@ -581,7 +528,7 @@ export default function PaginaUbicacionesDocs() {
       <Modal
         abierto={modal}
         alCerrar={() => setModal(false)}
-        titulo={editando ? t('editarTitulo', { nombre: editando.nombre_ubicacion }) : t('nuevoTitulo')}
+        titulo={editando ? t('editarTitulo', { nombre: editando.nombre_ubicacion }) : ''}
         className={editando?.tipo_ubicacion === 'AREA' ? 'max-w-3xl' : undefined}
       >
         <div className="flex flex-col gap-4 min-w-[450px]">
