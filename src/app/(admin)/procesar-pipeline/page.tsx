@@ -3,7 +3,7 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react'
 import {
   FolderOpen, Folder, FolderInput, FolderPlus, FolderTree,
-  CheckCircle, AlertTriangle, RefreshCw, Upload,
+  CheckCircle, AlertTriangle, RefreshCw, Upload, Download,
   ChevronRight, ChevronDown, ToggleLeft, ToggleRight, Shuffle, Plus, Pencil, Trash2, X,
 } from 'lucide-react'
 import { Boton } from '@/components/ui/boton'
@@ -19,6 +19,7 @@ import {
   escanearDirectorio, escanearDirectorioSinHijos,
   soportaDirectoryPicker, type DirectorioEscaneado,
 } from '@/lib/escanear-directorio'
+import { exportarExcel } from '@/lib/exportar-excel'
 import { useAuth } from '@/context/AuthContext'
 import { useColaRealtime } from '@/hooks/useColaRealtime'
 import type { UbicacionDoc, Documento } from '@/lib/tipos'
@@ -227,31 +228,44 @@ export default function PaginaCargaDocsUsuario() {
   const renderNodo = (u: UbicacionDoc) => {
     const hijos = tieneHijos(u.codigo_ubicacion)
     const expandido = expandidos.has(u.codigo_ubicacion)
-    const indent = u.nivel * 20
+    const indent = u.nivel * 24
     const esArea = u.tipo_ubicacion === 'AREA'
     const rowBg = esArea ? 'bg-blue-50 hover:bg-blue-100' : 'bg-amber-50 hover:bg-amber-100'
     const folderColor = esArea ? 'text-blue-500' : 'text-amber-500'
     return (
       <div key={u.codigo_ubicacion}>
-        <div className={`flex items-center gap-2 px-3 py-1.5 ${rowBg} rounded-lg group transition-colors`} style={{ paddingLeft: `${indent + 12}px` }}>
-          <button onClick={() => toggleExpandir(u.codigo_ubicacion)} className={`p-0.5 rounded transition-colors ${hijos ? 'hover:bg-primario-muy-claro text-texto-muted hover:text-primario' : 'invisible'}`}>
-            {expandido ? <ChevronDown size={13} /> : <ChevronRight size={13} />}
+        <div
+          className={`flex items-center gap-2 px-3 py-2 ${rowBg} rounded-lg group transition-colors`}
+          style={{ paddingLeft: `${indent + 12}px` }}
+        >
+          <button
+            onClick={() => toggleExpandir(u.codigo_ubicacion)}
+            className={`p-0.5 rounded transition-colors ${hijos ? 'hover:bg-primario-muy-claro text-texto-muted hover:text-primario' : 'invisible'}`}
+          >
+            {expandido ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
           </button>
-          {expandido && hijos ? <FolderOpen size={15} className={`${folderColor} shrink-0`} /> : <Folder size={15} className={`${folderColor} shrink-0`} />}
+          {expandido && hijos ? (
+            <FolderOpen size={16} className={`${folderColor} shrink-0`} />
+          ) : (
+            <Folder size={16} className={`${folderColor} shrink-0`} />
+          )}
           <div className="flex-1 min-w-0">
             <span className="font-medium text-sm">{u.nombre_ubicacion}</span>
-            <span className="text-xs text-texto-muted ml-1.5">({u.codigo_ubicacion})</span>
+            <span className="text-xs text-texto-muted ml-2">({u.codigo_ubicacion})</span>
           </div>
+          <span className="text-xs text-texto-muted truncate max-w-[300px] hidden lg:block">
+            {u.ruta_completa || ''}
+          </span>
           <Insignia variante={u.tipo_ubicacion === 'AREA' ? 'primario' : 'advertencia'}>{u.tipo_ubicacion}</Insignia>
           <Insignia variante={u.ubicacion_habilitada ? 'exito' : 'advertencia'}>{u.ubicacion_habilitada ? 'Habilitada' : 'Inhabilitada'}</Insignia>
+          <Insignia variante={u.activo ? 'exito' : 'error'}>{u.activo ? 'Activo' : 'Inactivo'}</Insignia>
           <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
-            <button onClick={() => toggleHabilitada(u)} className={`p-1.5 rounded-lg transition-colors ${u.ubicacion_habilitada ? 'hover:bg-amber-50 text-texto-muted hover:text-amber-600' : 'hover:bg-green-50 text-texto-muted hover:text-green-600'}`} title={u.ubicacion_habilitada ? 'Inhabilitar' : 'Habilitar'}>
-              {u.ubicacion_habilitada ? <ToggleRight size={13} /> : <ToggleLeft size={13} />}
+            <button onClick={() => toggleHabilitada(u)} className={`p-1.5 rounded-lg transition-colors ${u.ubicacion_habilitada ? 'hover:bg-amber-50 text-texto-muted hover:text-amber-600' : 'hover:bg-green-50 text-texto-muted hover:text-green-600'}`} title={u.ubicacion_habilitada ? 'Inhabilitar (incluye hijos)' : 'Habilitar (incluye hijos)'}>
+              {u.ubicacion_habilitada ? <ToggleRight size={14} /> : <ToggleLeft size={14} />}
             </button>
-            <button onClick={() => setConfirmarTipo({ u, nuevoTipo: u.tipo_ubicacion === 'AREA' ? 'CONTENIDO' : 'AREA' })} className="p-1.5 rounded-lg hover:bg-primario-muy-claro text-texto-muted hover:text-primario transition-colors" title="Cambiar tipo"><Shuffle size={13} /></button>
-            <button onClick={() => abrirNuevaUb(u.codigo_ubicacion)} className="p-1.5 rounded-lg hover:bg-primario-muy-claro text-texto-muted hover:text-primario transition-colors" title="Agregar hijo"><Plus size={13} /></button>
-            <button onClick={() => abrirEditarUb(u)} className="p-1.5 rounded-lg hover:bg-primario-muy-claro text-texto-muted hover:text-primario transition-colors" title="Editar"><Pencil size={13} /></button>
-            <button onClick={() => abrirConfirmElim(u)} className="p-1.5 rounded-lg hover:bg-red-50 text-texto-muted hover:text-error transition-colors" title="Eliminar"><Trash2 size={13} /></button>
+            <button onClick={() => setConfirmarTipo({ u, nuevoTipo: u.tipo_ubicacion === 'AREA' ? 'CONTENIDO' : 'AREA' })} className="p-1.5 rounded-lg hover:bg-primario-muy-claro text-texto-muted hover:text-primario transition-colors" title={`Cambiar a ${u.tipo_ubicacion === 'AREA' ? 'CONTENIDO' : 'AREA'}`}><Shuffle size={14} /></button>
+            <button onClick={() => abrirEditarUb(u)} className="p-1.5 rounded-lg hover:bg-primario-muy-claro text-texto-muted hover:text-primario transition-colors" title="Editar"><Pencil size={14} /></button>
+            <button onClick={() => abrirConfirmElim(u)} className="p-1.5 rounded-lg hover:bg-red-50 text-texto-muted hover:text-error transition-colors" title="Eliminar"><Trash2 size={14} /></button>
           </div>
         </div>
         {expandido && ubicaciones.filter((h) => h.codigo_ubicacion_superior === u.codigo_ubicacion).sort((a, b) => a.orden - b.orden || a.nombre_ubicacion.localeCompare(b.nombre_ubicacion)).map((h) => renderNodo(h))}
@@ -507,9 +521,9 @@ export default function PaginaCargaDocsUsuario() {
 
   // ── Render ────────────────────────────────────────────────────────────────
   return (
-    <div className="flex flex-col gap-6 max-w-4xl">
+    <div className="flex flex-col gap-6 max-w-6xl">
       <div>
-        <h2 className="text-2xl font-bold text-texto">Carga tus Documentos</h2>
+        <h2 className="text-2xl font-bold text-texto">Carga tus Ubicaciones y Documentos</h2>
         <p className="text-sm text-texto-muted mt-1">Configura las ubicaciones y procesa tus documentos paso a paso.</p>
       </div>
 
@@ -541,42 +555,68 @@ export default function PaginaCargaDocsUsuario() {
           TAB: Ubicaciones
       ══════════════════════════════════════════════════════════════════════ */}
       {tabActiva === 'ubicaciones' && (
-        <div>
-          {/* Toolbar */}
-          <div className="flex items-center gap-2 mb-3 flex-wrap">
-            <Input
-              placeholder="Buscar ubicación..."
-              value={busquedaUbs}
-              onChange={(e) => setBusquedaUbs(e.target.value)}
-              className="max-w-xs"
-            />
-            <div className="flex gap-1.5 ml-auto flex-wrap">
-              <Boton variante="contorno" tamano="sm" onClick={() => setExpandidos(new Set(ubicaciones.map((u) => u.codigo_ubicacion)))} disabled={!ubicaciones.length}>Expandir</Boton>
-              <Boton variante="contorno" tamano="sm" onClick={() => setExpandidos(new Set())} disabled={!ubicaciones.length}>Colapsar</Boton>
-              <Boton variante="contorno" tamano="sm" onClick={cargarUbicacionIndividual} cargando={cargandoUbIndividual}>
-                <FolderPlus size={14} /> Carpeta
+        <div className="flex flex-col gap-4">
+          {/* Toolbar — misma presentación que /ubicaciones-docs */}
+          <div className="flex items-center gap-3 flex-wrap">
+            <div className="flex gap-2 flex-wrap items-start">
+              <div className="flex flex-col items-center">
+                <Boton variante="contorno" onClick={cargarUbicacionIndividual} cargando={cargandoUbIndividual}>
+                  <FolderPlus size={16} />
+                  Cargar Ubicación
+                </Boton>
+                <span className="text-[11px] text-texto-muted mt-0.5">solo un directorio</span>
+              </div>
+              <div className="flex flex-col items-center">
+                <Boton variante="contorno" onClick={iniciarEscaneoDir} cargando={escaneandoDir}>
+                  <FolderInput size={16} />
+                  Cargar Ubicaciones desde Directorio
+                </Boton>
+                <span className="text-[11px] text-texto-muted mt-0.5">y todos los sub-directorios</span>
+              </div>
+              <Boton variante="contorno" className="h-[38px]" onClick={() => setExpandidos(new Set(ubicaciones.map((u) => u.codigo_ubicacion)))} disabled={!ubicaciones.length}>
+                Expandir todo
               </Boton>
-              <Boton variante="contorno" tamano="sm" onClick={iniciarEscaneoDir} cargando={escaneandoDir}>
-                <FolderInput size={14} /> Desde directorio
+              <Boton variante="contorno" className="h-[38px]" onClick={() => setExpandidos(new Set())} disabled={!ubicaciones.length}>
+                Colapsar todo
               </Boton>
-              <Boton variante="primario" tamano="sm" onClick={() => abrirNuevaUb()}>
-                <Plus size={14} /> Nueva
+              <Boton
+                variante="contorno"
+                className="h-[38px]"
+                onClick={() =>
+                  exportarExcel(
+                    filtradosUbs as unknown as Record<string, unknown>[],
+                    [
+                      { titulo: 'Código', campo: 'codigo_ubicacion' },
+                      { titulo: 'Nombre', campo: 'nombre_ubicacion' },
+                      { titulo: 'Ruta', campo: 'ruta_completa' },
+                      { titulo: 'Padre', campo: 'codigo_ubicacion_superior' },
+                      { titulo: 'Nivel', campo: 'nivel' },
+                      { titulo: 'Habilitada', campo: 'ubicacion_habilitada', formato: (v: unknown) => (v ? 'Sí' : 'No') },
+                      { titulo: 'Estado', campo: 'activo', formato: (v: unknown) => (v ? 'Activo' : 'Inactivo') },
+                    ],
+                    'ubicaciones-docs'
+                  )
+                }
+                disabled={filtradosUbs.length === 0}
+              >
+                <Download size={15} />
+                Excel
               </Boton>
             </div>
           </div>
 
-          {/* Árbol jerárquico */}
+          {/* Árbol jerárquico — misma presentación que /ubicaciones-docs */}
           <div className="border border-borde rounded-lg bg-fondo-tarjeta">
             {cargandoUbs ? (
-              <div className="py-6 text-center text-texto-muted text-sm">Cargando ubicaciones...</div>
+              <div className="py-8 text-center text-texto-muted">Cargando...</div>
             ) : raices.length === 0 ? (
               <div className="py-8 text-center text-texto-muted flex flex-col items-center gap-2">
-                <FolderTree size={28} className="text-texto-muted/50" />
-                <p className="text-sm">Sin ubicaciones configuradas</p>
-                <p className="text-xs text-texto-muted/70">Usa &quot;Desde directorio&quot; para cargar desde una carpeta de tu computador.</p>
+                <FolderTree size={32} className="text-texto-muted/50" />
+                <p>Sin ubicaciones configuradas</p>
+                <p className="text-xs text-texto-muted/70">Usa &quot;Cargar Ubicaciones desde Directorio&quot; para cargar desde una carpeta de tu computador.</p>
               </div>
             ) : (
-              <div className="py-1.5">{raices.map((u) => renderNodo(u))}</div>
+              <div className="py-2">{raices.map((u) => renderNodo(u))}</div>
             )}
           </div>
         </div>
