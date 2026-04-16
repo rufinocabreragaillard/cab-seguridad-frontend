@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState, useCallback, useRef } from 'react'
-import { Plus, Pencil, Layers, Users, Building2, X, Search, Download } from 'lucide-react'
+import { Plus, Pencil, Layers, Users, Building2, X, Search, Download, Trash2, AlertTriangle } from 'lucide-react'
 import { Boton } from '@/components/ui/boton'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
@@ -57,6 +57,11 @@ export default function PaginaGrupos() {
   const [errorEntidad, setErrorEntidad] = useState('')
   const [confirmarDesactivar, setConfirmarDesactivar] = useState<Entidad | null>(null)
   const [tabModalEntidad, setTabModalEntidad] = useState<'datos' | 'usuarios'>('datos')
+
+  // Borrado completo de grupo
+  const [confirmarBorrarGrupo, setConfirmarBorrarGrupo] = useState<Grupo | null>(null)
+  const [textoBorrar, setTextoBorrar] = useState('')
+  const [borrandoGrupo, setBorrandoGrupo] = useState(false)
 
   // Usuarios de una entidad (dentro del modal de entidad, tab Usuarios)
   type UsuarioEntidad = { codigo_usuario: string; usuarios: { nombre_usuario: string; activo: boolean } }
@@ -220,6 +225,22 @@ export default function PaginaGrupos() {
       setErrorEntidad(e instanceof Error ? e.message : 'Error')
     } finally {
       setGuardandoEntidad(false)
+    }
+  }
+
+  const borrarGrupoCompleto = async () => {
+    if (!confirmarBorrarGrupo) return
+    setBorrandoGrupo(true)
+    try {
+      await gruposApi.borrarCompleto(confirmarBorrarGrupo.codigo_grupo)
+      setConfirmarBorrarGrupo(null)
+      setTextoBorrar('')
+      setGrupoSeleccionado(null)
+      cargar()
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Error al borrar grupo')
+    } finally {
+      setBorrandoGrupo(false)
     }
   }
 
@@ -404,6 +425,16 @@ export default function PaginaGrupos() {
                     <h3 className="text-sm font-semibold text-texto">{grupoSeleccionado.nombre}</h3>
                     <p className="text-xs text-texto-muted mt-0.5">Codigo: {grupoSeleccionado.codigo_grupo}</p>
                   </div>
+                  <div className="flex items-center gap-2">
+                  {esSuperAdmin && grupoSeleccionado.tipo !== 'RESTRINGIDO' && grupoSeleccionado.codigo_grupo !== 'ADMIN' && (
+                    <Boton
+                      variante="peligro"
+                      tamano="sm"
+                      onClick={() => { setConfirmarBorrarGrupo(grupoSeleccionado); setTextoBorrar('') }}
+                    >
+                      <Trash2 size={14} />
+                    </Boton>
+                  )}
                   <Boton
                     variante="contorno"
                     tamano="sm"
@@ -432,6 +463,7 @@ export default function PaginaGrupos() {
                     <Download size={14} />
                     Excel
                   </Boton>
+                  </div>
                 </div>
                 {/* Tabs */}
                 <div className="flex gap-4 mt-3">
@@ -799,6 +831,53 @@ export default function PaginaGrupos() {
         mensaje={`¿Desea desactivar la entidad "${confirmarDesactivar?.nombre}"?`}
         variante="peligro"
       />
+
+      {/* Modal borrado completo de grupo */}
+      <Modal
+        abierto={!!confirmarBorrarGrupo}
+        alCerrar={() => { setConfirmarBorrarGrupo(null); setTextoBorrar('') }}
+        titulo="Borrar grupo completo"
+      >
+        <div className="flex flex-col gap-4">
+          <div className="flex items-start gap-3 p-3 bg-red-50 border border-red-200 rounded-lg">
+            <AlertTriangle size={20} className="text-red-600 mt-0.5 shrink-0" />
+            <div className="text-sm text-red-800">
+              <p className="font-semibold">Esta acción es irreversible.</p>
+              <p className="mt-1">
+                Se eliminará permanentemente el grupo <strong>{confirmarBorrarGrupo?.nombre}</strong> junto
+                con todas sus entidades, usuarios, documentos, roles, parámetros y registros de auditoría.
+              </p>
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-texto mb-1">
+              Escriba exactamente: <span className="font-mono text-red-600">Borrar grupo {confirmarBorrarGrupo?.nombre}</span>
+            </label>
+            <Input
+              value={textoBorrar}
+              onChange={(e) => setTextoBorrar(e.target.value)}
+              placeholder={`Borrar grupo ${confirmarBorrarGrupo?.nombre ?? ''}`}
+            />
+          </div>
+
+          {error && <p className="text-sm text-red-600">{error}</p>}
+
+          <div className="flex justify-end gap-3 pt-2">
+            <Boton variante="contorno" onClick={() => { setConfirmarBorrarGrupo(null); setTextoBorrar(''); setError('') }}>
+              Cancelar
+            </Boton>
+            <Boton
+              variante="peligro"
+              onClick={borrarGrupoCompleto}
+              disabled={textoBorrar !== `Borrar grupo ${confirmarBorrarGrupo?.nombre}` || borrandoGrupo}
+              cargando={borrandoGrupo}
+            >
+              Borrar
+            </Boton>
+          </div>
+        </div>
+      </Modal>
     </div>
   )
 }

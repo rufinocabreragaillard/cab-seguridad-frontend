@@ -324,6 +324,7 @@ export const gruposApi = {
   actualizar: (id: string, datos: Partial<Grupo>) =>
     api.put<Grupo>(`/grupos/${id}`, datos).then((r) => r.data),
   desactivar: (id: string) => api.delete(`/grupos/${id}`),
+  borrarCompleto: (id: string) => api.delete(`/grupos/${id}/completo`).then((r) => r.data),
   listarEntidades: (id: string) =>
     api.get<Entidad[]>(`/grupos/${id}/entidades`).then((r) => r.data),
   listarParametros: (id: string) =>
