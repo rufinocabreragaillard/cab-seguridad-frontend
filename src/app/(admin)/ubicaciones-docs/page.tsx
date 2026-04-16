@@ -518,9 +518,9 @@ export default function PaginaUbicacionesDocs() {
         abierto={modal}
         alCerrar={() => setModal(false)}
         titulo={editando ? t('editarTitulo', { nombre: editando.nombre_ubicacion }) : ''}
-        className={editando?.tipo_ubicacion === 'AREA' ? 'max-w-3xl' : undefined}
+        className="max-w-3xl"
       >
-        <div className="flex flex-col gap-4 min-w-[450px]">
+        <div className="flex flex-col gap-4">
           {/* Tabs solo cuando se edita un AREA */}
           {editando?.tipo_ubicacion === 'AREA' && (
             <div className="flex border-b border-borde">
@@ -540,9 +540,9 @@ export default function PaginaUbicacionesDocs() {
             </div>
           )}
 
-          {/* Tab Datos (siempre visible cuando no hay tabs, o cuando tab es datos) */}
+          {/* Tab Datos */}
           {tabModal === 'datos' && (
-            <>
+            <div className="grid grid-cols-2 gap-4">
               <Input
                 etiqueta={t('etiquetaNombre')}
                 value={form.nombre_ubicacion}
@@ -554,13 +554,6 @@ export default function PaginaUbicacionesDocs() {
                 value={form.alias_ubicacion}
                 onChange={(e) => setForm({ ...form, alias_ubicacion: e.target.value })}
                 placeholder={t('placeholderAlias')}
-              />
-              <Textarea
-                etiqueta={t('etiquetaDescripcion')}
-                value={form.descripcion}
-                onChange={(e) => setForm({ ...form, descripcion: e.target.value })}
-                placeholder={t('placeholderDescripcion')}
-                rows={3}
               />
 
               <div>
@@ -580,6 +573,35 @@ export default function PaginaUbicacionesDocs() {
               </div>
 
               {editando && (
+                <div>
+                  <label className="block text-sm font-medium text-texto mb-1.5">Tipo</label>
+                  <select
+                    className="w-full rounded-lg border border-borde bg-fondo-tarjeta px-3 py-2 text-sm text-texto focus:border-primario focus:ring-1 focus:ring-primario outline-none"
+                    value={editando.tipo_ubicacion}
+                    onChange={(e) => {
+                      const nuevoTipo = e.target.value as 'AREA' | 'CONTENIDO'
+                      if (nuevoTipo !== editando.tipo_ubicacion) {
+                        setConfirmarTipo({ u: editando, nuevoTipo })
+                      }
+                    }}
+                  >
+                    <option value="AREA">AREA</option>
+                    <option value="CONTENIDO">CONTENIDO</option>
+                  </select>
+                </div>
+              )}
+
+              <div className="col-span-2">
+                <Textarea
+                  etiqueta={t('etiquetaDescripcion')}
+                  value={form.descripcion}
+                  onChange={(e) => setForm({ ...form, descripcion: e.target.value })}
+                  placeholder={t('placeholderDescripcion')}
+                  rows={2}
+                />
+              </div>
+
+              {editando && (
                 <label className="flex items-center gap-3 cursor-pointer">
                   <input
                     type="checkbox"
@@ -594,7 +616,7 @@ export default function PaginaUbicacionesDocs() {
               {editando && (
                 <Input etiqueta={t('etiquetaCodigo')} value={form.codigo_ubicacion} disabled readOnly />
               )}
-            </>
+            </div>
           )}
 
           {/* Tab Prompt (solo para AREAs en edición) */}
@@ -609,14 +631,6 @@ export default function PaginaUbicacionesDocs() {
                 value={form.prompt}
                 onChange={(e) => setForm({ ...form, prompt: e.target.value })}
               />
-              <div className="flex gap-3 justify-end">
-                <Boton variante="contorno" tamano="sm" onClick={() => guardar(true)} cargando={guardando}>
-                  Guardar y salir
-                </Boton>
-                <Boton variante="primario" tamano="sm" onClick={() => guardar(false)} cargando={guardando}>
-                  {tc('guardar')}
-                </Boton>
-              </div>
             </div>
           )}
 
@@ -632,14 +646,6 @@ export default function PaginaUbicacionesDocs() {
                 value={form.system_prompt}
                 onChange={(e) => setForm({ ...form, system_prompt: e.target.value })}
               />
-              <div className="flex gap-3 justify-end">
-                <Boton variante="contorno" tamano="sm" onClick={() => guardar(true)} cargando={guardando}>
-                  Guardar y salir
-                </Boton>
-                <Boton variante="primario" tamano="sm" onClick={() => guardar(false)} cargando={guardando}>
-                  {tc('guardar')}
-                </Boton>
-              </div>
             </div>
           )}
 
@@ -649,20 +655,14 @@ export default function PaginaUbicacionesDocs() {
             </div>
           )}
 
-          {/* Botones principales: solo en tab datos o cuando no hay tabs (crear, o editar CONTENIDO) */}
-          {(tabModal === 'datos' || !(editando?.tipo_ubicacion === 'AREA')) && (
-            <div className="flex gap-3 justify-end pt-2">
-              <Boton variante="contorno" onClick={() => setModal(false)}>
-                {tc('cancelar')}
-              </Boton>
-              <Boton variante="contorno" onClick={() => guardar(true)} cargando={guardando}>
-                Guardar y salir
-              </Boton>
-              <Boton variante="primario" onClick={() => guardar(false)} cargando={guardando}>
-                {tc('guardar')}
-              </Boton>
-            </div>
-          )}
+          <div className="flex gap-3 justify-end pt-2">
+            <Boton variante="primario" onClick={() => guardar(false)} cargando={guardando}>
+              {tc('guardar')}
+            </Boton>
+            <Boton variante="secundario" onClick={() => guardar(true)} cargando={guardando}>
+              Guardar y salir
+            </Boton>
+          </div>
         </div>
       </Modal>
 
