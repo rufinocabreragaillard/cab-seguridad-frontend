@@ -447,10 +447,9 @@ export default function PaginaUsuariosSemilla() {
     u.codigo_usuario.toLowerCase().includes(busqueda.toLowerCase()) ||
     (u.grupo_por_defecto || '').toLowerCase().includes(busqueda.toLowerCase())
   ).sort((a, b) => {
-    // Ordenar por grupo luego nombre
-    const ga = a.grupo_por_defecto || ''
-    const gb = b.grupo_por_defecto || ''
-    return ga !== gb ? ga.localeCompare(gb) : a.nombre.localeCompare(b.nombre)
+    const fa = a.fecha_inicial || ''
+    const fb = b.fecha_inicial || ''
+    return fb.localeCompare(fa)
   })
 
   // Nombre del grupo para mostrar en la tabla
@@ -497,18 +496,19 @@ export default function PaginaUsuariosSemilla() {
             <TablaTh>Grupo por defecto</TablaTh>
             <TablaTh>Tipo grupo</TablaTh>
             <TablaTh>Tipo usuario</TablaTh>
-            <TablaTh>Estado</TablaTh>
+            <TablaTh>Fecha inicial</TablaTh>
+            <TablaTh>Fecha final</TablaTh>
             <TablaTh className="text-right">Acciones</TablaTh>
           </tr>
         </TablaCabecera>
         <TablaCuerpo>
           {cargando ? (
             <TablaFila>
-              <TablaTd className="py-8 text-center text-texto-muted" colSpan={7 as never}>Cargando...</TablaTd>
+              <TablaTd className="py-8 text-center text-texto-muted" colSpan={8 as never}>Cargando...</TablaTd>
             </TablaFila>
           ) : usuariosFiltrados.length === 0 ? (
             <TablaFila>
-              <TablaTd className="py-8 text-center text-texto-muted" colSpan={7 as never}>No se encontraron usuarios</TablaTd>
+              <TablaTd className="py-8 text-center text-texto-muted" colSpan={8 as never}>No se encontraron usuarios</TablaTd>
             </TablaFila>
           ) : usuariosFiltrados.map((u) => {
             const grupoInfo = grupos.find((g) => g.codigo_grupo === u.grupo_por_defecto)
@@ -526,7 +526,8 @@ export default function PaginaUsuariosSemilla() {
                 <TablaTd>
                   <Insignia variante={varianteTipo(u.tipo)}>{etiquetaTipo(u.tipo)}</Insignia>
                 </TablaTd>
-                <TablaTd><Insignia variante={u.activo ? 'exito' : 'error'}>{u.activo ? 'Activo' : 'Inactivo'}</Insignia></TablaTd>
+                <TablaTd className="text-texto-muted text-xs">{u.fecha_inicial ? new Date(u.fecha_inicial).toLocaleDateString('es-CL') : '—'}</TablaTd>
+                <TablaTd className="text-texto-muted text-xs">{u.fecha_final ? new Date(u.fecha_final).toLocaleDateString('es-CL') : '—'}</TablaTd>
                 <TablaTd>
                   <div className="flex items-center justify-end gap-1">
                     <button
@@ -618,41 +619,6 @@ export default function PaginaUsuariosSemilla() {
               onChange={(e) => setForm({ ...form, telefono: e.target.value })}
               placeholder="+56 9 1234 5678"
             />
-          </div>
-
-          {/* Grupo — selector buscable libre de todos los grupos */}
-          <div className="flex flex-col gap-1">
-            <label className="text-sm font-medium text-texto">Grupo por defecto *</label>
-            <div className="relative" ref={dropdownGrupoFormRef}>
-              <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-texto-muted pointer-events-none" />
-              <input
-                type="text"
-                placeholder="Buscar grupo..."
-                value={busquedaGrupoForm}
-                onChange={(e) => { setBusquedaGrupoForm(e.target.value); setDropdownGrupoFormAbierto(true); if (!e.target.value) setForm({ ...form, grupo_por_defecto: '' }) }}
-                onFocus={() => setDropdownGrupoFormAbierto(true)}
-                className="w-full rounded-lg border border-borde bg-surface pl-9 pr-3 py-2 text-sm text-texto focus:outline-none focus:ring-2 focus:ring-primario"
-              />
-              {dropdownGrupoFormAbierto && (
-                <div className="absolute z-50 w-full mt-1 bg-surface border border-borde rounded-lg shadow-lg max-h-52 overflow-y-auto">
-                  {grupos
-                    .filter((g) => !busquedaGrupoForm || g.nombre.toLowerCase().includes(busquedaGrupoForm.toLowerCase()) || g.codigo_grupo.toLowerCase().includes(busquedaGrupoForm.toLowerCase()))
-                    .sort((a, b) => { const to = (t?: string) => t === 'RESTRINGIDO' ? 1 : 0; return to(a.tipo) - to(b.tipo) || a.nombre.localeCompare(b.nombre, 'es') })
-                    .slice(0, 20)
-                    .map((g) => (
-                      <button key={g.codigo_grupo} type="button" onClick={() => { setForm({ ...form, grupo_por_defecto: g.codigo_grupo }); setBusquedaGrupoForm(`${g.nombre} — ${g.codigo_grupo}`); setDropdownGrupoFormAbierto(false) }}
-                        className="w-full text-left px-3 py-2 text-sm hover:bg-primario-muy-claro hover:text-primario transition-colors flex items-center gap-2">
-                        <span className="font-medium">{g.nombre}</span>
-                        <span className="text-texto-muted text-xs">{g.codigo_grupo}</span>
-                        {(g.tipo === 'RESTRINGIDO' || g.tipo === 'ADMINISTRADOR') && <span className="ml-auto text-xs bg-error/10 text-error px-1.5 py-0.5 rounded">{etiquetaTipo(g.tipo)}</span>}
-                      </button>
-                    ))}
-                  {grupos.filter((g) => !busquedaGrupoForm || g.nombre.toLowerCase().includes(busquedaGrupoForm.toLowerCase()) || g.codigo_grupo.toLowerCase().includes(busquedaGrupoForm.toLowerCase())).length === 0 && (
-                    <div className="px-3 py-2 text-sm text-texto-muted">No se encontraron grupos</div>
-                  )}
-                </div>
-              )}
-            </div>
           </div>
 
           {/* Invitar — solo al crear */}

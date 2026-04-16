@@ -70,7 +70,7 @@ export default function PaginaUsuarios() {
   const [guardando, setGuardando] = useState(false)
   const [error, setError] = useState('')
   const [errorCarga, setErrorCarga] = useState('')
-  const [tabActiva, setTabActiva] = useState<'datos' | 'inicializacion' | 'roles' | 'entidades' | 'prompt'>('datos')
+  const [tabActiva, setTabActiva] = useState<'datos' | 'inicializacion' | 'roles' | 'entidades'>('datos')
 
   // ── Roles ──────────────────────────────────────────────────────────────────
   const [rolesUsuario, setRolesUsuario] = useState<RolAsignado[]>([])
@@ -144,8 +144,12 @@ export default function PaginaUsuarios() {
   // Alias para mantener compat con llamadas post-CRUD que usaban cargar().
   const cargar = refetchUsuarios
 
-  // El backend ya filtra por q; dejamos la lista tal cual llega.
-  const usuariosFiltrados = usuarios
+  // Ordenar por fecha_inicial más nueva primero
+  const usuariosFiltrados = [...usuarios].sort((a, b) => {
+    const fa = a.fecha_inicial || ''
+    const fb = b.fecha_inicial || ''
+    return fb.localeCompare(fa)
+  })
 
   // ── Efectos de cascada ─────────────────────────────────────────────────────
 
@@ -584,8 +588,8 @@ export default function PaginaUsuarios() {
               <TablaTh>{t('colCorreo')}</TablaTh>
               <TablaTh>{t('colRolPrincipal')}</TablaTh>
               <TablaTh>{t('colTipo')}</TablaTh>
-              <TablaTh>{t('colEstado')}</TablaTh>
-              <TablaTh>{t('colUltimoAcceso')}</TablaTh>
+              <TablaTh>Fecha inicial</TablaTh>
+              <TablaTh>Fecha final</TablaTh>
               <TablaTh className="text-right">{tc('acciones')}</TablaTh>
             </tr>
           </TablaCabecera>
@@ -612,13 +616,11 @@ export default function PaginaUsuarios() {
                   <TablaTd>
                     <Insignia variante={varianteTipo(u.tipo)}>{etiquetaTipo(u.tipo)}</Insignia>
                   </TablaTd>
-                  <TablaTd>
-                    <Insignia variante={u.activo ? 'exito' : 'error'}>
-                      {u.activo ? 'Activo' : 'Inactivo'}
-                    </Insignia>
+                  <TablaTd className="text-texto-muted text-xs">
+                    {u.fecha_inicial ? new Date(u.fecha_inicial).toLocaleDateString('es-CL') : '—'}
                   </TablaTd>
                   <TablaTd className="text-texto-muted text-xs">
-                    {u.ultimo_acceso ? new Date(u.ultimo_acceso).toLocaleDateString('es-CL') : '—'}
+                    {u.fecha_final ? new Date(u.fecha_final).toLocaleDateString('es-CL') : '—'}
                   </TablaTd>
                   <TablaTd>
                     <div className="flex items-center justify-end gap-1">
@@ -666,7 +668,7 @@ export default function PaginaUsuarios() {
           {/* Pestañas (solo en edición) */}
           {usuarioEditando && (
             <div className="flex border-b border-borde -mx-1 overflow-x-auto">
-              {(['datos', 'inicializacion', 'entidades', 'roles', 'prompt'] as const).map((tab) => (
+              {(['datos', 'inicializacion', 'entidades', 'roles'] as const).map((tab) => (
                 <button
                   key={tab}
                   onClick={() => setTabActiva(tab)}
@@ -676,7 +678,7 @@ export default function PaginaUsuarios() {
                       : 'text-texto-muted hover:text-texto'
                   }`}
                 >
-                  {tab === 'datos' ? t('tabDatos') : tab === 'inicializacion' ? 'Inicialización' : tab === 'entidades' ? t('tabEntidades') : tab === 'roles' ? t('tabRoles') : 'Prompt'}
+                  {tab === 'datos' ? t('tabDatos') : tab === 'inicializacion' ? 'Inicialización' : tab === 'entidades' ? t('tabEntidades') : t('tabRoles')}
                 </button>
               ))}
             </div>
@@ -773,26 +775,6 @@ export default function PaginaUsuarios() {
           {tabActiva === 'inicializacion' && usuarioEditando && (
             <div className="flex flex-col gap-4">
               <div className="grid grid-cols-2 gap-x-6 gap-y-3">
-                {/* Grupo por defecto */}
-                <div className="flex flex-col gap-1.5">
-                  <label className="text-sm font-medium text-texto">Grupo por defecto</label>
-                  <select
-                    value={form.grupo_por_defecto}
-                    onChange={handleGrupoDefaultChange}
-                    className={selectClass}
-                  >
-                    <option value="">Sin grupo seleccionado</option>
-                    {gruposDeEntidades.map((g) => (
-                      <option key={g.codigo_grupo} value={g.codigo_grupo}>
-                        {g.grupos_entidades?.nombre || g.codigo_grupo}
-                      </option>
-                    ))}
-                  </select>
-                  {gruposDeEntidades.length === 0 && (
-                    <p className="text-xs text-texto-muted">Asigne entidades en la pestaña &quot;Entidades&quot; primero</p>
-                  )}
-                </div>
-
                 {/* Entidad por defecto */}
                 <div className="flex flex-col gap-1.5">
                   <label className="text-sm font-medium text-texto">Entidad por defecto</label>
@@ -1154,30 +1136,6 @@ export default function PaginaUsuarios() {
             </div>
           )}
 
-          {/* ── Tab Prompt ────────────────────────────────────────────────────── */}
-          {tabActiva === 'prompt' && usuarioEditando && (
-            <div className="flex flex-col gap-3">
-              <p className="text-sm text-texto-muted">
-                Instrucción personalizada para el LLM cuando actúa en nombre de este usuario. Se combina con el prompt de la función y del sistema.
-              </p>
-              <textarea
-                className="w-full h-48 p-3 text-sm border border-borde rounded-lg font-mono resize-y focus:outline-none focus:ring-2 focus:ring-primario/30"
-                placeholder="Ej: Siempre responde en un tono formal y conciso..."
-                value={form.prompt}
-                onChange={(e) => setForm({ ...form, prompt: e.target.value })}
-              />
-              {error && (
-                <div className="bg-red-50 border border-red-200 rounded-lg px-4 py-3">
-                  <p className="text-sm text-error">{error}</p>
-                </div>
-              )}
-              <div className="flex gap-3 justify-end pt-2">
-                <Boton variante="contorno" onClick={() => setModalAbierto(false)}>{tc('cancelar')}</Boton>
-                <Boton variante="primario" onClick={guardar} cargando={guardando}>Guardar</Boton>
-                <Boton variante="primario" onClick={async () => { if (await guardar()) setModalAbierto(false) }} cargando={guardando}>Guardar y Salir</Boton>
-              </div>
-            </div>
-          )}
 
         </div>
       </Modal>
