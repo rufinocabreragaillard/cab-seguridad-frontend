@@ -5,7 +5,7 @@ import {
   FolderOpen, Folder, FolderInput, FolderPlus, FolderTree,
   CheckCircle, AlertTriangle, RefreshCw, Upload, Download,
   ChevronRight, ChevronDown, ToggleLeft, ToggleRight, Shuffle, Plus, Pencil, Trash2, X,
-  Eye,
+  Eye, FileText, XCircle,
 } from 'lucide-react'
 import { iconoTipoArchivo } from '@/lib/icono-tipo-archivo'
 import { Boton } from '@/components/ui/boton'
@@ -16,6 +16,7 @@ import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { documentosApi, colaEstadosDocsApi, ubicacionesDocsApi } from '@/lib/api'
 import { extraerTextoDeArchivo, abrirArchivoPorRuta, NECESITA_OCR } from '@/lib/extraer-texto'
+import { abrirDocumento } from '@/lib/abrir-documento'
 import { getDirectoryHandle, setDirectoryHandle, ensureReadPermission } from '@/lib/file-handle-store'
 import {
   escanearDirectorio, escanearDirectorioSinHijos,
@@ -518,6 +519,24 @@ export default function PaginaCargaDocsUsuario() {
 
   const diff = datosEscaneo ? calcularDiff() : null
 
+  // ── State para acciones de documentos ─────────────────────────────────
+  const [docDetalle, setDocDetalle] = useState<Documento | null>(null)
+  const [confirmEliminarDoc, setConfirmEliminarDoc] = useState<Documento | null>(null)
+  const [eliminandoDoc, setEliminandoDoc] = useState(false)
+
+  const ejecutarEliminarDoc = async () => {
+    if (!confirmEliminarDoc) return
+    setEliminandoDoc(true)
+    try {
+      await documentosApi.desactivar(confirmEliminarDoc.codigo_documento)
+      setDocsLista((prev) => prev.filter((d) => d.codigo_documento !== confirmEliminarDoc!.codigo_documento))
+      setDocsListaTotal((prev) => prev - 1)
+      setConfirmEliminarDoc(null)
+    } finally {
+      setEliminandoDoc(false)
+    }
+  }
+
   // ── State para tabs ────────────────────────────────────────────────────
   const [tabActiva, setTabActiva] = useState<'ubicaciones' | 'documentos'>('ubicaciones')
 
@@ -832,15 +851,17 @@ export default function PaginaCargaDocsUsuario() {
                               </td>
                               <td className="px-3 py-2.5 w-24">
                                 <div className="flex items-center justify-end gap-1">
-                                  <div className="relative group/tip">
-                                    <button type="button" onClick={() => {/* TODO: ver detalle */}} className="p-1.5 rounded-lg hover:bg-primario-muy-claro text-texto-muted hover:text-primario transition-colors">
-                                      <Eye size={15} />
+                                  {doc.ubicacion_documento && !/^https?:\/\//i.test(doc.ubicacion_documento) && (
+                                    <button type="button" title="Abrir archivo" onClick={() => abrirDocumento(doc.ubicacion_documento)} className="p-1.5 rounded-lg hover:bg-primario-muy-claro text-texto-muted hover:text-primario transition-colors">
+                                      <FileText size={15} />
                                     </button>
-                                    <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 px-2 py-1 text-xs text-white bg-gray-800 rounded whitespace-nowrap opacity-0 pointer-events-none group-hover/tip:opacity-100 transition-opacity z-50">
-                                      Ver detalle
-                                      <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-gray-800" />
-                                    </div>
-                                  </div>
+                                  )}
+                                  <button type="button" title="Ver detalle" onClick={() => setDocDetalle(doc)} className="p-1.5 rounded-lg hover:bg-primario-muy-claro text-texto-muted hover:text-primario transition-colors">
+                                    <Eye size={15} />
+                                  </button>
+                                  <button type="button" title="Quitar de la BD" onClick={() => setConfirmEliminarDoc(doc)} className="p-1.5 rounded-lg hover:bg-orange-50 text-texto-muted hover:text-orange-500 transition-colors">
+                                    <XCircle size={15} />
+                                  </button>
                                 </div>
                               </td>
                             </tr>
@@ -1065,6 +1086,40 @@ export default function PaginaCargaDocsUsuario() {
           )}
         </div>
       </Modal>
+
+      {/* Modal detalle documento */}
+      <Modal abierto={!!docDetalle} alCerrar={() => setDocDetalle(null)} titulo="Detalle del documento">
+        {docDetalle && (
+          <div className="flex flex-col gap-3 min-w-[420px]">
+            <div className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-2 text-sm">
+              <span className="text-texto-muted font-medium">Nombre</span>
+              <span className="text-texto font-medium">{docDetalle.nombre_documento}</span>
+              <span className="text-texto-muted font-medium">Estado</span>
+              <span><Insignia variante={['CHUNKEADO','VECTORIZADO'].includes(docDetalle.codigo_estado_doc ?? '') ? 'exito' : ['NO_ANALIZABLE','NO_ESCANEABLE'].includes(docDetalle.codigo_estado_doc ?? '') ? 'error' : 'primario'}>{docDetalle.codigo_estado_doc ?? '—'}</Insignia></span>
+              <span className="text-texto-muted font-medium">Ubicación</span>
+              <span className="text-texto text-xs break-all">{docDetalle.ubicacion_documento || '—'}</span>
+              {docDetalle.resumen_documento && (<>
+                <span className="text-texto-muted font-medium">Resumen</span>
+                <span className="text-texto text-xs">{docDetalle.resumen_documento}</span>
+              </>)}
+            </div>
+            <div className="flex justify-end pt-2">
+              <Boton variante="contorno" onClick={() => setDocDetalle(null)}>Cerrar</Boton>
+            </div>
+          </div>
+        )}
+      </Modal>
+
+      {/* Modal confirmar eliminar documento */}
+      <ModalConfirmar
+        abierto={!!confirmEliminarDoc}
+        alCerrar={() => setConfirmEliminarDoc(null)}
+        alConfirmar={ejecutarEliminarDoc}
+        titulo="Quitar documento de la BD"
+        mensaje={confirmEliminarDoc ? `¿Quitar "${confirmEliminarDoc.nombre_documento}" de la base de datos?` : ''}
+        textoConfirmar="Quitar"
+        cargando={eliminandoDoc}
+      />
     </div>
   )
 }
