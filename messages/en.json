@@ -1,6 +1,9 @@
 {
   "common": {
     "guardar": "Save",
+    "grabar": "Save",
+    "grabarYSalir": "Save and Exit",
+    "salir": "Exit",
     "cancelar": "Cancel",
     "eliminar": "Delete",
     "editar": "Edit",
@@ -11,7 +14,7 @@
     "confirmarEliminar": "Delete {nombre}?",
     "error": "Error",
     "exito": "Success",
-    "cerrar": "Close",
+    "cerrar": "Exit",
     "si": "Yes",
     "no": "No",
     "volver": "Back",
@@ -791,6 +794,8 @@
     "colNombre": "Name",
     "colUrlInicio": "Start URL",
     "colCodigo": "Code",
+    "colInicial": "Initial",
+    "etiquetaInicial": "Initial role (automatically assigned to new users)",
     "colIcono": "Icon",
     "colUrl": "Function URL",
     "editarRolTitulo": "Edit role: {nombre}",

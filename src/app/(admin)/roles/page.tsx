@@ -33,7 +33,7 @@ export default function PaginaRoles() {
   // Modal rol
   const [modalRol, setModalRol] = useState(false)
   const [rolEditando, setRolEditando] = useState<Rol | null>(null)
-  const [formRol, setFormRol] = useState({ codigo_rol: '', nombre: '', alias_de_rol: '', descripcion: '', url_inicio: '', funcion_por_defecto: '', codigo_aplicacion_origen: '', tipo: 'USUARIO' as TipoElemento, prompt: '', system_prompt: '' })
+  const [formRol, setFormRol] = useState({ codigo_rol: '', nombre: '', alias_de_rol: '', descripcion: '', url_inicio: '', funcion_por_defecto: '', codigo_aplicacion_origen: '', tipo: 'USUARIO' as TipoElemento, prompt: '', system_prompt: '', inicial: false })
   const [tabModalRol, setTabModalRol] = useState<'datos' | 'funciones' | 'prompt' | 'system_prompt'>('datos')
 
   // Funciones del rol en edición
@@ -118,7 +118,7 @@ export default function PaginaRoles() {
 
   const abrirNuevoRol = () => {
     setRolEditando(null)
-    setFormRol({ codigo_rol: '', nombre: '', alias_de_rol: '', descripcion: '', url_inicio: '', funcion_por_defecto: '', codigo_aplicacion_origen: aplicacionActiva || '', tipo: 'USUARIO', prompt: '', system_prompt: '' })
+    setFormRol({ codigo_rol: '', nombre: '', alias_de_rol: '', descripcion: '', url_inicio: '', funcion_por_defecto: '', codigo_aplicacion_origen: aplicacionActiva || '', tipo: 'USUARIO', prompt: '', system_prompt: '', inicial: false })
     setError('')
     setTabModalRol('datos')
     setModalRol(true)
@@ -126,7 +126,7 @@ export default function PaginaRoles() {
 
   const abrirEditarRol = (r: Rol) => {
     setRolEditando(r)
-    setFormRol({ codigo_rol: r.codigo_rol, nombre: r.nombre, alias_de_rol: r.alias_de_rol || '', descripcion: r.descripcion || '', url_inicio: r.url_inicio || '', funcion_por_defecto: r.funcion_por_defecto || '', codigo_aplicacion_origen: r.codigo_aplicacion_origen || '', tipo: normalizarTipo(r.tipo), prompt: (r as Record<string, unknown>).prompt as string || '', system_prompt: (r as Record<string, unknown>).system_prompt as string || '' })
+    setFormRol({ codigo_rol: r.codigo_rol, nombre: r.nombre, alias_de_rol: r.alias_de_rol || '', descripcion: r.descripcion || '', url_inicio: r.url_inicio || '', funcion_por_defecto: r.funcion_por_defecto || '', codigo_aplicacion_origen: r.codigo_aplicacion_origen || '', tipo: normalizarTipo(r.tipo), prompt: (r as Record<string, unknown>).prompt as string || '', system_prompt: (r as Record<string, unknown>).system_prompt as string || '', inicial: r.inicial ?? false })
     setError('')
     setTabModalRol('datos')
     setFuncionNueva('')
@@ -145,14 +145,14 @@ export default function PaginaRoles() {
     try {
       const origen = formRol.codigo_aplicacion_origen || null
       if (rolEditando) {
-        await rolesApi.actualizar(rolEditando.id_rol, { nombre: formRol.nombre, alias_de_rol: formRol.alias_de_rol || undefined, descripcion: formRol.descripcion, url_inicio: formRol.url_inicio, funcion_por_defecto: formRol.funcion_por_defecto || undefined, codigo_aplicacion_origen: origen, prompt: formRol.prompt || undefined, system_prompt: formRol.system_prompt || undefined })
+        await rolesApi.actualizar(rolEditando.id_rol, { nombre: formRol.nombre, alias_de_rol: formRol.alias_de_rol || undefined, descripcion: formRol.descripcion, url_inicio: formRol.url_inicio, funcion_por_defecto: formRol.funcion_por_defecto || undefined, codigo_aplicacion_origen: origen, prompt: formRol.prompt || undefined, system_prompt: formRol.system_prompt || undefined, inicial: formRol.inicial })
       } else {
-        const payload: Record<string, unknown> = { nombre: formRol.nombre, alias_de_rol: formRol.alias_de_rol || undefined, descripcion: formRol.descripcion, url_inicio: formRol.url_inicio, funcion_por_defecto: formRol.funcion_por_defecto || undefined, codigo_aplicacion_origen: origen, codigo_grupo: grupoActivo || 'ADMIN' }
+        const payload: Record<string, unknown> = { nombre: formRol.nombre, alias_de_rol: formRol.alias_de_rol || undefined, descripcion: formRol.descripcion, url_inicio: formRol.url_inicio, funcion_por_defecto: formRol.funcion_por_defecto || undefined, codigo_aplicacion_origen: origen, codigo_grupo: grupoActivo || 'ADMIN', inicial: formRol.inicial }
         if (esGlobalCreate && formRol.codigo_rol) payload.codigo_rol = formRol.codigo_rol
         const nuevo = await rolesApi.crear(payload as Parameters<typeof rolesApi.crear>[0])
         if (!cerrar && nuevo) {
           setRolEditando(nuevo as Rol)
-          setFormRol({ codigo_rol: (nuevo as Rol).codigo_rol, nombre: (nuevo as Rol).nombre, alias_de_rol: (nuevo as Rol).alias_de_rol || '', descripcion: (nuevo as Rol).descripcion || '', url_inicio: (nuevo as Rol).url_inicio || '', funcion_por_defecto: (nuevo as Rol).funcion_por_defecto || '', codigo_aplicacion_origen: (nuevo as Rol).codigo_aplicacion_origen || '', tipo: normalizarTipo((nuevo as Rol).tipo), prompt: ((nuevo as Record<string, unknown>).prompt as string) || '', system_prompt: ((nuevo as Record<string, unknown>).system_prompt as string) || '' })
+          setFormRol({ codigo_rol: (nuevo as Rol).codigo_rol, nombre: (nuevo as Rol).nombre, alias_de_rol: (nuevo as Rol).alias_de_rol || '', descripcion: (nuevo as Rol).descripcion || '', url_inicio: (nuevo as Rol).url_inicio || '', funcion_por_defecto: (nuevo as Rol).funcion_por_defecto || '', codigo_aplicacion_origen: (nuevo as Rol).codigo_aplicacion_origen || '', tipo: normalizarTipo((nuevo as Rol).tipo), prompt: ((nuevo as Record<string, unknown>).prompt as string) || '', system_prompt: ((nuevo as Record<string, unknown>).system_prompt as string) || '', inicial: (nuevo as Rol).inicial ?? false })
           cargarFuncionesRol((nuevo as Rol).id_rol)
         }
       }
@@ -463,15 +463,16 @@ export default function PaginaRoles() {
                 <TablaTh>{t('colAlias')}</TablaTh>
                 <TablaTh>{t('colNombre')}</TablaTh>
                 <TablaTh>{t('colUrlInicio')}</TablaTh>
+                <TablaTh className="text-center">{t('colInicial')}</TablaTh>
                 <TablaTh>{t('colCodigo')}</TablaTh>
                 <TablaTh className="text-right">{tc('acciones')}</TablaTh>
               </tr>
             </TablaCabecera>
             <TablaCuerpo>
               {cargando ? (
-                <TablaFila><TablaTd className="py-8 text-center text-texto-muted" colSpan={9 as never}>{tc('cargando')}</TablaTd></TablaFila>
+                <TablaFila><TablaTd className="py-8 text-center text-texto-muted" colSpan={10 as never}>{tc('cargando')}</TablaTd></TablaFila>
               ) : rolesFiltrados.length === 0 ? (
-                <TablaFila><TablaTd className="py-8 text-center text-texto-muted" colSpan={9 as never}>{tc('sinResultados')}</TablaTd></TablaFila>
+                <TablaFila><TablaTd className="py-8 text-center text-texto-muted" colSpan={10 as never}>{tc('sinResultados')}</TablaTd></TablaFila>
               ) : rolesFiltrados.map((r, idx) => (
                 <TablaFila key={r.id_rol}>
                   <TablaTd>
@@ -488,6 +489,13 @@ export default function PaginaRoles() {
                   <TablaTd className="text-sm">{r.alias_de_rol || '—'}</TablaTd>
                   <TablaTd className="font-medium">{r.nombre}</TablaTd>
                   <TablaTd className="text-texto-muted text-xs">{r.url_inicio || '—'}</TablaTd>
+                  <TablaTd className="text-center">
+                    {r.inicial ? (
+                      <span className="inline-flex items-center justify-center w-5 h-5 rounded bg-exito/10 text-exito" title="Rol inicial">✓</span>
+                    ) : (
+                      <span className="text-texto-muted text-xs">—</span>
+                    )}
+                  </TablaTd>
                   <TablaTd>
                     <code className="text-xs bg-fondo px-2 py-1 rounded font-mono">{r.codigo_rol}</code>
                     {r.codigo_grupo == null && <span className="ml-2 text-xs bg-primario/10 text-primario px-1.5 py-0.5 rounded">Global</span>}
@@ -636,6 +644,18 @@ export default function PaginaRoles() {
                 </div>
                 <Input etiqueta={t('etiquetaDescripcion')} value={formRol.descripcion} onChange={(e) => setFormRol({ ...formRol, descripcion: e.target.value })} placeholder={t('placeholderDescripcion')} />
                 <Input etiqueta={t('etiquetaUrlInicio')} value={formRol.url_inicio} onChange={(e) => setFormRol({ ...formRol, url_inicio: e.target.value })} placeholder={t('placeholderUrlInicio')} />
+              </div>
+              <div className="flex items-center gap-3 py-1">
+                <input
+                  type="checkbox"
+                  id="chk-inicial"
+                  checked={formRol.inicial}
+                  onChange={(e) => setFormRol({ ...formRol, inicial: e.target.checked })}
+                  className="w-4 h-4 rounded border-borde text-primario focus:ring-primario cursor-pointer"
+                />
+                <label htmlFor="chk-inicial" className="text-sm text-texto cursor-pointer select-none">
+                  {t('etiquetaInicial')}
+                </label>
               </div>
               {rolEditando && (
                 <div className="flex flex-col gap-1">

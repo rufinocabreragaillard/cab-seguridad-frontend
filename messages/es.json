@@ -794,6 +794,8 @@
     "colNombre": "Nombre",
     "colUrlInicio": "URL inicio",
     "colCodigo": "Código",
+    "colInicial": "Inicial",
+    "etiquetaInicial": "Rol inicial (asignar automáticamente a nuevos usuarios)",
     "colIcono": "Icono",
     "colUrl": "URL función",
     "editarRolTitulo": "Editar rol: {nombre}",

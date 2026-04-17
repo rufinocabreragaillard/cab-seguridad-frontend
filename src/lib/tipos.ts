@@ -173,6 +173,7 @@ export interface Rol {
   tipo?: 'USUARIO' | 'ADMINISTRADOR' | 'PRUEBAS' | 'RESTRINGIDO'
   prompt?: string | null
   system_prompt?: string | null
+  inicial?: boolean
 }
 
 export interface Funcion {
@@ -288,7 +289,7 @@ export interface RegistroAuditoria {
   datos_nuevos?: Record<string, unknown>
 }
 
-// ─── Compromisos: Datos Básicos ─────────────────────────────────────────────
+// ─── Tareas: Datos Básicos ──────────────────────────────────────────────────
 
 export interface EstadoCanonicoConversacion {
   codigo_estado_canonico: string
@@ -296,9 +297,24 @@ export interface EstadoCanonicoConversacion {
   activo: boolean
 }
 
-export interface EstadoCanonicoCompromiso {
+export interface EstadoCanonicoTarea {
   codigo_estado_canonico: string
-  nombre: string
+  nombre_estado_canonico: string
+  descripcion_estado_canonico?: string
+  activo: boolean
+}
+
+export interface CategoriaTarea {
+  codigo_categoria_tarea: string
+  nombre_categoria_tarea: string
+  descripcion_categoria_tarea?: string
+  activo: boolean
+}
+
+export interface TipoCanonicoTarea {
+  codigo_tipo_canonico: string
+  nombre_tipo_canonico: string
+  descripcion_tipo_canonico?: string
   activo: boolean
 }
 
@@ -310,11 +326,13 @@ export interface TipoConversacion {
   activo: boolean
 }
 
-export interface TipoCompromiso {
+export interface TipoTarea {
   codigo_grupo: string
-  codigo_tipo_compromiso: string
-  nombre: string
-  descripcion?: string
+  codigo_tipo_tarea: string
+  codigo_categoria_tarea: string
+  codigo_tipo_canonico?: string
+  nombre_tipo_tarea: string
+  descripcion_tipo_tarea?: string
   activo: boolean
 }
 
@@ -328,17 +346,19 @@ export interface EstadoConversacion {
   activo: boolean
 }
 
-export interface EstadoCompromiso {
+export interface EstadoTarea {
   codigo_grupo: string
-  codigo_tipo_compromiso: string
-  codigo_estado_compromiso: string
-  nombre: string
+  codigo_tipo_tarea: string
+  codigo_estado_tarea: string
+  codigo_categoria_tarea: string
+  nombre_estado_tarea: string
+  descripcion_estado_tarea?: string
   codigo_estado_canonico: string
   orden: number
   activo: boolean
 }
 
-// ─── Compromisos: Operación ─────────────────────────────────────────────────
+// ─── Tareas: Operación ──────────────────────────────────────────────────────
 
 export interface Adjunto {
   nombre: string
@@ -381,22 +401,23 @@ export interface ParticipanteConversacion {
   nombre_persona: string
 }
 
-export interface Compromiso {
-  id_compromiso: number
+export interface Tarea {
+  id_tarea: number
   codigo_grupo: string
   codigo_entidad: string
   id_conversacion?: number
-  codigo_tipo_compromiso: string
+  codigo_categoria_tarea: string
+  codigo_tipo_tarea: string
   codigo_usuario_destinatario?: string
   codigo_ubicacion_area_asignada?: string
   codigo_usuario_asignado?: string
-  asunto: string
-  descripcion?: string
+  nombre_tarea: string
+  descripcion_tarea?: string
   adjunto?: Adjunto
   comentarios?: string
   prioridad: 'urgente' | 'alto' | 'medio' | 'bajo'
-  codigo_estado_compromiso: string
-  costo_compromiso?: number
+  codigo_estado_tarea: string
+  costo_tarea?: number
   esfuerzo_horas?: number
   fecha_creacion?: string
   fecha_esperada?: string
