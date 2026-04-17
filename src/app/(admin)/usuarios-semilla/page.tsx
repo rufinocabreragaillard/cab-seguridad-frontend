@@ -230,13 +230,13 @@ export default function PaginaUsuariosSemilla() {
       // 1. Crear grupo con el nombre de empresa
       const grupo = await gruposApi.crear({ nombre: formNuevo.empresa })
 
-      // 2. Asignar al nuevo grupo todas las aplicaciones de tipo USUARIO (NORMAL)
-      const appsParaGrupo = aplicaciones.filter((a) => normalizarTipo(a.tipo) === 'USUARIO')
-      for (const app of appsParaGrupo) {
+      // 2. Asignar solo la aplicación activa al nuevo grupo
+      const appActiva = aplicacionActiva || undefined
+      if (appActiva) {
         try {
-          await aplicacionesApi.asignarGrupo(app.codigo_aplicacion, grupo.codigo_grupo)
+          await aplicacionesApi.asignarGrupo(appActiva, grupo.codigo_grupo)
         } catch {
-          // Si falla una app individual, continuar
+          // Continuar aunque falle la asignación de app
         }
       }
 
@@ -248,7 +248,6 @@ export default function PaginaUsuariosSemilla() {
 
       // 4. Crear usuario con tipo ADMINISTRADOR y fecha_inicial = hoy
       const hoy = new Date().toISOString().split('T')[0]
-      const primeraApp = appsParaGrupo[0]?.codigo_aplicacion || aplicacionActiva || undefined
       const nuevoUsuario = await usuariosApi.crear({
         codigo_usuario: formNuevo.correo.toLowerCase(),
         nombre: formNuevo.nombre,
@@ -256,15 +255,17 @@ export default function PaginaUsuariosSemilla() {
         tipo: 'ADMINISTRADOR',
         grupo_por_defecto: grupo.codigo_grupo,
         entidad_por_defecto: entidad.codigo_entidad,
-        aplicacion_por_defecto: primeraApp,
+        aplicacion_por_defecto: appActiva,
         fecha_inicial: hoy,
         invitar: true,
       })
 
-      // 5. Asignar los roles marcados como inicial = true del grupo
+      // 5. Asignar roles con inicial=true + todos los de tipo ADMINISTRADOR
       const rolesDelGrupo = await rolesApi.listar(grupo.codigo_grupo, true)
-      const rolesIniciales = rolesDelGrupo.filter((r: Rol) => r.inicial === true)
-      for (const rol of rolesIniciales) {
+      const rolesAAsignar = rolesDelGrupo.filter(
+        (r: Rol) => r.inicial === true || normalizarTipo(r.tipo) === 'ADMINISTRADOR'
+      )
+      for (const rol of rolesAAsignar) {
         try {
           await usuariosApi.asignarRol(nuevoUsuario.codigo_usuario, rol.id_rol, grupo.codigo_grupo)
         } catch {
