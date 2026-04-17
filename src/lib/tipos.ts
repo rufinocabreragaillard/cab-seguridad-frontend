@@ -594,6 +594,27 @@ export interface ColaEstadoDoc {
   documentos?: { codigo_documento: number; nombre_documento: string; codigo_estado_doc: string | null } | null
 }
 
+// ─── SQL Ejecutados ────────────────────────────────────────────────────────
+
+export interface SqlEjecutado {
+  id: number
+  fecha_inicio: string
+  fecha_termino: string
+  duracion_ms: number
+  codigo_usuario?: string | null
+  codigo_grupo?: string | null
+  codigo_entidad?: string | null
+  codigo_funcion?: string | null
+  endpoint?: string | null
+  operacion?: string | null
+  tabla?: string | null
+  sql_text: string
+  sql_hash: string
+  filas_afectadas?: number | null
+  error?: string | null
+  creado_en: string
+}
+
 // ─── Ubicaciones Docs ──────────────────────────────────────────────────────
 
 export interface UbicacionDoc {

@@ -42,6 +42,7 @@ import type {
   UbicacionDoc,
   EstadoDoc,
   ColaEstadoDoc,
+  SqlEjecutado,
   ChatConversacion,
   ChatConversacionDetalle,
   Cargo,
@@ -965,6 +966,15 @@ export const colaEstadosDocsApi = {
     api.get<ColaEstadoDoc[]>(`/cola-estados-docs/por-documento/${codigoDocumento}`).then((r) => r.data),
   porIds: (ids: number[]) =>
     api.get<ColaEstadoDoc[]>('/cola-estados-docs/por-ids', { params: { ids: ids.join(',') } }).then((r) => r.data),
+}
+
+// ─── SQL Ejecutados ─────────────────────────────────────────────────────────
+
+export const sqlEjecutadosApi = {
+  listarPaginado: (params: { page: number; limit: number; q?: string }) =>
+    api
+      .get<RespuestaPaginadaApi<SqlEjecutado>>('/sql-ejecutados/paginado', { params })
+      .then((r) => r.data),
 }
 
 // ─── Ubicaciones Docs ──────────────────────────────────────────────────────
