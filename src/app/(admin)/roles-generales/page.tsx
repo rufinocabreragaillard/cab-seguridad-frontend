@@ -79,6 +79,7 @@ function TabRolesGlobales() {
     descripcion: '',
     url_inicio: '',
     codigo_aplicacion_origen: '',
+    inicial: false,
   })
   const [guardando, setGuardando] = useState(false)
 
@@ -205,7 +206,7 @@ function TabRolesGlobales() {
 
   const abrirCrear = () => {
     setEditando(null)
-    setForm({ codigo_rol: '', nombre: '', alias_de_rol: '', descripcion: '', url_inicio: '', codigo_aplicacion_origen: aplicacionActiva || '' })
+    setForm({ codigo_rol: '', nombre: '', alias_de_rol: '', descripcion: '', url_inicio: '', codigo_aplicacion_origen: aplicacionActiva || '', inicial: false })
     setError('')
     setTabModal('datos')
     setFuncionesRol([])
@@ -221,6 +222,7 @@ function TabRolesGlobales() {
       descripcion: r.descripcion || '',
       url_inicio: r.url_inicio || '',
       codigo_aplicacion_origen: r.codigo_aplicacion_origen || '',
+      inicial: r.inicial ?? false,
     })
     setError('')
     setTabModal('datos')
@@ -244,6 +246,7 @@ function TabRolesGlobales() {
         url_inicio: form.url_inicio.trim() || undefined,
         codigo_aplicacion_origen: form.codigo_aplicacion_origen || null,
         codigo_grupo: null, // rol global
+        inicial: form.inicial,
       }
       if (editando) {
         await rolesApi.actualizar(editando.id_rol, datos)
@@ -314,6 +317,7 @@ function TabRolesGlobales() {
                   <th className="py-2 pr-4">Nombre</th>
                   <th className="py-2 pr-4">Alias</th>
                   <th className="py-2 pr-4">Descripción</th>
+                  <th className="py-2 pr-4 text-center">Inicial</th>
                   <th className="py-2 pr-4">Código</th>
                   <th className="py-2 pr-4 w-24 text-right">Acciones</th>
                 </tr>
@@ -352,6 +356,13 @@ function TabRolesGlobales() {
                     <td className="py-2 pr-4">{r.nombre}</td>
                     <td className="py-2 pr-4 text-texto-muted">{r.alias_de_rol || '—'}</td>
                     <td className="py-2 pr-4 text-texto-muted truncate max-w-xs">{r.descripcion || '—'}</td>
+                    <td className="py-2 pr-4 text-center">
+                      {r.inicial ? (
+                        <span className="inline-flex items-center justify-center w-5 h-5 rounded bg-exito/10 text-exito" title="Rol inicial">✓</span>
+                      ) : (
+                        <span className="text-texto-muted text-xs">—</span>
+                      )}
+                    </td>
                     <td className="py-2 pr-4 font-mono text-xs">{r.codigo_rol}</td>
                     <td className="py-2 pr-4">
                       <div className="flex gap-1 justify-end">
@@ -486,12 +497,27 @@ function TabRolesGlobales() {
                   />
                 </div>
               </div>
+              <div className="flex items-center gap-3 py-1">
+                <input
+                  type="checkbox"
+                  id="chk-inicial-gen"
+                  checked={form.inicial}
+                  onChange={(e) => setForm({ ...form, inicial: e.target.checked })}
+                  className="w-4 h-4 rounded border-borde text-primario focus:ring-primario cursor-pointer"
+                />
+                <label htmlFor="chk-inicial-gen" className="text-sm text-texto cursor-pointer select-none">
+                  Rol inicial (asignar automáticamente a nuevos usuarios)
+                </label>
+              </div>
               <div className="flex justify-end gap-2 pt-2">
                 <Boton variante="secundario" onClick={() => setModalAbierto(false)}>
-                  Salir
+                  {tc('salir')}
+                </Boton>
+                <Boton variante="secundario" onClick={() => guardar(true)} cargando={guardando}>
+                  {tc('grabarYSalir')}
                 </Boton>
                 <Boton variante="primario" onClick={() => guardar(false)} cargando={guardando}>
-                  {editando ? tc('guardar') : t('crearRol')}
+                  {editando ? tc('grabar') : t('crearRol')}
                 </Boton>
               </div>
             </>
