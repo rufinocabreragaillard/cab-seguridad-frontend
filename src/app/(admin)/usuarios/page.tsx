@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback, useMemo, useRef } from 'react'
 import { useTranslations } from 'next-intl'
 import { Plus, Search, Pencil, Trash2, X, Star, Phone, PhoneOff, Download, ChevronUp, ChevronDown } from 'lucide-react'
 import { Boton } from '@/components/ui/boton'
+import { BotonChat } from '@/components/ui/boton-chat'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Insignia } from '@/components/ui/insignia'
@@ -533,9 +534,10 @@ export default function PaginaUsuarios() {
 
   // ── Render ─────────────────────────────────────────────────────────────────
   return (
-    <div className="flex flex-col gap-6 max-w-6xl">
+    <div className="relative flex flex-col gap-6 max-w-6xl">
+      <BotonChat />
       {/* Encabezado */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between pr-28">
         <div>
           <h2 className="text-2xl font-bold text-texto">{t('titulo')}</h2>
           <p className="text-sm text-texto-muted mt-1">Gestión de usuarios del sistema</p>

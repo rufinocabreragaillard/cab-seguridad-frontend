@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from 'react'
 import { Plus, Pencil, Trash2, X, Download, Search, ArrowUp, ArrowDown } from 'lucide-react'
 import { Boton } from '@/components/ui/boton'
+import { BotonChat } from '@/components/ui/boton-chat'
 import { Input } from '@/components/ui/input'
 import { Insignia } from '@/components/ui/insignia'
 import { Modal } from '@/components/ui/modal'
@@ -227,7 +228,8 @@ export default function PaginaFunciones() {
   ] as { key: typeof tabModalFuncion; label: string }[]
 
   return (
-    <div className="flex flex-col gap-6 max-w-6xl">
+    <div className="relative flex flex-col gap-6 max-w-6xl">
+      <BotonChat />
       <div>
         <h2 className="text-2xl font-bold text-texto">{t('titulo')}</h2>
         <p className="text-sm text-texto-muted mt-1">Gestiona las funciones del sistema y sus relaciones con aplicaciones</p>

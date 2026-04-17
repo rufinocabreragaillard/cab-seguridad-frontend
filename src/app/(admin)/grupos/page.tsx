@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback, useRef } from 'react'
 import { Plus, Pencil, Layers, Users, Building2, X, Search, Download, Trash2, AlertTriangle } from 'lucide-react'
 import { Boton } from '@/components/ui/boton'
+import { BotonChat } from '@/components/ui/boton-chat'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Insignia } from '@/components/ui/insignia'
@@ -344,8 +345,9 @@ export default function PaginaGrupos() {
   }
 
   return (
-    <div className="flex flex-col gap-6 max-w-6xl">
-      <div className="flex items-center justify-between">
+    <div className="relative flex flex-col gap-6 max-w-6xl">
+      <BotonChat className="top-0 right-0" />
+      <div className="flex items-center justify-between pr-28">
         <div>
           <h2 className="text-2xl font-bold text-texto">{t('titulo')}</h2>
           <p className="text-sm text-texto-muted mt-1">Gestion de grupos, entidades y usuarios asociados</p>

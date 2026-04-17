@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback } from 'react'
 import { useTranslations } from 'next-intl'
 import { Save, Trash2 } from 'lucide-react'
 import { Boton } from '@/components/ui/boton'
+import { BotonChat } from '@/components/ui/boton-chat'
 import { ModalConfirmar } from '@/components/ui/modal-confirmar'
 import { Tarjeta, TarjetaCabecera, TarjetaTitulo, TarjetaDescripcion, TarjetaContenido } from '@/components/ui/tarjeta'
 import { useAuth } from '@/context/AuthContext'
@@ -101,7 +102,8 @@ export default function PaginaParametrosGenerales() {
   const selectClass = 'w-full rounded-lg border border-borde bg-surface px-3 py-2 text-sm text-texto focus:outline-none focus:ring-1 focus:ring-primario disabled:opacity-50'
 
   return (
-    <div className="flex flex-col gap-6 max-w-3xl">
+    <div className="relative flex flex-col gap-6 max-w-3xl">
+      <BotonChat />
       <div>
         <h2 className="text-2xl font-bold text-texto">{t('titulo')}</h2>
         <p className="text-sm text-texto-muted mt-1">{t('subtitulo')}</p>

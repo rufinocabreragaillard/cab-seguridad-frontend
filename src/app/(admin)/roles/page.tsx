@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback, useRef } from 'react'
 import { useTranslations } from 'next-intl'
 import { Plus, Pencil, Trash2, ChevronUp, ChevronDown, X, Download, Search } from 'lucide-react'
 import { Boton } from '@/components/ui/boton'
+import { BotonChat } from '@/components/ui/boton-chat'
 import { Input } from '@/components/ui/input'
 import { Insignia } from '@/components/ui/insignia'
 import { Modal } from '@/components/ui/modal'
@@ -396,7 +397,8 @@ export default function PaginaRoles() {
   const confirmarEliminarFuncion = (f: Funcion) => setConfirmacion({ tipo: 'funcion', item: f })
 
   return (
-    <div className="flex flex-col gap-6 max-w-6xl">
+    <div className="relative flex flex-col gap-6 max-w-6xl">
+      <BotonChat />
       <div>
         <h2 className="text-2xl font-bold text-texto">{t('titulo')}</h2>
       </div>
