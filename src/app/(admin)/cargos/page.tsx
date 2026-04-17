@@ -14,7 +14,6 @@ import {
   columnaCodigo,
   columnaNombre,
   columnaDescripcion,
-  columnaEstado,
 } from '@/components/ui/tabla-crud'
 import { Tabla, TablaCabecera, TablaCuerpo, TablaFila, TablaTh, TablaTd } from '@/components/ui/tabla'
 import { Insignia } from '@/components/ui/insignia'
@@ -66,16 +65,16 @@ export default function PaginaCargos() {
         system_prompt: f.system_prompt.trim() || undefined,
       }),
     actualizarFn: (id, f) =>
-      cargosApi.actualizar(Number(id), {
+      cargosApi.actualizar(id, {
         nombre_cargo: (f.nombre_cargo ?? '').trim(),
         alias: (f.alias ?? '').trim() || undefined,
         descripcion: (f.descripcion ?? '').trim() || undefined,
-        codigo_entidad: f.codigo_entidad || undefined,
+        codigo_entidad: f.codigo_entidad,
         prompt: (f.prompt ?? '').trim() || undefined,
         system_prompt: (f.system_prompt ?? '').trim() || undefined,
       }),
-    eliminarFn: async (id: string) => { await cargosApi.eliminar(Number(id)) },
-    getId: (c) => String(c.id_cargo),
+    eliminarFn: async (id: string) => { await cargosApi.eliminar(id) },
+    getId: (c) => c.codigo_cargo,
     camposBusqueda: (c) => [c.codigo_cargo, c.nombre_cargo, c.alias],
     formInicial: { codigo_cargo: '', nombre_cargo: '', alias: '', descripcion: '', codigo_entidad: '', prompt: '', system_prompt: '' },
     itemToForm: (c) => ({
@@ -92,13 +91,12 @@ export default function PaginaCargos() {
   // ── Tab activa en el modal ──────────────────────────────────────────────────
   const [tabActiva, setTabActiva] = useState<'datos' | 'roles' | 'prompt' | 'system_prompt'>('datos')
 
-  // Resetear tab al abrir modal
   const abrirNuevo = () => { setTabActiva('datos'); crud.abrirNuevo() }
   const abrirEditar = (c: Cargo) => {
     setTabActiva('datos')
     setRolesCargo([])
     crud.abrirEditar(c)
-    cargarRolesCargo(c.id_cargo)
+    cargarRolesCargo(c.codigo_cargo)
   }
 
   // ── Roles del cargo ─────────────────────────────────────────────────────────
@@ -110,14 +108,13 @@ export default function PaginaCargos() {
   const [asignandoRol, setAsignandoRol] = useState(false)
   const [errorRol, setErrorRol] = useState('')
 
-  const cargarRolesCargo = useCallback(async (id: number) => {
+  const cargarRolesCargo = useCallback(async (codigo_cargo: string) => {
     setCargandoRoles(true)
-    try { setRolesCargo(await cargosApi.listarRoles(id)) }
+    try { setRolesCargo(await cargosApi.listarRoles(codigo_cargo)) }
     catch { setRolesCargo([]) }
     finally { setCargandoRoles(false) }
   }, [])
 
-  // Click-outside dropdown rol
   useEffect(() => {
     const handler = (e: MouseEvent) => {
       if (dropdownRolRef.current && !dropdownRolRef.current.contains(e.target as Node))
@@ -127,11 +124,9 @@ export default function PaginaCargos() {
     return () => document.removeEventListener('mousedown', handler)
   }, [])
 
-  // Roles disponibles para asignar (del grupo activo + globales, excluyendo los ya asignados)
   const rolesDisponibles = roles
     .filter(
       (r) =>
-        r.activo &&
         (r.codigo_grupo === grupoActivo || r.codigo_grupo == null) &&
         !rolesCargo.some((rc) => rc.id_rol === r.id_rol),
     )
@@ -153,10 +148,10 @@ export default function PaginaCargos() {
     setAsignandoRol(true)
     setErrorRol('')
     try {
-      await cargosApi.asignarRol(crud.editando.id_cargo, id_rol)
+      await cargosApi.asignarRol(crud.editando.codigo_cargo, id_rol)
       setBusquedaRol('')
       setDropdownRolAbierto(false)
-      await cargarRolesCargo(crud.editando.id_cargo)
+      await cargarRolesCargo(crud.editando.codigo_cargo)
     } catch (e) { setErrorRol(e instanceof Error ? e.message : t('errorAlAsignarRol')) }
     finally { setAsignandoRol(false) }
   }
@@ -165,8 +160,8 @@ export default function PaginaCargos() {
     if (!crud.editando) return
     setErrorRol('')
     try {
-      await cargosApi.quitarRol(crud.editando.id_cargo, id_rol)
-      await cargarRolesCargo(crud.editando.id_cargo)
+      await cargosApi.quitarRol(crud.editando.codigo_cargo, id_rol)
+      await cargarRolesCargo(crud.editando.codigo_cargo)
     } catch (e) { setErrorRol(e instanceof Error ? e.message : t('errorAlQuitarRol')) }
   }
 
@@ -182,19 +177,21 @@ export default function PaginaCargos() {
     ;[lista[idx], lista[swapIdx]] = [lista[swapIdx], lista[idx]]
     setRolesCargo(lista)
     try {
-      await cargosApi.reordenarRoles(crud.editando.id_cargo, lista.map((r) => ({ id_rol: r.id_rol, orden: r.orden })))
+      await cargosApi.reordenarRoles(crud.editando.codigo_cargo, lista.map((r) => ({ id_rol: r.id_rol, orden: r.orden })))
     } catch {
-      cargarRolesCargo(crud.editando.id_cargo)
+      cargarRolesCargo(crud.editando.codigo_cargo)
     }
   }
 
-  // ── Lista ordenada para la tabla principal ──────────────────────────────────
+  // ── Lista ordenada ──────────────────────────────────────────────────────────
   const filtradosOrdenados = [...crud.filtrados].sort((a, b) =>
     a.nombre_cargo.localeCompare(b.nombre_cargo),
   )
 
-  const nombreEntidad = (codigo: string | null | undefined) =>
-    entidades.find((e) => e.codigo_entidad === codigo)?.nombre ?? codigo ?? '—'
+  const nombreEntidad = (codigo: string | null | undefined) => {
+    if (!codigo) return null
+    return entidades.find((e) => e.codigo_entidad === codigo)?.nombre ?? codigo
+  }
 
   return (
     <div className="flex flex-col gap-6 max-w-5xl">
@@ -216,7 +213,6 @@ export default function PaginaCargos() {
           { titulo: t('colAlias'), campo: 'alias' },
           { titulo: t('colEntidad'), campo: 'codigo_entidad' },
           { titulo: t('colDescripcion'), campo: 'descripcion' },
-          { titulo: tc('activo'), campo: 'activo', formato: (v: unknown) => (v ? tc('activo') : tc('inactivo')) },
         ]}
         excelNombreArchivo="cargos"
       />
@@ -227,20 +223,21 @@ export default function PaginaCargos() {
           { titulo: t('colAlias'), render: (c: Cargo) => c.alias || '—' },
           {
             titulo: t('colEntidad'),
-            render: (c: Cargo) =>
-              c.codigo_entidad ? (
-                <span className="text-sm">{nombreEntidad(c.codigo_entidad)}</span>
+            render: (c: Cargo) => {
+              const nombre = nombreEntidad(c.codigo_entidad)
+              return nombre ? (
+                <span className="text-sm">{nombre}</span>
               ) : (
                 <Insignia variante="neutro">{t('todoElGrupo')}</Insignia>
-              ),
+              )
+            },
           },
           columnaDescripcion<Cargo>(t('colDescripcion'), (c) => c.descripcion),
-          columnaEstado<Cargo>((c) => c.activo),
           columnaCodigo<Cargo>(t('colCodigo'), (c) => c.codigo_cargo),
         ]}
         items={filtradosOrdenados}
         cargando={crud.cargando}
-        getId={(c) => String(c.id_cargo)}
+        getId={(c) => c.codigo_cargo}
         onEditar={abrirEditar}
         onEliminar={crud.setConfirmacion}
         textoVacio={t('sinCargos')}
@@ -275,7 +272,7 @@ export default function PaginaCargos() {
           </div>
 
           {/* ── Tab Datos ─────────────────────────────────────────────────── */}
-          {(tabActiva === 'datos' || !crud.editando) && (
+          {tabActiva === 'datos' && (
             <div className="flex flex-col gap-4">
               {crud.editando && (
                 <Input etiqueta={t('etiquetaCodigo')} value={crud.form.codigo_cargo} onChange={() => {}} disabled />
@@ -311,9 +308,7 @@ export default function PaginaCargos() {
                     </option>
                   ))}
                 </select>
-                <p className="text-xs text-texto-muted">
-                  {t('descEntidad')}
-                </p>
+                <p className="text-xs text-texto-muted">{t('descEntidad')}</p>
               </div>
 
               <Textarea
@@ -331,9 +326,7 @@ export default function PaginaCargos() {
               )}
 
               <div className="flex gap-3 justify-end pt-2">
-                <Boton variante="contorno" onClick={crud.cerrarModal}>
-                  {tc('cancelar')}
-                </Boton>
+                <Boton variante="contorno" onClick={crud.cerrarModal}>{tc('cancelar')}</Boton>
                 <Boton
                   variante="primario"
                   onClick={() => {
@@ -355,7 +348,7 @@ export default function PaginaCargos() {
           {tabActiva === 'prompt' && (
             <div className="flex flex-col gap-3">
               <p className="text-sm text-texto-muted">
-                Texto que se inyecta en el prompt del LLM para dar contexto específico a este cargo. Se usa en clasificación de documentos y análisis.
+                Texto inyectado en el prompt del LLM al procesar documentos o análisis en contexto de este cargo.
               </p>
               <textarea
                 className="w-full h-48 p-3 text-sm border border-borde rounded-lg font-mono resize-y focus:outline-none focus:ring-2 focus:ring-primario/30"
@@ -363,6 +356,10 @@ export default function PaginaCargos() {
                 value={crud.form.prompt}
                 onChange={(e) => crud.updateForm('prompt', e.target.value)}
               />
+              <div className="flex gap-3 justify-end pt-2">
+                <Boton variante="contorno" onClick={crud.cerrarModal}>{tc('cancelar')}</Boton>
+                <Boton variante="primario" onClick={() => crud.guardar()} cargando={crud.guardando}>{tc('guardar')}</Boton>
+              </div>
             </div>
           )}
 
@@ -370,7 +367,7 @@ export default function PaginaCargos() {
           {tabActiva === 'system_prompt' && (
             <div className="flex flex-col gap-3">
               <p className="text-sm text-texto-muted">
-                Instrucciones de sistema que se prependen a todas las conversaciones y análisis LLM en este contexto. Define el tono, restricciones y rol del asistente.
+                Instrucciones de sistema que se aplican a todas las conversaciones y análisis LLM para usuarios con este cargo.
               </p>
               <textarea
                 className="w-full h-48 p-3 text-sm border border-borde rounded-lg font-mono resize-y focus:outline-none focus:ring-2 focus:ring-primario/30"
@@ -378,13 +375,16 @@ export default function PaginaCargos() {
                 value={crud.form.system_prompt}
                 onChange={(e) => crud.updateForm('system_prompt', e.target.value)}
               />
+              <div className="flex gap-3 justify-end pt-2">
+                <Boton variante="contorno" onClick={crud.cerrarModal}>{tc('cancelar')}</Boton>
+                <Boton variante="primario" onClick={() => crud.guardar()} cargando={crud.guardando}>{tc('guardar')}</Boton>
+              </div>
             </div>
           )}
 
           {/* ── Tab Roles ─────────────────────────────────────────────────── */}
           {tabActiva === 'roles' && crud.editando && (
             <div className="flex flex-col gap-4">
-              {/* Selector buscable de roles */}
               <div className="flex flex-col gap-1">
                 <label className="text-sm font-medium text-texto">{t('agregarRol')}</label>
                 <div className="relative" ref={dropdownRolRef}>
@@ -418,13 +418,10 @@ export default function PaginaCargos() {
                 </div>
               </div>
 
-              {/* Lista de roles asignados */}
               {cargandoRoles ? (
                 <p className="text-sm text-texto-muted">{t('cargandoRoles')}</p>
               ) : rolesCargo.length === 0 ? (
-                <p className="text-sm text-texto-muted italic">
-                  {t('sinRoles')}
-                </p>
+                <p className="text-sm text-texto-muted italic">{t('sinRoles')}</p>
               ) : (
                 <Tabla>
                   <TablaCabecera>
@@ -442,7 +439,7 @@ export default function PaginaCargos() {
                         <TablaFila key={rc.id_rol}>
                           <TablaTd>
                             <span className="font-medium text-sm">
-                              {rc.roles?.nombre ?? `Rol ${rc.id_rol}`}
+                              {rc.roles?.nombre_rol ?? `Rol ${rc.id_rol}`}
                             </span>
                           </TablaTd>
                           <TablaTd>
@@ -452,28 +449,16 @@ export default function PaginaCargos() {
                           </TablaTd>
                           <TablaTd alineacion="derecha">
                             <div className="flex items-center justify-end gap-1">
-                              <button
-                                onClick={() => moverRol(idx, 'arriba')}
-                                disabled={idx === 0}
-                                className="p-1 rounded hover:bg-primario/10 disabled:opacity-30"
-                              >
+                              <button onClick={() => moverRol(idx, 'arriba')} disabled={idx === 0} className="p-1 rounded hover:bg-primario/10 disabled:opacity-30">
                                 <ChevronUp className="w-4 h-4" />
                               </button>
-                              <button
-                                onClick={() => moverRol(idx, 'abajo')}
-                                disabled={idx === arr.length - 1}
-                                className="p-1 rounded hover:bg-primario/10 disabled:opacity-30"
-                              >
+                              <button onClick={() => moverRol(idx, 'abajo')} disabled={idx === arr.length - 1} className="p-1 rounded hover:bg-primario/10 disabled:opacity-30">
                                 <ChevronDown className="w-4 h-4" />
                               </button>
                             </div>
                           </TablaTd>
                           <TablaTd alineacion="derecha">
-                            <Boton
-                              variante="peligro"
-                              tamano="sm"
-                              onClick={() => quitarRol(rc.id_rol)}
-                            >
+                            <Boton variante="peligro" tamano="sm" onClick={() => quitarRol(rc.id_rol)}>
                               {t('quitar')}
                             </Boton>
                           </TablaTd>

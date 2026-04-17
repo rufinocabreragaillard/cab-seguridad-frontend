@@ -595,26 +595,24 @@ export interface UbicacionDoc {
 // ─── Cargos ───────────────────────────────────────────────────────────────────
 
 export interface Cargo {
-  id_cargo: number
   codigo_grupo: string
+  codigo_entidad: string          // '' = cargo de grupo
   codigo_cargo: string
   nombre_cargo: string
   alias: string
   descripcion?: string | null
-  activo: boolean
-  codigo_entidad?: string | null
   prompt?: string | null
   system_prompt?: string | null
 }
 
 export interface RolCargo {
-  id_cargo: number
+  codigo_cargo: string
   id_rol: number
   orden: number
   roles?: {
     id_rol: number
     codigo_rol: string
-    nombre: string
+    nombre_rol: string
     codigo_grupo: string | null
     codigo_aplicacion_origen?: string | null
   }

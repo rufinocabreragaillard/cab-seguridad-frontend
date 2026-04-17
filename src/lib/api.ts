@@ -1066,21 +1066,21 @@ export const chatApi = {
 // ─── Cargos ───────────────────────────────────────────────────────────────────
 
 export const cargosApi = {
-  listar: (params?: { activo?: boolean; codigo_entidad?: string }) =>
+  listar: (params?: { codigo_entidad?: string }) =>
     api.get<Cargo[]>('/cargos', { params }).then((r) => r.data),
-  crear: (datos: { codigo_cargo?: string; nombre_cargo: string; alias?: string; descripcion?: string; codigo_entidad?: string }) =>
+  crear: (datos: { codigo_cargo?: string; nombre_cargo: string; alias?: string; descripcion?: string; codigo_entidad?: string; prompt?: string; system_prompt?: string }) =>
     api.post<Cargo>('/cargos', datos).then((r) => r.data),
-  actualizar: (id: number, datos: Partial<Pick<Cargo, 'nombre_cargo' | 'alias' | 'descripcion' | 'activo' | 'codigo_entidad'>>) =>
-    api.put<Cargo>(`/cargos/${id}`, datos).then((r) => r.data),
-  eliminar: (id: number) => api.delete(`/cargos/${id}`),
-  listarRoles: (id: number) =>
-    api.get<RolCargo[]>(`/cargos/${id}/roles`).then((r) => r.data),
-  asignarRol: (id: number, id_rol: number) =>
-    api.post(`/cargos/${id}/roles/${id_rol}`).then((r) => r.data),
-  quitarRol: (id: number, id_rol: number) =>
-    api.delete(`/cargos/${id}/roles/${id_rol}`).then((r) => r.data),
-  reordenarRoles: (id: number, orden: { id_rol: number; orden: number }[]) =>
-    api.put(`/cargos/${id}/roles/reordenar`, orden).then((r) => r.data),
+  actualizar: (codigo_cargo: string, datos: Partial<Pick<Cargo, 'nombre_cargo' | 'alias' | 'descripcion' | 'codigo_entidad' | 'prompt' | 'system_prompt'>>) =>
+    api.put<Cargo>(`/cargos/${codigo_cargo}`, datos).then((r) => r.data),
+  eliminar: (codigo_cargo: string) => api.delete(`/cargos/${codigo_cargo}`),
+  listarRoles: (codigo_cargo: string) =>
+    api.get<RolCargo[]>(`/cargos/${codigo_cargo}/roles`).then((r) => r.data),
+  asignarRol: (codigo_cargo: string, id_rol: number) =>
+    api.post(`/cargos/${codigo_cargo}/roles/${id_rol}`).then((r) => r.data),
+  quitarRol: (codigo_cargo: string, id_rol: number) =>
+    api.delete(`/cargos/${codigo_cargo}/roles/${id_rol}`).then((r) => r.data),
+  reordenarRoles: (codigo_cargo: string, orden: { id_rol: number; orden: number }[]) =>
+    api.put(`/cargos/${codigo_cargo}/roles/reordenar`, orden).then((r) => r.data),
 }
 
 // ─── Espacios de Trabajo ─────────────────────────────────────────────────────
