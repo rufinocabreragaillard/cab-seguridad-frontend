@@ -194,6 +194,7 @@ export interface Funcion {
   perm_insert?: boolean
   perm_update?: boolean
   perm_delete?: boolean
+  traducir?: boolean
 }
 
 // ─── Chat con LLM ───────────────────────────────────────────────────────────

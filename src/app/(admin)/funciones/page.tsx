@@ -54,11 +54,13 @@ export default function PaginaFunciones() {
     perm_insert: boolean
     perm_update: boolean
     perm_delete: boolean
+    traducir: boolean
   }>({
     codigo_funcion: '', nombre: '', descripcion: '', ayuda_de_funcion: '', url_funcion: '',
     alias_de_funcion: '', icono_de_funcion: '', codigo_aplicacion_origen: '',
     tipo: 'USUARIO', id_modelo: '', system_prompt: '', prompt: '',
     perm_select: true, perm_insert: true, perm_update: true, perm_delete: true,
+    traducir: true,
   })
   const [tabModalFuncion, setTabModalFuncion] = useState<'datos' | 'otros' | 'aplicaciones' | 'prompt' | 'system_prompt' | 'llm'>('datos')
   const [guardandoFuncion, setGuardandoFuncion] = useState(false)
@@ -102,6 +104,7 @@ export default function PaginaFunciones() {
       codigo_aplicacion_origen: aplicacionActiva || '',
       tipo: 'USUARIO', id_modelo: '', system_prompt: '', prompt: '',
       perm_select: true, perm_insert: true, perm_update: true, perm_delete: true,
+      traducir: true,
     })
     setErrorFuncion(''); setTabModalFuncion('datos'); setModalFuncion(true)
   }
@@ -124,6 +127,7 @@ export default function PaginaFunciones() {
       perm_insert: f.perm_insert ?? true,
       perm_update: f.perm_update ?? true,
       perm_delete: f.perm_delete ?? true,
+      traducir: f.traducir ?? true,
     })
     setErrorFuncion(''); setTabModalFuncion('datos'); cargarAppsDeFuncion(f.codigo_funcion); setModalFuncion(true)
   }
@@ -146,6 +150,7 @@ export default function PaginaFunciones() {
         perm_insert: formFuncion.perm_insert,
         perm_update: formFuncion.perm_update,
         // perm_delete se excluye: solo modificable directamente en la BD
+        traducir: formFuncion.traducir,
       }
       if (funcionEditando) {
         await funcionesApi.actualizar(funcionEditando.codigo_funcion, payload)
@@ -313,15 +318,6 @@ export default function PaginaFunciones() {
                   ))}
                 </select>
               </div>
-              <div className="col-span-2">
-                <label className="text-sm font-medium text-texto">Aplicación origen</label>
-                <select value={formFuncion.codigo_aplicacion_origen} onChange={(e) => setFormFuncion({ ...formFuncion, codigo_aplicacion_origen: e.target.value })} className={selectClass}>
-                  <option value="">— sin asignar —</option>
-                  {[...aplicaciones].sort((a, b) => a.nombre.localeCompare(b.nombre, 'es')).map((a) => (
-                    <option key={a.codigo_aplicacion} value={a.codigo_aplicacion}>{a.nombre}</option>
-                  ))}
-                </select>
-              </div>
               {funcionEditando && (
                 <div className="col-span-2">
                   <label className="text-sm font-medium text-texto">Código</label>
@@ -343,12 +339,33 @@ export default function PaginaFunciones() {
           {tabModalFuncion === 'otros' && (<>
             <div className="grid grid-cols-2 gap-x-4 gap-y-3">
               <div className="col-span-2">
+                <label className="text-sm font-medium text-texto">Aplicación origen</label>
+                <select value={formFuncion.codigo_aplicacion_origen} onChange={(e) => setFormFuncion({ ...formFuncion, codigo_aplicacion_origen: e.target.value })} className={selectClass}>
+                  <option value="">— sin asignar —</option>
+                  {[...aplicaciones].sort((a, b) => a.nombre.localeCompare(b.nombre, 'es')).map((a) => (
+                    <option key={a.codigo_aplicacion} value={a.codigo_aplicacion}>{a.nombre}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="col-span-2">
                 <label className="text-sm font-medium text-texto">Descripción</label>
                 <textarea value={formFuncion.descripcion} onChange={(e) => setFormFuncion({ ...formFuncion, descripcion: e.target.value })} rows={2} className="w-full rounded-lg border border-borde bg-surface px-3 py-2 text-sm text-texto focus:outline-none focus:ring-2 focus:ring-primario resize-none" />
               </div>
               <div className="col-span-2">
                 <label className="text-sm font-medium text-texto">Ayuda para el usuario</label>
                 <textarea value={formFuncion.ayuda_de_funcion} onChange={(e) => setFormFuncion({ ...formFuncion, ayuda_de_funcion: e.target.value })} rows={2} placeholder="Texto descriptivo visible para el usuario final bajo el ícono de la función" className="w-full rounded-lg border border-borde bg-surface px-3 py-2 text-sm text-texto focus:outline-none focus:ring-2 focus:ring-primario resize-none placeholder:text-texto-muted" />
+              </div>
+              <div className="col-span-2">
+                <label className="flex items-center gap-2 cursor-pointer select-none">
+                  <input
+                    type="checkbox"
+                    checked={formFuncion.traducir}
+                    onChange={(e) => setFormFuncion({ ...formFuncion, traducir: e.target.checked })}
+                    className="w-4 h-4 rounded accent-primario"
+                  />
+                  <span className="text-sm font-medium text-texto">Traducir</span>
+                  <span className="text-xs text-texto-muted">— incluir en el sistema de traducción automática</span>
+                </label>
               </div>
               <div className="col-span-2">
                 <label className="text-sm font-medium text-texto mb-2 block">Permisos de operación</label>
