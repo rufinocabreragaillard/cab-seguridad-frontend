@@ -153,24 +153,45 @@ api.interceptors.response.use(
       msg = error.message || 'Error desconocido'
     }
 
-    // Si es un error PostgreSQL, pedirle al LLM que lo explique en lenguaje claro
+    // Si es un error PostgreSQL, pedirle al LLM que lo diagnostique
     if (_esErrorPostgres(msg)) {
       try {
         const token = await obtenerToken()
+        // Extrae endpoint y método de la request original (contexto para el LLM)
+        const endpoint = error.config?.url || null
+        const metodo = error.config?.method?.toUpperCase() || null
         const r = await fetch(`${BASE_URL}/utils/explicar-error`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
             ...(token ? { Authorization: `Bearer ${token}` } : {}),
           },
-          body: JSON.stringify({ error_tecnico: msg }),
+          body: JSON.stringify({
+            error_tecnico: msg,
+            endpoint,
+            metodo,
+          }),
         })
         if (r.ok) {
           const data = await r.json()
           if (data.es_error_tecnico && data.mensaje_usuario) {
-            msg = data.detalle_tecnico
-              ? `${data.mensaje_usuario}\n\nDetalle técnico: ${data.detalle_tecnico}`
-              : data.mensaje_usuario
+            const partes: string[] = []
+            // Prefijo de categoría (icono textual)
+            const iconoCat: Record<string, string> = {
+              dato_usuario: 'ℹ️',
+              configuracion: '⚙️',
+              bug: '⚠️',
+              desconocido: '',
+            }
+            const icono = iconoCat[data.categoria as string] || ''
+            partes.push(`${icono ? icono + ' ' : ''}${data.mensaje_usuario}`.trim())
+            if (data.sugerencia) {
+              partes.push(`\nSugerencia: ${data.sugerencia}`)
+            }
+            if (data.detalle_tecnico) {
+              partes.push(`\nDetalle técnico: ${data.detalle_tecnico}`)
+            }
+            msg = partes.join('\n')
           }
         }
       } catch {
