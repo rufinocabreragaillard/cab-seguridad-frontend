@@ -661,6 +661,26 @@ export interface RolCargo {
   }
 }
 
+// ─── Traducciones ─────────────────────────────────────────────────────────────
+
+export interface LocaleSoportado {
+  codigo: string
+  nombre_nativo: string
+  nombre_es: string
+  activo: boolean
+  es_base: boolean
+  orden: number
+}
+
+export interface EstadoTraducciones {
+  pendiente: boolean
+  ultima_generacion: string | null
+  cambios_pendientes: number
+  idiomas: string[]
+  conteos_por_locale: Record<string, number>
+  locales: LocaleSoportado[]
+}
+
 // ─── Utilitarios ─────────────────────────────────────────────────────────────
 
 export interface RespuestaPaginada<T> {

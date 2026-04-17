@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { ChevronDown, Building2, Layers, Check, Bell, LogOut, User, Save, AppWindow } from 'lucide-react'
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu'
 import * as Avatar from '@radix-ui/react-avatar'
@@ -11,10 +11,14 @@ import { Modal } from '@/components/ui/modal'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Boton } from '@/components/ui/boton'
-import { usuariosApi } from '@/lib/api'
+import { usuariosApi, traduccionesApi } from '@/lib/api'
 import { useTranslations } from 'next-intl'
-import { locales, type Locale } from '@/i18n/config'
+import { locales as localesFallback, type Locale } from '@/i18n/config'
 import { tr } from '@/lib/traducir'
+import type { LocaleSoportado } from '@/lib/tipos'
+
+// Cache módulo-nivel para no re-fetchear en cada render
+let _localesCache: LocaleSoportado[] | null = null
 
 function cambiarLocale(nuevoLocale: Locale) {
   document.cookie = `NEXT_LOCALE=${nuevoLocale};path=/;max-age=31536000`
@@ -27,6 +31,21 @@ export function Header({ titulo }: { titulo?: string }) {
   const router = useRouter()
   const { usuario, cambiarEntidad, cambiarGrupo, cambiarAplicacion, logout } = useAuth()
   const [cambiando, setCambiando] = useState(false)
+  const [localesDinamicos, setLocalesDinamicos] = useState<LocaleSoportado[]>(_localesCache ?? [])
+
+  // Cargar locales activos desde BD (una sola vez por sesión)
+  useEffect(() => {
+    if (_localesCache !== null) return
+    traduccionesApi.listarLocalesActivos()
+      .then((data) => {
+        _localesCache = data
+        setLocalesDinamicos(data)
+      })
+      .catch(() => {
+        // Fallback silencioso a locales hardcodeados
+        _localesCache = []
+      })
+  }, [])
 
   // Modal Mi Cuenta
   const [modalCuenta, setModalCuenta] = useState(false)
@@ -349,22 +368,28 @@ export function Header({ titulo }: { titulo?: string }) {
           {exitoCuenta && <div className="bg-green-50 border border-green-200 rounded-lg px-4 py-3"><p className="text-sm text-exito">{exitoCuenta}</p></div>}
           <div className="flex items-center gap-3 pt-1">
             <span className="text-xs font-medium text-texto-muted uppercase tracking-wide">{t('idioma')}:</span>
-            <div className="flex gap-1">
-              {locales.map((loc) => (
-                <button
-                  key={loc}
-                  type="button"
-                  onClick={() => cambiarLocale(loc)}
-                  className={`text-xs px-2.5 py-1 rounded border transition-colors ${
-                    (typeof document !== 'undefined' && document.cookie.includes(`NEXT_LOCALE=${loc}`)) ||
-                    (typeof document !== 'undefined' && !document.cookie.includes('NEXT_LOCALE=') && loc === 'es')
-                      ? 'bg-primario text-primario-texto border-primario font-medium'
-                      : 'text-texto-muted border-borde hover:text-texto hover:border-primario/50'
-                  }`}
-                >
-                  {loc.toUpperCase()}
-                </button>
-              ))}
+            <div className="flex gap-1 flex-wrap">
+              {(localesDinamicos.length > 0 ? localesDinamicos : localesFallback.map((codigo) => ({ codigo, nombre_nativo: codigo, nombre_es: codigo, activo: true, es_base: codigo === 'es', orden: 0 }))).map((loc) => {
+                const codigo = typeof loc === 'string' ? loc : loc.codigo
+                const activo =
+                  (typeof document !== 'undefined' && document.cookie.includes(`NEXT_LOCALE=${codigo}`)) ||
+                  (typeof document !== 'undefined' && !document.cookie.includes('NEXT_LOCALE=') && codigo === 'es')
+                return (
+                  <button
+                    key={codigo}
+                    type="button"
+                    onClick={() => cambiarLocale(codigo as Locale)}
+                    title={typeof loc === 'string' ? codigo : loc.nombre_es}
+                    className={`text-xs px-2.5 py-1 rounded border transition-colors ${
+                      activo
+                        ? 'bg-primario text-primario-texto border-primario font-medium'
+                        : 'text-texto-muted border-borde hover:text-texto hover:border-primario/50'
+                    }`}
+                  >
+                    {codigo.toUpperCase()}
+                  </button>
+                )
+              })}
             </div>
           </div>
           <div className="flex gap-3 justify-end pt-2">

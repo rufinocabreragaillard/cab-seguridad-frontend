@@ -49,6 +49,8 @@ import type {
   RolCargo,
   EspacioTrabajo,
   DocumentoEspacio,
+  LocaleSoportado,
+  EstadoTraducciones,
 } from './tipos'
 
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
@@ -1165,6 +1167,35 @@ export const cargosApi = {
     api.delete(`/cargos/${codigo_cargo}/roles/${id_rol}`).then((r) => r.data),
   reordenarRoles: (codigo_cargo: string, orden: { id_rol: number; orden: number }[]) =>
     api.put(`/cargos/${codigo_cargo}/roles/reordenar`, orden).then((r) => r.data),
+}
+
+// ─── Traducciones ─────────────────────────────────────────────────────────────
+
+export const traduccionesApi = {
+  estado: () =>
+    api.get<EstadoTraducciones>('/traducciones/estado').then((r) => r.data),
+
+  listarLocales: () =>
+    api.get<LocaleSoportado[]>('/traducciones/locales').then((r) => r.data),
+
+  listarLocalesActivos: () =>
+    api.get<LocaleSoportado[]>('/traducciones/locales', { params: { solo_activos: true } }).then((r) => r.data),
+
+  actualizarLocale: (codigo: string, datos: Partial<Pick<LocaleSoportado, 'activo' | 'nombre_nativo' | 'nombre_es' | 'orden'>>) =>
+    api.patch<LocaleSoportado>(`/traducciones/locales/${codigo}`, datos).then((r) => r.data),
+
+  crearLocale: (datos: { codigo: string; nombre_nativo: string; nombre_es: string; activo?: boolean; orden?: number }) =>
+    api.post<LocaleSoportado>('/traducciones/locales', datos).then((r) => r.data),
+
+  eliminarLocale: (codigo: string) =>
+    api.delete(`/traducciones/locales/${codigo}`),
+
+  generar: (modo: 'completo' | 'incremental', idiomas?: string[]) =>
+    api.post<{ generadas: number; textos_fuente?: number; idiomas: string[]; modo: string; mensaje?: string }>(
+      '/traducciones/generar',
+      { modo, idiomas },
+      { timeout: 300_000 }  // 5 minutos — generación puede tardar
+    ).then((r) => r.data),
 }
 
 // ─── Espacios de Trabajo ─────────────────────────────────────────────────────
