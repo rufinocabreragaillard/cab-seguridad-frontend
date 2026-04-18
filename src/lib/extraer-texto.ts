@@ -213,8 +213,17 @@ async function extraerTextoDOCX(file: File): Promise<string> {
 }
 
 /**
+ * Máximo de filas por hoja extraídas de archivos .xlsx/.xls/.xlsm.
+ * Limita el texto enviado al LLM para documentos grandes (BD, padrones, etc.)
+ * reduciendo tokens y tiempo de escaneo sin perder contexto del contenido.
+ * Sincronizado con el parámetro DOCUMENTOS/MAX_FILAS_XLSX en parametros_generales.
+ */
+const MAX_FILAS_XLSX = 200
+
+/**
  * Extrae texto de un Excel (.xlsx/.xls/.xlsm) usando SheetJS.
  * Cada hoja se serializa como CSV; las hojas se separan por encabezado.
+ * Solo se extraen las primeras MAX_FILAS_XLSX filas por hoja.
  */
 async function extraerTextoExcel(file: File): Promise<string> {
   try {
@@ -232,6 +241,15 @@ async function extraerTextoExcel(file: File): Promise<string> {
     const partes: string[] = []
     for (const nombreHoja of workbook.SheetNames) {
       const hoja = workbook.Sheets[nombreHoja]
+      // Limitar a las primeras MAX_FILAS_XLSX filas (reduce tokens LLM en hojas grandes)
+      const ref = hoja['!ref']
+      if (ref) {
+        const range = XLSX.utils.decode_range(ref)
+        if (range.e.r >= MAX_FILAS_XLSX) {
+          range.e.r = MAX_FILAS_XLSX - 1  // 0-indexed: fila 199 = fila 200 del usuario
+          hoja['!ref'] = XLSX.utils.encode_range(range)
+        }
+      }
       const csv = XLSX.utils.sheet_to_csv(hoja, { blankrows: false })
       if (csv.trim()) {
         partes.push(`### Hoja: ${nombreHoja}\n${csv}`)
