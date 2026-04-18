@@ -5,6 +5,7 @@ import { useEffect, useState, useRef, useCallback, KeyboardEvent } from 'react'
 import { Plus, Trash2, Send, MessageCircle } from 'lucide-react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
+import rehypeSanitize from 'rehype-sanitize'
 import { Boton } from '@/components/ui/boton'
 import { ModalConfirmar } from '@/components/ui/modal-confirmar'
 import { chatApi } from '@/lib/api'
@@ -354,6 +355,7 @@ function Mensaje({ mensaje, streaming = false }: { mensaje: ChatMensaje; streami
           <div className="prose prose-sm max-w-none prose-p:my-1 prose-pre:my-2 prose-pre:bg-surface prose-pre:text-texto prose-code:text-texto prose-code:bg-surface prose-code:px-1 prose-code:rounded prose-code:text-xs prose-headings:my-2 prose-a:text-primario prose-a:underline">
             <ReactMarkdown
               remarkPlugins={[remarkGfm]}
+              rehypePlugins={[rehypeSanitize]}
               components={{
                 // Tablas: wrapper con scroll horizontal y estilos explicitos.
                 table: ({ children, ...props }) => (
@@ -372,13 +374,12 @@ function Mensaje({ mensaje, streaming = false }: { mensaje: ChatMensaje; streami
                 td: ({ children, ...props }) => (
                   <td className="border border-borde px-2 py-1 align-top" {...props}>{children}</td>
                 ),
-                // Links internos como enlaces relativos del mismo origen para
-                // que el router del frontend los maneje (sin abrir nueva pestaña).
                 a: ({ href, children, ...props }) => {
-                  const esInterno = href && href.startsWith('/')
+                  const hrefSeguro = typeof href === 'string' && /^(https?:\/\/|\/)/i.test(href) ? href : '#'
+                  const esInterno = hrefSeguro.startsWith('/')
                   return (
                     <a
-                      href={href}
+                      href={hrefSeguro}
                       target={esInterno ? undefined : '_blank'}
                       rel={esInterno ? undefined : 'noopener noreferrer'}
                       className="text-primario underline hover:text-primario-hover"
