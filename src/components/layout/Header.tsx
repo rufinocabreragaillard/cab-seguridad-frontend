@@ -185,7 +185,7 @@ export function Header({ titulo }: { titulo?: string }) {
         <div className="flex items-center gap-4">
           {usuario?.nombre_aplicacion && (
             <span className="app-name">
-              {tr('aplicaciones', 'nombre_aplicacion', usuario.aplicacion_activa || '', usuario.nombre_aplicacion || '')}
+              {tr('aplicaciones', 'nombre',usuario.aplicacion_activa || '', usuario.nombre_aplicacion || '')}
             </span>
           )}
         </div>
@@ -426,7 +426,7 @@ export function Header({ titulo }: { titulo?: string }) {
                   )}
                 />
                 <div>
-                  <p className="font-medium">{tr('aplicaciones', 'nombre_aplicacion', app.codigo_aplicacion, app.nombre)}</p>
+                  <p className="font-medium">{tr('aplicaciones', 'nombre',app.codigo_aplicacion, app.nombre)}</p>
                   <p className="text-xs text-texto-muted">{app.codigo_aplicacion}</p>
                 </div>
               </button>

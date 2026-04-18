@@ -156,7 +156,7 @@ export function Sidebar() {
             <div key={rol.id_rol}>
               {!colapsado && (
                 <span className="px-3 text-xs font-semibold uppercase tracking-wider text-sidebar-texto-muted">
-                  {tr('roles', 'alias_de_rol', String(rol.id_rol), rol.alias)}
+                  {tr('roles', 'alias', String(rol.id_rol), rol.alias)}
                 </span>
               )}
               {/* Separador fino cuando está colapsado */}
@@ -173,10 +173,10 @@ export function Sidebar() {
                       key={fn.codigo_funcion}
                       href={href}
                       className={cn(itemBase, activo ? itemActivo : itemInactivo)}
-                      title={tr('funciones', 'alias_de_funcion', fn.codigo_funcion, fn.alias)}
+                      title={tr('funciones', 'alias', fn.codigo_funcion, fn.alias)}
                     >
                       <Icono size={18} className="shrink-0" />
-                      {!colapsado && <span>{tr('funciones', 'alias_de_funcion', fn.codigo_funcion, fn.alias)}</span>}
+                      {!colapsado && <span>{tr('funciones', 'alias', fn.codigo_funcion, fn.alias)}</span>}
                     </Link>
                   )
                 })}
