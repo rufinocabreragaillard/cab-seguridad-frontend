@@ -24,6 +24,7 @@ interface AuthContextType {
   error: string | null
   login: (email: string, password: string) => Promise<void>
   loginConGoogle: () => Promise<void>
+  loginConMicrosoft: () => Promise<void>
   logout: () => Promise<void>
   cambiarEntidad: (codigoEntidad: string) => Promise<void>
   cambiarGrupo: (codigoGrupo: string) => Promise<void>
@@ -236,6 +237,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }
 
+  const loginConMicrosoft = async () => {
+    setError(null)
+    loginExplicito.current = true
+    clearOverridesSesion()
+    const { error: err } = await supabase.auth.signInWithOAuth({
+      provider: 'azure',
+      options: {
+        redirectTo: `${window.location.origin}/auth/callback`,
+        scopes: 'email profile',
+      },
+    })
+    if (err) {
+      loginExplicito.current = false
+      setError(err.message)
+      throw new Error(err.message)
+    }
+  }
+
   const logout = async () => {
     clearOverridesSesion()
     invalidarTodosLosCatalogos()
@@ -326,7 +345,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   return (
     <AuthContext.Provider
       value={{
-        usuario, cargando, error, login, loginConGoogle, logout,
+        usuario, cargando, error, login, loginConGoogle, loginConMicrosoft, logout,
         cambiarEntidad, cambiarGrupo, cambiarAplicacion,
         tieneFuncion, tieneAccesoRuta,
         esAdmin, esSuperAdmin, entidadActiva, grupoActivo, aplicacionActiva,

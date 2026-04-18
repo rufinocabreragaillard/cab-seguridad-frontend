@@ -79,6 +79,7 @@
     "password": "Password",
     "entrar": "Sign in",
     "google": "Continue with Google",
+    "microsoft": "Continue with Microsoft",
     "separador": "or sign in with your email",
     "olvidoPassword": "Forgot your password?",
     "recuperarTitulo": "Reset password",
