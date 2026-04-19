@@ -296,12 +296,6 @@ export interface RegistroAuditoria {
 
 // ─── Tareas: Datos Básicos ──────────────────────────────────────────────────
 
-export interface EstadoCanonicoConversacion {
-  codigo_estado_canonico: string
-  nombre: string
-  activo: boolean
-}
-
 export interface EstadoCanonicoTarea {
   codigo_estado_canonico: string
   nombre_estado_canonico: string

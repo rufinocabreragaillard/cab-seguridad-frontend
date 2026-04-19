@@ -28,7 +28,6 @@ import type {
   TipoCaractDocs,
   CaracteristicaDocumento,
   CategoriaConCaracteristicasDocs,
-  EstadoCanonicoConversacion,
   EstadoCanonicalProceso,
   EstadoCanonicoTarea,
   TipoConversacion,
@@ -905,16 +904,6 @@ export const personasApi = {
 // ─── Tareas: Datos Básicos ───────────────────────────────────────────────────
 
 export const tareasDatosBasicosApi = {
-  // Canónicos conversación
-  listarCanonicosCnv: () =>
-    api.get<EstadoCanonicoConversacion[]>('/tareas-datos-basicos/canonicos-conversacion').then((r) => r.data),
-  crearCanonicosCnv: (datos: Partial<EstadoCanonicoConversacion>) =>
-    api.post('/tareas-datos-basicos/canonicos-conversacion', datos).then((r) => r.data),
-  actualizarCanonicosCnv: (codigo: string, datos: Partial<EstadoCanonicoConversacion>) =>
-    api.put(`/tareas-datos-basicos/canonicos-conversacion/${codigo}`, datos).then((r) => r.data),
-  eliminarCanonicosCnv: (codigo: string) =>
-    api.delete(`/tareas-datos-basicos/canonicos-conversacion/${codigo}`),
-
   // Canónicos proceso
   listarCanonicosPro: () =>
     api.get<EstadoCanonicalProceso[]>('/tareas-datos-basicos/canonicos-proceso').then((r) => r.data),
