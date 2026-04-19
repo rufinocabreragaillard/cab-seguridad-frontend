@@ -73,18 +73,18 @@ export default function PaginaRoles() {
   const [error, setError] = useState('')
 
   // Edición inline de booleans por fila
-  const [inlineChanges, setInlineChanges] = useState<Map<number, { inicial_admin_grupo: boolean; inicial_admin_general: boolean }>>(new Map())
+  const [inlineChanges, setInlineChanges] = useState<Map<number, { inicial: boolean; inicial_admin_grupo: boolean; inicial_admin_general: boolean }>>(new Map())
   const [guardandoInline, setGuardandoInline] = useState<Set<number>>(new Set())
 
-  const getInlineVal = (r: Rol, campo: 'inicial_admin_grupo' | 'inicial_admin_general') => {
+  const getInlineVal = (r: Rol, campo: 'inicial' | 'inicial_admin_grupo' | 'inicial_admin_general') => {
     const pending = inlineChanges.get(r.id_rol)
     return pending !== undefined ? pending[campo] : (r[campo] ?? false)
   }
 
-  const handleInlineCheck = (r: Rol, campo: 'inicial_admin_grupo' | 'inicial_admin_general', valor: boolean) => {
+  const handleInlineCheck = (r: Rol, campo: 'inicial' | 'inicial_admin_grupo' | 'inicial_admin_general', valor: boolean) => {
     setInlineChanges(prev => {
       const next = new Map(prev)
-      const current = next.get(r.id_rol) ?? { inicial_admin_grupo: r.inicial_admin_grupo ?? false, inicial_admin_general: r.inicial_admin_general ?? false }
+      const current = next.get(r.id_rol) ?? { inicial: r.inicial ?? false, inicial_admin_grupo: r.inicial_admin_grupo ?? false, inicial_admin_general: r.inicial_admin_general ?? false }
       next.set(r.id_rol, { ...current, [campo]: valor })
       return next
     })
@@ -527,18 +527,20 @@ export default function PaginaRoles() {
                     ) : <span className="text-texto-muted">—</span>}
                   </TablaTd>
                   <TablaTd className="text-center">
-                    {r.inicial ? (
-                      <span className="inline-flex items-center justify-center w-5 h-5 rounded bg-exito/10 text-exito" title="Rol inicial">✓</span>
-                    ) : (
-                      <span className="text-texto-muted text-xs">—</span>
-                    )}
+                    <input
+                      type="checkbox"
+                      checked={getInlineVal(r, 'inicial')}
+                      onChange={(e) => handleInlineCheck(r, 'inicial', e.target.checked)}
+                      className="w-4 h-4 rounded accent-primario cursor-pointer"
+                      title="Rol inicial"
+                    />
                   </TablaTd>
                   <TablaTd className="text-center">
                     <input
                       type="checkbox"
                       checked={getInlineVal(r, 'inicial_admin_grupo')}
                       onChange={(e) => handleInlineCheck(r, 'inicial_admin_grupo', e.target.checked)}
-                      className="w-4 h-4 rounded border-borde text-primario focus:ring-primario cursor-pointer"
+                      className="w-4 h-4 rounded accent-primario cursor-pointer"
                       title="Inicial Admin Grupo"
                     />
                   </TablaTd>
@@ -547,7 +549,7 @@ export default function PaginaRoles() {
                       type="checkbox"
                       checked={getInlineVal(r, 'inicial_admin_general')}
                       onChange={(e) => handleInlineCheck(r, 'inicial_admin_general', e.target.checked)}
-                      className="w-4 h-4 rounded border-borde text-primario focus:ring-primario cursor-pointer"
+                      className="w-4 h-4 rounded accent-primario cursor-pointer"
                       title="Inicial Admin General"
                     />
                   </TablaTd>
