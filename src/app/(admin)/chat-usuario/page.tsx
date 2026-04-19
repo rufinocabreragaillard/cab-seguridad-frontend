@@ -7,7 +7,6 @@ import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import rehypeSanitize from 'rehype-sanitize'
 import { Boton } from '@/components/ui/boton'
-import { ModalConfirmar } from '@/components/ui/modal-confirmar'
 import { chatApi } from '@/lib/api'
 import { useAuth } from '@/context/AuthContext'
 import type { ChatConversacion, ChatMensaje } from '@/lib/tipos'
@@ -20,7 +19,6 @@ type TabPrincipal = 'chat' | 'espacios'
 export default function PaginaChatUsuario() {
   const { grupoActivo } = useAuth()
   const t = useTranslations('chat')
-  const tc = useTranslations('common')
 
   const [tabActiva, setTabActiva] = useState<TabPrincipal>('chat')
 
@@ -40,8 +38,6 @@ export default function PaginaChatUsuario() {
   const [enviando, setEnviando] = useState(false)
   const [respuestaEnCurso, setRespuestaEnCurso] = useState('')
 
-  // Confirmación de eliminación
-  const [convAEliminar, setConvAEliminar] = useState<ChatConversacion | null>(null)
   const [eliminando, setEliminando] = useState(false)
 
   // Refs para auto-scroll
@@ -177,15 +173,12 @@ export default function PaginaChatUsuario() {
     }
   }
 
-  const confirmarEliminar = async () => {
-    if (!convAEliminar) return
+  const eliminarConversacion = async (conv: ChatConversacion) => {
+    if (eliminando) return
     setEliminando(true)
     try {
-      await chatApi.eliminarConversacion(convAEliminar.id_conversacion)
-      const idEliminado = convAEliminar.id_conversacion
-      setConvAEliminar(null)
-      // Si era la activa, limpiar
-      if (convActivaId === idEliminado) {
+      await chatApi.eliminarConversacion(conv.id_conversacion)
+      if (convActivaId === conv.id_conversacion) {
         setConvActivaId(null)
         setMensajes([])
       }
@@ -267,7 +260,7 @@ export default function PaginaChatUsuario() {
                   <MessageCircle size={14} className="mt-0.5 shrink-0" />
                   <span className="flex-1 truncate" title={c.titulo}>{c.titulo}</span>
                   <button
-                    onClick={(e) => { e.stopPropagation(); setConvAEliminar(c) }}
+                    onClick={(e) => { e.stopPropagation(); eliminarConversacion(c) }}
                     className="opacity-0 group-hover:opacity-100 p-0.5 rounded hover:bg-red-50 text-texto-muted hover:text-error"
                     title={t('eliminarConversacionTitulo')}
                   >
@@ -361,15 +354,6 @@ export default function PaginaChatUsuario() {
         )}
       </main>
 
-      <ModalConfirmar
-        abierto={!!convAEliminar}
-        alCerrar={() => setConvAEliminar(null)}
-        alConfirmar={confirmarEliminar}
-        titulo={t('eliminarConversacionTitulo')}
-        mensaje={convAEliminar ? t('eliminarConversacionConfirm', { titulo: convAEliminar.titulo }) : ''}
-        textoConfirmar={tc('eliminar')}
-        cargando={eliminando}
-      />
     </div>
       )}
     </div>
