@@ -118,32 +118,32 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     fetch(`${apiUrl}/health`, { method: 'GET', signal: AbortSignal.timeout(30000) })
       .catch(() => { /* ignorar errores — solo queremos despertar el servidor */ })
 
+    // Verificar sesión inicial con getSession() (no usa el lock interno de Supabase).
+    // Esto evita el warning "lock not released within 5000ms" que causaba la demora
+    // de 5s en "Iniciando sesión…" al usar INITIAL_SESSION dentro de onAuthStateChange.
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
+      if (!isMounted) return
+      if (session) {
+        await cargarContexto()
+        if (isMounted) setCargando(false)
+      } else {
+        if (isMounted) {
+          setCargando(false)
+          if (!PUBLIC_ROUTES.includes(pathnameRef.current)) {
+            router.push('/login')
+          }
+        }
+      }
+    })
+
     const { data: listener } = supabase.auth.onAuthStateChange(
       async (event, session) => {
         if (!isMounted) return
 
-        if (event === 'INITIAL_SESSION') {
-          // Carga inicial: refresh de página o primera visita
-          if (session) {
-            const ctx = await cargarContexto()
-            if (isMounted) {
-              setCargando(false)
-              // Si ctx es null (backend no respondió), NO redirigir a /login:
-              // la sesión Supabase sigue válida. page.tsx mostrará el error
-              // con botón Reintentar. Solo redirigir si no hay sesión Supabase.
-              if (!ctx && !PUBLIC_ROUTES.includes(pathnameRef.current)) {
-                // No hacemos router.push('/login') — el error ya fue seteado en cargarContexto
-              }
-            }
-          } else {
-            if (isMounted) {
-              setCargando(false)
-              if (!PUBLIC_ROUTES.includes(pathnameRef.current)) {
-                router.push('/login')
-              }
-            }
-          }
-        } else if (event === 'SIGNED_IN') {
+        // INITIAL_SESSION ya fue manejado por getSession() arriba → ignorar
+        if (event === 'INITIAL_SESSION') return
+
+        if (event === 'SIGNED_IN') {
           // Login fresco (email/password o OAuth callback): SIEMPRE limpiar overrides
           // para que se inicialice con los defaults de BD del usuario
           clearOverridesSesion()
