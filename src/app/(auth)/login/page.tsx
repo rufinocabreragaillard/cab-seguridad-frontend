@@ -29,6 +29,10 @@ export default function PaginaLogin() {
   const [emailRecuperacion, setEmailRecuperacion] = useState('')
   const [enviandoRecuperacion, setEnviandoRecuperacion] = useState(false)
   const [mensajeRecuperacion, setMensajeRecuperacion] = useState('')
+  const [modoRegistro, setModoRegistro] = useState(false)
+  const [formRegistro, setFormRegistro] = useState({ email: '', nombre: '', empresa: '' })
+  const [enviandoRegistro, setEnviandoRegistro] = useState(false)
+  const [mensajeRegistro, setMensajeRegistro] = useState('')
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -78,6 +82,27 @@ export default function PaginaLogin() {
       setMensajeRecuperacion('Si el correo está registrado, recibirás un enlace para restablecer tu contraseña.')
     } finally {
       setEnviandoRecuperacion(false)
+    }
+  }
+
+  const handleRegistro = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setErrorLocal('')
+    setMensajeRegistro('')
+    const { email, nombre, empresa } = formRegistro
+    if (!email || !nombre || !empresa) {
+      setErrorLocal('Todos los campos son obligatorios')
+      return
+    }
+    setEnviandoRegistro(true)
+    try {
+      const res = await api.post('/auth/registro', { email: email.toLowerCase(), nombre, empresa })
+      setMensajeRegistro(res.data.mensaje)
+    } catch (err: unknown) {
+      const detail = (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail
+      setErrorLocal(detail || 'Error al procesar el registro. Intenta nuevamente.')
+    } finally {
+      setEnviandoRegistro(false)
     }
   }
 
@@ -137,7 +162,83 @@ export default function PaginaLogin() {
           </div>
 
           <div className="bg-surface rounded-2xl border border-borde shadow-sm p-8">
-            {modoRecuperacion ? (
+            {modoRegistro ? (
+              <>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setModoRegistro(false)
+                    setErrorLocal('')
+                    setMensajeRegistro('')
+                    setFormRegistro({ email: '', nombre: '', empresa: '' })
+                  }}
+                  className="flex items-center gap-1 text-sm text-primario hover:text-primario-hover transition-colors mb-4"
+                >
+                  <ArrowLeft size={14} />
+                  {t('volverLogin')}
+                </button>
+                <h1 className="auth-heading mb-1">Regístrate</h1>
+                <p className="text-sm text-texto-muted mb-6">
+                  Recibirás una invitación por correo, para confirmar tu mail.
+                </p>
+
+                {mensajeRegistro ? (
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg px-4 py-3">
+                    <p className="text-sm text-blue-700">{mensajeRegistro}</p>
+                  </div>
+                ) : (
+                  <form onSubmit={handleRegistro} className="flex flex-col gap-4">
+                    <Input
+                      etiqueta={t('email')}
+                      type="email"
+                      id="reg-email"
+                      value={formRegistro.email}
+                      onChange={(e) => setFormRegistro({ ...formRegistro, email: e.target.value })}
+                      placeholder="tu@correo.com"
+                      autoComplete="email"
+                      icono={<Mail size={16} />}
+                      disabled={enviandoRegistro}
+                    />
+                    <Input
+                      etiqueta="Nombre completo"
+                      type="text"
+                      id="reg-nombre"
+                      value={formRegistro.nombre}
+                      onChange={(e) => setFormRegistro({ ...formRegistro, nombre: e.target.value })}
+                      placeholder="Nombre Apellido"
+                      autoComplete="name"
+                      disabled={enviandoRegistro}
+                    />
+                    <Input
+                      etiqueta="Nombre de empresa"
+                      type="text"
+                      id="reg-empresa"
+                      value={formRegistro.empresa}
+                      onChange={(e) => setFormRegistro({ ...formRegistro, empresa: e.target.value })}
+                      placeholder="Mi Empresa S.A."
+                      disabled={enviandoRegistro}
+                    />
+
+                    {mensajeError && (
+                      <div className="bg-red-50 border border-red-200 rounded-lg px-4 py-3">
+                        <p className="text-sm text-error">{mensajeError}</p>
+                      </div>
+                    )}
+
+                    <Boton
+                      type="submit"
+                      variante="primario"
+                      className="w-full mt-2"
+                      style={{ backgroundColor: '#1A1E2E', borderColor: '#1A1E2E' }}
+                      cargando={enviandoRegistro}
+                      disabled={enviandoRegistro}
+                    >
+                      Registrarme
+                    </Boton>
+                  </form>
+                )}
+              </>
+            ) : modoRecuperacion ? (
               <>
                 <button
                   type="button"
@@ -297,17 +398,30 @@ export default function PaginaLogin() {
                 </form>
 
                 {/* Fuera del form para que Enter no lo active accidentalmente */}
-                <button
-                  type="button"
-                  onClick={() => {
-                    setModoRecuperacion(true)
-                    setErrorLocal('')
-                    setEmailRecuperacion(email)
-                  }}
-                  className="text-sm text-primario hover:text-primario-hover transition-colors w-full text-right mt-2"
-                >
-                  {t('olvidoPassword')}
-                </button>
+                <div className="flex items-center justify-between mt-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setModoRegistro(true)
+                      setErrorLocal('')
+                      setFormRegistro({ email, nombre: '', empresa: '' })
+                    }}
+                    className="text-sm text-primario hover:text-primario-hover transition-colors"
+                  >
+                    ¿No tienes cuenta? <span className="font-medium">Regístrate</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setModoRecuperacion(true)
+                      setErrorLocal('')
+                      setEmailRecuperacion(email)
+                    }}
+                    className="text-sm text-primario hover:text-primario-hover transition-colors"
+                  >
+                    {t('olvidoPassword')}
+                  </button>
+                </div>
               </>
             )}
           </div>
