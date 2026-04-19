@@ -370,6 +370,17 @@ export interface TipoProceso {
   system_prompt?: string
 }
 
+export interface EstadoProceso {
+  codigo_categoria_proceso: string
+  codigo_tipo_proceso: string
+  codigo_estado_proceso: string
+  secuencia: number
+  nombre_estado: string
+  prompt?: string
+  system_prompt?: string
+  activo: boolean
+}
+
 export interface EstadoTarea {
   codigo_grupo: string
   codigo_tipo_tarea: string

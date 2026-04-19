@@ -38,6 +38,7 @@ import type {
   TipoCanonicoTarea,
   CategoriaProceso,
   TipoProceso,
+  EstadoProceso,
   Conversacion,
   ParticipanteConversacion,
   Tarea,
@@ -1006,6 +1007,15 @@ export const procesosDatosBasicosApi = {
     api.put(`/procesos-datos-basicos/tipos/${categoria}/${codigo}`, datos).then((r) => r.data),
   eliminarTipo: (categoria: string, codigo: string) =>
     api.delete(`/procesos-datos-basicos/tipos/${categoria}/${codigo}`),
+
+  listarEstados: (params?: { categoria?: string; tipo?: string }) =>
+    api.get<EstadoProceso[]>('/procesos-datos-basicos/estados', { params: params ?? {} }).then((r) => r.data),
+  crearEstado: (datos: Partial<EstadoProceso>) =>
+    api.post('/procesos-datos-basicos/estados', datos).then((r) => r.data),
+  actualizarEstado: (categoria: string, tipo: string, codigo: string, datos: Partial<EstadoProceso>) =>
+    api.put(`/procesos-datos-basicos/estados/${categoria}/${tipo}/${codigo}`, datos).then((r) => r.data),
+  eliminarEstado: (categoria: string, tipo: string, codigo: string) =>
+    api.delete(`/procesos-datos-basicos/estados/${categoria}/${tipo}/${codigo}`),
 }
 
 // ─── Tareas: Operación ───────────────────────────────────────────────────────

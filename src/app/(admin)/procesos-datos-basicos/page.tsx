@@ -1,0 +1,614 @@
+'use client'
+
+import { useEffect, useState, useCallback } from 'react'
+import { Plus, Pencil, Trash2, Download } from 'lucide-react'
+import { Boton } from '@/components/ui/boton'
+import { Input } from '@/components/ui/input'
+import { Insignia } from '@/components/ui/insignia'
+import { Modal } from '@/components/ui/modal'
+import { ModalConfirmar } from '@/components/ui/modal-confirmar'
+import { Tabla, TablaCabecera, TablaCuerpo, TablaFila, TablaTh, TablaTd } from '@/components/ui/tabla'
+import { procesosDatosBasicosApi } from '@/lib/api'
+import type { CategoriaProceso, TipoProceso, EstadoProceso } from '@/lib/tipos'
+import { exportarExcel } from '@/lib/exportar-excel'
+import { BotonChat } from '@/components/ui/boton-chat'
+
+type TabId = 'categorias' | 'tipos' | 'estados'
+
+type ItemEliminar =
+  | { tipo: 'categoria'; item: CategoriaProceso }
+  | { tipo: 'tipo'; item: TipoProceso }
+  | { tipo: 'estado'; item: EstadoProceso }
+
+export default function PaginaProcesosDatosBasicos() {
+  const [tabActiva, setTabActiva] = useState<TabId>('categorias')
+
+  // ── Categorías ─────────────────────────────────────────────────────────────
+  const [categorias, setCategorias] = useState<CategoriaProceso[]>([])
+  const [cargandoCat, setCargandoCat] = useState(true)
+  const [modalCat, setModalCat] = useState(false)
+  const [catEditando, setCatEditando] = useState<CategoriaProceso | null>(null)
+  const [formCat, setFormCat] = useState({
+    codigo_categoria_proceso: '', nombre_categoria_proceso: '', descripcion_categoria_proceso: '', alias: '',
+  })
+  const [guardandoCat, setGuardandoCat] = useState(false)
+  const [errorCat, setErrorCat] = useState('')
+
+  // ── Tipos ──────────────────────────────────────────────────────────────────
+  const [tipos, setTipos] = useState<TipoProceso[]>([])
+  const [cargandoTipo, setCargandoTipo] = useState(true)
+  const [modalTipo, setModalTipo] = useState(false)
+  const [tipoEditando, setTipoEditando] = useState<TipoProceso | null>(null)
+  const [formTipo, setFormTipo] = useState({
+    codigo_categoria_proceso: '', codigo_tipo_proceso: '', nombre_tipo_proceso: '', descripcion_tipo_proceso: '', alias: '',
+  })
+  const [guardandoTipo, setGuardandoTipo] = useState(false)
+  const [errorTipo, setErrorTipo] = useState('')
+  const [filtroCatTipo, setFiltroCatTipo] = useState('')
+
+  // ── Estados ────────────────────────────────────────────────────────────────
+  const [estados, setEstados] = useState<EstadoProceso[]>([])
+  const [cargandoEst, setCargandoEst] = useState(true)
+  const [modalEst, setModalEst] = useState(false)
+  const [estEditando, setEstEditando] = useState<EstadoProceso | null>(null)
+  const [formEst, setFormEst] = useState({
+    codigo_categoria_proceso: '', codigo_tipo_proceso: '', codigo_estado_proceso: '',
+    nombre_estado: '', secuencia: 0,
+  })
+  const [guardandoEst, setGuardandoEst] = useState(false)
+  const [errorEst, setErrorEst] = useState('')
+  const [filtroCatEst, setFiltroCatEst] = useState('')
+  const [filtroTipoEst, setFiltroTipoEst] = useState('')
+
+  // ── Eliminación ────────────────────────────────────────────────────────────
+  const [itemAEliminar, setItemAEliminar] = useState<ItemEliminar | null>(null)
+  const [eliminando, setEliminando] = useState(false)
+
+  // ── Carga ──────────────────────────────────────────────────────────────────
+  const cargarCategorias = useCallback(async () => {
+    setCargandoCat(true)
+    try { setCategorias(await procesosDatosBasicosApi.listarCategorias()) }
+    finally { setCargandoCat(false) }
+  }, [])
+
+  const cargarTipos = useCallback(async () => {
+    setCargandoTipo(true)
+    try { setTipos(await procesosDatosBasicosApi.listarTipos()) }
+    finally { setCargandoTipo(false) }
+  }, [])
+
+  const cargarEstados = useCallback(async () => {
+    setCargandoEst(true)
+    try { setEstados(await procesosDatosBasicosApi.listarEstados()) }
+    finally { setCargandoEst(false) }
+  }, [])
+
+  useEffect(() => { cargarCategorias() }, [cargarCategorias])
+  useEffect(() => { cargarTipos() }, [cargarTipos])
+  useEffect(() => { cargarEstados() }, [cargarEstados])
+
+  // ── CRUD Categorías ────────────────────────────────────────────────────────
+  const abrirNuevaCat = () => {
+    setCatEditando(null)
+    setFormCat({ codigo_categoria_proceso: '', nombre_categoria_proceso: '', descripcion_categoria_proceso: '', alias: '' })
+    setErrorCat('')
+    setModalCat(true)
+  }
+
+  const abrirEditarCat = (c: CategoriaProceso) => {
+    setCatEditando(c)
+    setFormCat({
+      codigo_categoria_proceso: c.codigo_categoria_proceso,
+      nombre_categoria_proceso: c.nombre_categoria_proceso,
+      descripcion_categoria_proceso: c.descripcion_categoria_proceso || '',
+      alias: c.alias || '',
+    })
+    setErrorCat('')
+    setModalCat(true)
+  }
+
+  const guardarCategoria = async (cerrar = true) => {
+    if (!formCat.nombre_categoria_proceso) { setErrorCat('El nombre es obligatorio'); return }
+    setGuardandoCat(true); setErrorCat('')
+    try {
+      if (catEditando) {
+        await procesosDatosBasicosApi.actualizarCategoria(catEditando.codigo_categoria_proceso, {
+          nombre_categoria_proceso: formCat.nombre_categoria_proceso,
+          descripcion_categoria_proceso: formCat.descripcion_categoria_proceso || undefined,
+          alias: formCat.alias || undefined,
+        })
+      } else {
+        await procesosDatosBasicosApi.crearCategoria({
+          codigo_categoria_proceso: formCat.codigo_categoria_proceso || undefined,
+          nombre_categoria_proceso: formCat.nombre_categoria_proceso,
+          descripcion_categoria_proceso: formCat.descripcion_categoria_proceso || undefined,
+          alias: formCat.alias || undefined,
+        })
+      }
+      if (cerrar) setModalCat(false)
+      cargarCategorias()
+    } catch (e) {
+      setErrorCat(e instanceof Error ? e.message : 'Error al guardar')
+    } finally { setGuardandoCat(false) }
+  }
+
+  // ── CRUD Tipos ─────────────────────────────────────────────────────────────
+  const abrirNuevoTipo = () => {
+    setTipoEditando(null)
+    setFormTipo({ codigo_categoria_proceso: '', codigo_tipo_proceso: '', nombre_tipo_proceso: '', descripcion_tipo_proceso: '', alias: '' })
+    setErrorTipo('')
+    setModalTipo(true)
+  }
+
+  const abrirEditarTipo = (t: TipoProceso) => {
+    setTipoEditando(t)
+    setFormTipo({
+      codigo_categoria_proceso: t.codigo_categoria_proceso,
+      codigo_tipo_proceso: t.codigo_tipo_proceso,
+      nombre_tipo_proceso: t.nombre_tipo_proceso,
+      descripcion_tipo_proceso: t.descripcion_tipo_proceso || '',
+      alias: t.alias || '',
+    })
+    setErrorTipo('')
+    setModalTipo(true)
+  }
+
+  const guardarTipo = async (cerrar = true) => {
+    if (!formTipo.codigo_categoria_proceso || !formTipo.nombre_tipo_proceso) {
+      setErrorTipo('La categoría y el nombre son obligatorios'); return
+    }
+    setGuardandoTipo(true); setErrorTipo('')
+    try {
+      if (tipoEditando) {
+        await procesosDatosBasicosApi.actualizarTipo(
+          tipoEditando.codigo_categoria_proceso, tipoEditando.codigo_tipo_proceso,
+          { nombre_tipo_proceso: formTipo.nombre_tipo_proceso, descripcion_tipo_proceso: formTipo.descripcion_tipo_proceso || undefined, alias: formTipo.alias || undefined }
+        )
+      } else {
+        await procesosDatosBasicosApi.crearTipo({
+          codigo_categoria_proceso: formTipo.codigo_categoria_proceso,
+          codigo_tipo_proceso: formTipo.codigo_tipo_proceso || undefined,
+          nombre_tipo_proceso: formTipo.nombre_tipo_proceso,
+          descripcion_tipo_proceso: formTipo.descripcion_tipo_proceso || undefined,
+          alias: formTipo.alias || undefined,
+        })
+      }
+      if (cerrar) setModalTipo(false)
+      cargarTipos()
+    } catch (e) {
+      setErrorTipo(e instanceof Error ? e.message : 'Error al guardar')
+    } finally { setGuardandoTipo(false) }
+  }
+
+  // ── CRUD Estados ───────────────────────────────────────────────────────────
+  const abrirNuevoEst = () => {
+    setEstEditando(null)
+    setFormEst({ codigo_categoria_proceso: '', codigo_tipo_proceso: '', codigo_estado_proceso: '', nombre_estado: '', secuencia: 0 })
+    setErrorEst('')
+    setModalEst(true)
+  }
+
+  const abrirEditarEst = (e: EstadoProceso) => {
+    setEstEditando(e)
+    setFormEst({
+      codigo_categoria_proceso: e.codigo_categoria_proceso,
+      codigo_tipo_proceso: e.codigo_tipo_proceso,
+      codigo_estado_proceso: e.codigo_estado_proceso,
+      nombre_estado: e.nombre_estado,
+      secuencia: e.secuencia,
+    })
+    setErrorEst('')
+    setModalEst(true)
+  }
+
+  const guardarEstado = async (cerrar = true) => {
+    if (!formEst.codigo_categoria_proceso || !formEst.codigo_tipo_proceso || !formEst.nombre_estado) {
+      setErrorEst('Categoría, tipo y nombre son obligatorios'); return
+    }
+    setGuardandoEst(true); setErrorEst('')
+    try {
+      if (estEditando) {
+        await procesosDatosBasicosApi.actualizarEstado(
+          estEditando.codigo_categoria_proceso, estEditando.codigo_tipo_proceso, estEditando.codigo_estado_proceso,
+          { nombre_estado: formEst.nombre_estado, secuencia: formEst.secuencia }
+        )
+      } else {
+        await procesosDatosBasicosApi.crearEstado({
+          codigo_categoria_proceso: formEst.codigo_categoria_proceso,
+          codigo_tipo_proceso: formEst.codigo_tipo_proceso,
+          codigo_estado_proceso: formEst.codigo_estado_proceso || undefined,
+          nombre_estado: formEst.nombre_estado,
+          secuencia: formEst.secuencia,
+        })
+      }
+      if (cerrar) setModalEst(false)
+      cargarEstados()
+    } catch (e) {
+      setErrorEst(e instanceof Error ? e.message : 'Error al guardar')
+    } finally { setGuardandoEst(false) }
+  }
+
+  const toggleActivoEst = async (e: EstadoProceso) => {
+    try {
+      await procesosDatosBasicosApi.actualizarEstado(
+        e.codigo_categoria_proceso, e.codigo_tipo_proceso, e.codigo_estado_proceso,
+        { activo: !e.activo }
+      )
+      cargarEstados()
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Error al cambiar estado')
+    }
+  }
+
+  // ── Eliminar ───────────────────────────────────────────────────────────────
+  const ejecutarEliminacion = async () => {
+    if (!itemAEliminar) return
+    setEliminando(true)
+    try {
+      if (itemAEliminar.tipo === 'categoria') {
+        await procesosDatosBasicosApi.eliminarCategoria((itemAEliminar.item as CategoriaProceso).codigo_categoria_proceso)
+        cargarCategorias()
+      } else if (itemAEliminar.tipo === 'tipo') {
+        const t = itemAEliminar.item as TipoProceso
+        await procesosDatosBasicosApi.eliminarTipo(t.codigo_categoria_proceso, t.codigo_tipo_proceso)
+        cargarTipos()
+      } else {
+        const e = itemAEliminar.item as EstadoProceso
+        await procesosDatosBasicosApi.eliminarEstado(e.codigo_categoria_proceso, e.codigo_tipo_proceso, e.codigo_estado_proceso)
+        cargarEstados()
+      }
+      setItemAEliminar(null)
+    } catch (e) {
+      alert(e instanceof Error ? e.message : 'Error al eliminar')
+      setItemAEliminar(null)
+    } finally { setEliminando(false) }
+  }
+
+  // ── Filtros ────────────────────────────────────────────────────────────────
+  const tiposFiltrados = filtroCatTipo
+    ? tipos.filter((t) => t.codigo_categoria_proceso === filtroCatTipo)
+    : tipos
+
+  const estadosFiltrados = estados.filter((e) => {
+    if (filtroCatEst && e.codigo_categoria_proceso !== filtroCatEst) return false
+    if (filtroTipoEst && e.codigo_tipo_proceso !== filtroTipoEst) return false
+    return true
+  })
+
+  const tiposParaEstados = filtroTipoEst || !filtroCatEst
+    ? tipos.filter((t) => !filtroCatEst || t.codigo_categoria_proceso === filtroCatEst)
+    : tipos
+
+  const selectCls = 'rounded-lg border border-borde bg-surface px-3 py-1.5 text-sm text-texto focus:outline-none focus:ring-2 focus:ring-primario'
+  const tabCls = (id: TabId) =>
+    `px-5 py-2.5 text-sm font-medium transition-colors ${tabActiva === id ? 'border-b-2 border-primario text-primario' : 'text-texto-muted hover:text-texto'}`
+
+  return (
+    <div className="relative flex flex-col gap-6 max-w-6xl">
+      <BotonChat className="top-0 right-0" />
+
+      <div className="pr-28">
+        <h2 className="page-heading">Datos Básicos de Procesos</h2>
+        <p className="text-sm text-texto-muted mt-1">Configuración de categorías, tipos y estados de proceso</p>
+      </div>
+
+      {/* Pestañas */}
+      <div className="flex border-b border-borde gap-1">
+        <button onClick={() => setTabActiva('categorias')} className={tabCls('categorias')}>Categorías de Proceso</button>
+        <button onClick={() => setTabActiva('tipos')} className={tabCls('tipos')}>Tipos de Proceso</button>
+        <button onClick={() => setTabActiva('estados')} className={tabCls('estados')}>Estados de Proceso</button>
+      </div>
+
+      {/* ── Tab: Categorías ── */}
+      {tabActiva === 'categorias' && (
+        <>
+          <div className="flex items-center justify-between">
+            <p className="text-sm text-texto-muted">Categorías globales de proceso</p>
+            <div className="flex gap-2">
+              <Boton variante="contorno" tamano="sm"
+                onClick={() => exportarExcel(categorias as unknown as Record<string, unknown>[], [
+                  { titulo: 'Código', campo: 'codigo_categoria_proceso' },
+                  { titulo: 'Nombre', campo: 'nombre_categoria_proceso' },
+                  { titulo: 'Descripción', campo: 'descripcion_categoria_proceso' },
+                  { titulo: 'Alias', campo: 'alias' },
+                ], 'categorias_proceso')}
+                disabled={categorias.length === 0}>
+                <Download size={15} /> Excel
+              </Boton>
+              <Boton variante="primario" onClick={abrirNuevaCat}><Plus size={16} /> Nueva categoría</Boton>
+            </div>
+          </div>
+
+          {cargandoCat ? (
+            <div className="flex flex-col gap-2">{[1, 2, 3].map((i) => <div key={i} className="h-12 bg-surface rounded-lg border border-borde animate-pulse" />)}</div>
+          ) : (
+            <Tabla>
+              <TablaCabecera><tr>
+                <TablaTh>Código</TablaTh><TablaTh>Nombre</TablaTh><TablaTh>Descripción</TablaTh><TablaTh>Alias</TablaTh>
+                <TablaTh className="text-right">Acciones</TablaTh>
+              </tr></TablaCabecera>
+              <TablaCuerpo>
+                {categorias.length === 0 ? (
+                  <TablaFila><TablaTd className="text-center text-texto-muted py-8" colSpan={5 as never}>No hay categorías registradas</TablaTd></TablaFila>
+                ) : categorias.map((c) => (
+                  <TablaFila key={c.codigo_categoria_proceso}>
+                    <TablaTd><code className="text-xs bg-surface border border-borde rounded px-1.5 py-0.5">{c.codigo_categoria_proceso}</code></TablaTd>
+                    <TablaTd className="font-medium">{c.nombre_categoria_proceso}</TablaTd>
+                    <TablaTd className="text-texto-muted text-sm">{c.descripcion_categoria_proceso || <span className="text-texto-light">—</span>}</TablaTd>
+                    <TablaTd className="text-texto-muted text-sm">{c.alias || <span className="text-texto-light">—</span>}</TablaTd>
+                    <TablaTd>
+                      <div className="flex items-center justify-end gap-1">
+                        <button onClick={() => abrirEditarCat(c)} className="p-1.5 rounded-lg hover:bg-primario-muy-claro text-texto-muted hover:text-primario transition-colors" title="Editar"><Pencil size={14} /></button>
+                        <button onClick={() => setItemAEliminar({ tipo: 'categoria', item: c })} className="p-1.5 rounded-lg hover:bg-red-50 text-texto-muted hover:text-error transition-colors" title="Eliminar"><Trash2 size={14} /></button>
+                      </div>
+                    </TablaTd>
+                  </TablaFila>
+                ))}
+              </TablaCuerpo>
+            </Tabla>
+          )}
+        </>
+      )}
+
+      {/* ── Tab: Tipos ── */}
+      {tabActiva === 'tipos' && (
+        <>
+          <div className="flex items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <p className="text-sm text-texto-muted">Filtrar por categoría:</p>
+              <select value={filtroCatTipo} onChange={(e) => setFiltroCatTipo(e.target.value)} className={selectCls}>
+                <option value="">Todas</option>
+                {categorias.map((c) => <option key={c.codigo_categoria_proceso} value={c.codigo_categoria_proceso}>{c.nombre_categoria_proceso}</option>)}
+              </select>
+            </div>
+            <div className="flex gap-2">
+              <Boton variante="contorno" tamano="sm"
+                onClick={() => exportarExcel(tiposFiltrados as unknown as Record<string, unknown>[], [
+                  { titulo: 'Categoría', campo: 'codigo_categoria_proceso' },
+                  { titulo: 'Código tipo', campo: 'codigo_tipo_proceso' },
+                  { titulo: 'Nombre', campo: 'nombre_tipo_proceso' },
+                  { titulo: 'Descripción', campo: 'descripcion_tipo_proceso' },
+                ], 'tipos_proceso')}
+                disabled={tiposFiltrados.length === 0}>
+                <Download size={15} /> Excel
+              </Boton>
+              <Boton variante="primario" onClick={abrirNuevoTipo}><Plus size={16} /> Nuevo tipo</Boton>
+            </div>
+          </div>
+
+          {cargandoTipo ? (
+            <div className="flex flex-col gap-2">{[1, 2, 3].map((i) => <div key={i} className="h-12 bg-surface rounded-lg border border-borde animate-pulse" />)}</div>
+          ) : (
+            <Tabla>
+              <TablaCabecera><tr>
+                <TablaTh>Categoría</TablaTh><TablaTh>Código tipo</TablaTh><TablaTh>Nombre</TablaTh><TablaTh>Descripción</TablaTh>
+                <TablaTh className="text-right">Acciones</TablaTh>
+              </tr></TablaCabecera>
+              <TablaCuerpo>
+                {tiposFiltrados.length === 0 ? (
+                  <TablaFila><TablaTd className="text-center text-texto-muted py-8" colSpan={5 as never}>No hay tipos registrados</TablaTd></TablaFila>
+                ) : tiposFiltrados.map((t) => (
+                  <TablaFila key={`${t.codigo_categoria_proceso}/${t.codigo_tipo_proceso}`}>
+                    <TablaTd><code className="text-xs bg-surface border border-borde rounded px-1.5 py-0.5">{t.codigo_categoria_proceso}</code></TablaTd>
+                    <TablaTd><code className="text-xs bg-surface border border-borde rounded px-1.5 py-0.5">{t.codigo_tipo_proceso}</code></TablaTd>
+                    <TablaTd className="font-medium">{t.nombre_tipo_proceso}</TablaTd>
+                    <TablaTd className="text-texto-muted text-sm">{t.descripcion_tipo_proceso || <span className="text-texto-light">—</span>}</TablaTd>
+                    <TablaTd>
+                      <div className="flex items-center justify-end gap-1">
+                        <button onClick={() => abrirEditarTipo(t)} className="p-1.5 rounded-lg hover:bg-primario-muy-claro text-texto-muted hover:text-primario transition-colors" title="Editar"><Pencil size={14} /></button>
+                        <button onClick={() => setItemAEliminar({ tipo: 'tipo', item: t })} className="p-1.5 rounded-lg hover:bg-red-50 text-texto-muted hover:text-error transition-colors" title="Eliminar"><Trash2 size={14} /></button>
+                      </div>
+                    </TablaTd>
+                  </TablaFila>
+                ))}
+              </TablaCuerpo>
+            </Tabla>
+          )}
+        </>
+      )}
+
+      {/* ── Tab: Estados ── */}
+      {tabActiva === 'estados' && (
+        <>
+          <div className="flex items-center justify-between gap-4">
+            <div className="flex items-center gap-3 flex-wrap">
+              <p className="text-sm text-texto-muted">Filtrar:</p>
+              <select value={filtroCatEst} onChange={(e) => { setFiltroCatEst(e.target.value); setFiltroTipoEst('') }} className={selectCls}>
+                <option value="">Todas las categorías</option>
+                {categorias.map((c) => <option key={c.codigo_categoria_proceso} value={c.codigo_categoria_proceso}>{c.nombre_categoria_proceso}</option>)}
+              </select>
+              <select value={filtroTipoEst} onChange={(e) => setFiltroTipoEst(e.target.value)} className={selectCls}>
+                <option value="">Todos los tipos</option>
+                {tiposParaEstados.map((t) => (
+                  <option key={`${t.codigo_categoria_proceso}/${t.codigo_tipo_proceso}`} value={t.codigo_tipo_proceso}>
+                    {t.nombre_tipo_proceso}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="flex gap-2">
+              <Boton variante="contorno" tamano="sm"
+                onClick={() => exportarExcel(estadosFiltrados as unknown as Record<string, unknown>[], [
+                  { titulo: 'Categoría', campo: 'codigo_categoria_proceso' },
+                  { titulo: 'Tipo', campo: 'codigo_tipo_proceso' },
+                  { titulo: 'Código estado', campo: 'codigo_estado_proceso' },
+                  { titulo: 'Nombre', campo: 'nombre_estado' },
+                  { titulo: 'Secuencia', campo: 'secuencia' },
+                  { titulo: 'Activo', campo: 'activo', formato: (v) => v ? 'Sí' : 'No' },
+                ], 'estados_proceso')}
+                disabled={estadosFiltrados.length === 0}>
+                <Download size={15} /> Excel
+              </Boton>
+              <Boton variante="primario" onClick={abrirNuevoEst}><Plus size={16} /> Nuevo estado</Boton>
+            </div>
+          </div>
+
+          {cargandoEst ? (
+            <div className="flex flex-col gap-2">{[1, 2, 3].map((i) => <div key={i} className="h-12 bg-surface rounded-lg border border-borde animate-pulse" />)}</div>
+          ) : (
+            <Tabla>
+              <TablaCabecera><tr>
+                <TablaTh>Categoría</TablaTh><TablaTh>Tipo</TablaTh><TablaTh>Código</TablaTh>
+                <TablaTh>Nombre</TablaTh><TablaTh>Sec.</TablaTh><TablaTh>Estado</TablaTh>
+                <TablaTh className="text-right">Acciones</TablaTh>
+              </tr></TablaCabecera>
+              <TablaCuerpo>
+                {estadosFiltrados.length === 0 ? (
+                  <TablaFila><TablaTd className="text-center text-texto-muted py-8" colSpan={7 as never}>No hay estados registrados</TablaTd></TablaFila>
+                ) : estadosFiltrados.map((e) => (
+                  <TablaFila key={`${e.codigo_categoria_proceso}/${e.codigo_tipo_proceso}/${e.codigo_estado_proceso}`}>
+                    <TablaTd><code className="text-xs bg-surface border border-borde rounded px-1.5 py-0.5">{e.codigo_categoria_proceso}</code></TablaTd>
+                    <TablaTd><code className="text-xs bg-surface border border-borde rounded px-1.5 py-0.5">{e.codigo_tipo_proceso}</code></TablaTd>
+                    <TablaTd><code className="text-xs bg-surface border border-borde rounded px-1.5 py-0.5">{e.codigo_estado_proceso}</code></TablaTd>
+                    <TablaTd className="font-medium">{e.nombre_estado}</TablaTd>
+                    <TablaTd className="text-texto-muted text-sm text-center">{e.secuencia}</TablaTd>
+                    <TablaTd>
+                      <button onClick={() => toggleActivoEst(e)} title="Cambiar estado">
+                        <Insignia variante={e.activo ? 'exito' : 'error'}>{e.activo ? 'Activo' : 'Inactivo'}</Insignia>
+                      </button>
+                    </TablaTd>
+                    <TablaTd>
+                      <div className="flex items-center justify-end gap-1">
+                        <button onClick={() => abrirEditarEst(e)} className="p-1.5 rounded-lg hover:bg-primario-muy-claro text-texto-muted hover:text-primario transition-colors" title="Editar"><Pencil size={14} /></button>
+                        <button onClick={() => setItemAEliminar({ tipo: 'estado', item: e })} className="p-1.5 rounded-lg hover:bg-red-50 text-texto-muted hover:text-error transition-colors" title="Eliminar"><Trash2 size={14} /></button>
+                      </div>
+                    </TablaTd>
+                  </TablaFila>
+                ))}
+              </TablaCuerpo>
+            </Tabla>
+          )}
+        </>
+      )}
+
+      {/* Modal Categoría */}
+      <Modal abierto={modalCat} alCerrar={() => setModalCat(false)} titulo={catEditando ? 'Editar categoría' : 'Nueva categoría de proceso'}>
+        <div className="flex flex-col gap-4">
+          {!catEditando && (
+            <Input etiqueta="Código (dejar vacío para autogenerar)" value={formCat.codigo_categoria_proceso}
+              onChange={(e) => setFormCat({ ...formCat, codigo_categoria_proceso: e.target.value })}
+              placeholder="GESTION_PREDIOS" />
+          )}
+          <Input etiqueta="Nombre *" value={formCat.nombre_categoria_proceso}
+            onChange={(e) => setFormCat({ ...formCat, nombre_categoria_proceso: e.target.value })}
+            placeholder="Gestión de Predios" />
+          <Input etiqueta="Descripción" value={formCat.descripcion_categoria_proceso}
+            onChange={(e) => setFormCat({ ...formCat, descripcion_categoria_proceso: e.target.value })}
+            placeholder="Descripción opcional" />
+          <Input etiqueta="Alias" value={formCat.alias}
+            onChange={(e) => setFormCat({ ...formCat, alias: e.target.value })}
+            placeholder="Alias breve" />
+          {errorCat && <div className="bg-red-50 border border-red-200 rounded-lg px-4 py-3"><p className="text-sm text-error">{errorCat}</p></div>}
+          <div className="flex gap-3 justify-end pt-2">
+            <Boton variante="secundario" onClick={() => setModalCat(false)}>Salir</Boton>
+            <Boton variante="secundario" onClick={() => guardarCategoria(true)} cargando={guardandoCat}>Grabar y Salir</Boton>
+            <Boton variante="primario" onClick={() => guardarCategoria(false)} cargando={guardandoCat}>{catEditando ? 'Grabar' : 'Crear'}</Boton>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Modal Tipo */}
+      <Modal abierto={modalTipo} alCerrar={() => setModalTipo(false)} titulo={tipoEditando ? 'Editar tipo' : 'Nuevo tipo de proceso'}>
+        <div className="flex flex-col gap-4">
+          <div className="flex flex-col gap-1.5">
+            <label className="text-sm font-medium text-texto">Categoría *</label>
+            <select value={formTipo.codigo_categoria_proceso}
+              onChange={(e) => setFormTipo({ ...formTipo, codigo_categoria_proceso: e.target.value })}
+              disabled={!!tipoEditando}
+              className="w-full rounded-lg border border-borde bg-surface px-3 py-2 text-sm text-texto focus:outline-none focus:ring-2 focus:ring-primario disabled:opacity-60">
+              <option value="">Seleccionar categoría...</option>
+              {categorias.map((c) => <option key={c.codigo_categoria_proceso} value={c.codigo_categoria_proceso}>{c.nombre_categoria_proceso}</option>)}
+            </select>
+          </div>
+          {!tipoEditando && (
+            <Input etiqueta="Código tipo (dejar vacío para autogenerar)" value={formTipo.codigo_tipo_proceso}
+              onChange={(e) => setFormTipo({ ...formTipo, codigo_tipo_proceso: e.target.value })}
+              placeholder="LICENCIA_OBRAS" />
+          )}
+          <Input etiqueta="Nombre *" value={formTipo.nombre_tipo_proceso}
+            onChange={(e) => setFormTipo({ ...formTipo, nombre_tipo_proceso: e.target.value })}
+            placeholder="Licencia de Obras" />
+          <Input etiqueta="Descripción" value={formTipo.descripcion_tipo_proceso}
+            onChange={(e) => setFormTipo({ ...formTipo, descripcion_tipo_proceso: e.target.value })}
+            placeholder="Descripción opcional" />
+          <Input etiqueta="Alias" value={formTipo.alias}
+            onChange={(e) => setFormTipo({ ...formTipo, alias: e.target.value })}
+            placeholder="Alias breve" />
+          {errorTipo && <div className="bg-red-50 border border-red-200 rounded-lg px-4 py-3"><p className="text-sm text-error">{errorTipo}</p></div>}
+          <div className="flex gap-3 justify-end pt-2">
+            <Boton variante="secundario" onClick={() => setModalTipo(false)}>Salir</Boton>
+            <Boton variante="secundario" onClick={() => guardarTipo(true)} cargando={guardandoTipo}>Grabar y Salir</Boton>
+            <Boton variante="primario" onClick={() => guardarTipo(false)} cargando={guardandoTipo}>{tipoEditando ? 'Grabar' : 'Crear'}</Boton>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Modal Estado */}
+      <Modal abierto={modalEst} alCerrar={() => setModalEst(false)} titulo={estEditando ? 'Editar estado' : 'Nuevo estado de proceso'}>
+        <div className="flex flex-col gap-4">
+          <div className="flex flex-col gap-1.5">
+            <label className="text-sm font-medium text-texto">Categoría *</label>
+            <select value={formEst.codigo_categoria_proceso}
+              onChange={(e) => setFormEst({ ...formEst, codigo_categoria_proceso: e.target.value, codigo_tipo_proceso: '' })}
+              disabled={!!estEditando}
+              className="w-full rounded-lg border border-borde bg-surface px-3 py-2 text-sm text-texto focus:outline-none focus:ring-2 focus:ring-primario disabled:opacity-60">
+              <option value="">Seleccionar categoría...</option>
+              {categorias.map((c) => <option key={c.codigo_categoria_proceso} value={c.codigo_categoria_proceso}>{c.nombre_categoria_proceso}</option>)}
+            </select>
+          </div>
+          <div className="flex flex-col gap-1.5">
+            <label className="text-sm font-medium text-texto">Tipo *</label>
+            <select value={formEst.codigo_tipo_proceso}
+              onChange={(e) => setFormEst({ ...formEst, codigo_tipo_proceso: e.target.value })}
+              disabled={!!estEditando}
+              className="w-full rounded-lg border border-borde bg-surface px-3 py-2 text-sm text-texto focus:outline-none focus:ring-2 focus:ring-primario disabled:opacity-60">
+              <option value="">Seleccionar tipo...</option>
+              {tipos.filter((t) => t.codigo_categoria_proceso === formEst.codigo_categoria_proceso)
+                .map((t) => <option key={t.codigo_tipo_proceso} value={t.codigo_tipo_proceso}>{t.nombre_tipo_proceso}</option>)}
+            </select>
+          </div>
+          {!estEditando && (
+            <Input etiqueta="Código estado (dejar vacío para autogenerar)" value={formEst.codigo_estado_proceso}
+              onChange={(e) => setFormEst({ ...formEst, codigo_estado_proceso: e.target.value })}
+              placeholder="INGRESADO" />
+          )}
+          <Input etiqueta="Nombre *" value={formEst.nombre_estado}
+            onChange={(e) => setFormEst({ ...formEst, nombre_estado: e.target.value })}
+            placeholder="Ingresado" />
+          <div className="flex flex-col gap-1.5">
+            <label className="text-sm font-medium text-texto">Secuencia</label>
+            <input type="number" min={0} value={formEst.secuencia}
+              onChange={(e) => setFormEst({ ...formEst, secuencia: parseInt(e.target.value) || 0 })}
+              className="w-full rounded-lg border border-borde bg-surface px-3 py-2 text-sm text-texto focus:outline-none focus:ring-2 focus:ring-primario" />
+          </div>
+          {errorEst && <div className="bg-red-50 border border-red-200 rounded-lg px-4 py-3"><p className="text-sm text-error">{errorEst}</p></div>}
+          <div className="flex gap-3 justify-end pt-2">
+            <Boton variante="secundario" onClick={() => setModalEst(false)}>Salir</Boton>
+            <Boton variante="secundario" onClick={() => guardarEstado(true)} cargando={guardandoEst}>Grabar y Salir</Boton>
+            <Boton variante="primario" onClick={() => guardarEstado(false)} cargando={guardandoEst}>{estEditando ? 'Grabar' : 'Crear'}</Boton>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Modal Confirmar Eliminación */}
+      <ModalConfirmar
+        abierto={!!itemAEliminar}
+        alCerrar={() => setItemAEliminar(null)}
+        alConfirmar={ejecutarEliminacion}
+        titulo={
+          itemAEliminar?.tipo === 'categoria' ? 'Eliminar categoría' :
+          itemAEliminar?.tipo === 'tipo' ? 'Eliminar tipo' : 'Eliminar estado'
+        }
+        mensaje={
+          itemAEliminar?.tipo === 'categoria'
+            ? `¿Eliminar la categoría "${(itemAEliminar.item as CategoriaProceso).nombre_categoria_proceso}"? Solo posible si no tiene tipos asociados.`
+            : itemAEliminar?.tipo === 'tipo'
+            ? `¿Eliminar el tipo "${(itemAEliminar.item as TipoProceso).nombre_tipo_proceso}"? Solo posible si no tiene estados asociados.`
+            : `¿Eliminar el estado "${(itemAEliminar?.item as EstadoProceso)?.nombre_estado}"?`
+        }
+        textoConfirmar="Eliminar"
+        cargando={eliminando}
+      />
+    </div>
+  )
+}
