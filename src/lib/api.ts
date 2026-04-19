@@ -36,6 +36,8 @@ import type {
   EstadoTarea,
   CategoriaTarea,
   TipoCanonicoTarea,
+  CategoriaProceso,
+  TipoProceso,
   Conversacion,
   ParticipanteConversacion,
   Tarea,
@@ -967,6 +969,28 @@ export const tareasDatosBasicosApi = {
     api.put(`/tareas-datos-basicos/estados-tarea/${categoria}/${tipo}/${codigo}`, datos).then((r) => r.data),
   eliminarEstadoTar: (categoria: string, tipo: string, codigo: string) =>
     api.delete(`/tareas-datos-basicos/estados-tarea/${categoria}/${tipo}/${codigo}`),
+}
+
+// ─── Procesos: Datos Básicos ──────────────────────────────────────────────────
+
+export const procesosDatosBasicosApi = {
+  listarCategorias: () =>
+    api.get<CategoriaProceso[]>('/procesos-datos-basicos/categorias').then((r) => r.data),
+  crearCategoria: (datos: Partial<CategoriaProceso>) =>
+    api.post('/procesos-datos-basicos/categorias', datos).then((r) => r.data),
+  actualizarCategoria: (codigo: string, datos: Partial<CategoriaProceso>) =>
+    api.put(`/procesos-datos-basicos/categorias/${codigo}`, datos).then((r) => r.data),
+  eliminarCategoria: (codigo: string) =>
+    api.delete(`/procesos-datos-basicos/categorias/${codigo}`),
+
+  listarTipos: (categoria?: string) =>
+    api.get<TipoProceso[]>('/procesos-datos-basicos/tipos', { params: categoria ? { categoria } : {} }).then((r) => r.data),
+  crearTipo: (datos: Partial<TipoProceso>) =>
+    api.post('/procesos-datos-basicos/tipos', datos).then((r) => r.data),
+  actualizarTipo: (categoria: string, codigo: string, datos: Partial<TipoProceso>) =>
+    api.put(`/procesos-datos-basicos/tipos/${categoria}/${codigo}`, datos).then((r) => r.data),
+  eliminarTipo: (categoria: string, codigo: string) =>
+    api.delete(`/procesos-datos-basicos/tipos/${categoria}/${codigo}`),
 }
 
 // ─── Tareas: Operación ───────────────────────────────────────────────────────

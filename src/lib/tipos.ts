@@ -351,6 +351,25 @@ export interface EstadoConversacion {
   activo: boolean
 }
 
+export interface CategoriaProceso {
+  codigo_categoria_proceso: string
+  nombre_categoria_proceso: string
+  descripcion_categoria_proceso?: string
+  alias?: string
+  prompt?: string
+  system_prompt?: string
+}
+
+export interface TipoProceso {
+  codigo_categoria_proceso: string
+  codigo_tipo_proceso: string
+  nombre_tipo_proceso: string
+  descripcion_tipo_proceso?: string
+  alias?: string
+  prompt?: string
+  system_prompt?: string
+}
+
 export interface EstadoTarea {
   codigo_grupo: string
   codigo_tipo_tarea: string
