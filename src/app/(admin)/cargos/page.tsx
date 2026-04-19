@@ -8,6 +8,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { Modal } from '@/components/ui/modal'
 import { ModalConfirmar } from '@/components/ui/modal-confirmar'
 import { Boton } from '@/components/ui/boton'
+import { PieBotonesModal } from '@/components/ui/pie-botones-modal'
 import { BarraHerramientas } from '@/components/ui/barra-herramientas'
 import {
   TablaCrud,
@@ -316,35 +317,25 @@ export default function PaginaCargos() {
                 </div>
               )}
 
-              <div className="flex gap-3 justify-end pt-2">
-                <Boton variante="secundario" onClick={crud.cerrarModal}>{tc('salir')}</Boton>
-                <Boton
-                  variante="secundario"
-                  onClick={() => {
-                    if (!crud.form.nombre_cargo.trim()) {
-                      crud.setError(t('errorNombreObligatorio'))
-                      return
-                    }
-                    crud.guardar(undefined, undefined, { cerrar: true })
-                  }}
-                  cargando={crud.guardando}
-                >
-                  {tc('grabarYSalir')}
-                </Boton>
-                <Boton
-                  variante="primario"
-                  onClick={() => {
-                    if (!crud.form.nombre_cargo.trim()) {
-                      crud.setError(t('errorNombreObligatorio'))
-                      return
-                    }
-                    crud.guardar(undefined, undefined, { cerrar: false })
-                  }}
-                  cargando={crud.guardando}
-                >
-                  {crud.editando ? tc('grabar') : tc('crear')}
-                </Boton>
-              </div>
+              <PieBotonesModal
+                editando={!!crud.editando}
+                onGuardar={() => {
+                  if (!crud.form.nombre_cargo.trim()) {
+                    crud.setError(t('errorNombreObligatorio'))
+                    return
+                  }
+                  crud.guardar(undefined, undefined, { cerrar: false })
+                }}
+                onGuardarYSalir={() => {
+                  if (!crud.form.nombre_cargo.trim()) {
+                    crud.setError(t('errorNombreObligatorio'))
+                    return
+                  }
+                  crud.guardar(undefined, undefined, { cerrar: true })
+                }}
+                onCerrar={crud.cerrarModal}
+                cargando={crud.guardando}
+              />
             </div>
           )}
 
@@ -360,11 +351,13 @@ export default function PaginaCargos() {
                 value={crud.form.prompt}
                 onChange={(e) => crud.updateForm('prompt', e.target.value)}
               />
-              <div className="flex gap-3 justify-end pt-2">
-                <Boton variante="secundario" onClick={crud.cerrarModal}>{tc('salir')}</Boton>
-                <Boton variante="secundario" onClick={() => crud.guardar(undefined, undefined, { cerrar: true })} cargando={crud.guardando}>{tc('grabarYSalir')}</Boton>
-                <Boton variante="primario" onClick={() => crud.guardar(undefined, undefined, { cerrar: false })} cargando={crud.guardando}>{tc('grabar')}</Boton>
-              </div>
+              <PieBotonesModal
+                editando={!!crud.editando}
+                onGuardar={() => crud.guardar(undefined, undefined, { cerrar: false })}
+                onGuardarYSalir={() => crud.guardar(undefined, undefined, { cerrar: true })}
+                onCerrar={crud.cerrarModal}
+                cargando={crud.guardando}
+              />
             </div>
           )}
 
@@ -380,11 +373,13 @@ export default function PaginaCargos() {
                 value={crud.form.system_prompt}
                 onChange={(e) => crud.updateForm('system_prompt', e.target.value)}
               />
-              <div className="flex gap-3 justify-end pt-2">
-                <Boton variante="secundario" onClick={crud.cerrarModal}>{tc('salir')}</Boton>
-                <Boton variante="secundario" onClick={() => crud.guardar(undefined, undefined, { cerrar: true })} cargando={crud.guardando}>{tc('grabarYSalir')}</Boton>
-                <Boton variante="primario" onClick={() => crud.guardar(undefined, undefined, { cerrar: false })} cargando={crud.guardando}>{tc('grabar')}</Boton>
-              </div>
+              <PieBotonesModal
+                editando={!!crud.editando}
+                onGuardar={() => crud.guardar(undefined, undefined, { cerrar: false })}
+                onGuardarYSalir={() => crud.guardar(undefined, undefined, { cerrar: true })}
+                onCerrar={crud.cerrarModal}
+                cargando={crud.guardando}
+              />
             </div>
           )}
 

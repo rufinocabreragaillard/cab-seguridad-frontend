@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from 'react'
 import { Plus, Pencil, Building2, MapPin, Download, Search } from 'lucide-react'
 import { Boton } from '@/components/ui/boton'
+import { PieBotonesModal } from '@/components/ui/pie-botones-modal'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Modal } from '@/components/ui/modal'
@@ -351,11 +352,13 @@ export default function PaginaEntidades() {
                 <Input etiqueta="Código" value={formEntidad.codigo_entidad} disabled readOnly />
               )}
               {error && <div className="bg-red-50 border border-red-200 rounded-lg px-4 py-3"><p className="text-sm text-error">{error}</p></div>}
-              <div className="flex gap-3 justify-end pt-2">
-                <Boton variante="primario" onClick={() => guardarEntidad(false)} cargando={guardando}>{tc('grabar')}</Boton>
-                <Boton variante="secundario" onClick={() => guardarEntidad(true)} cargando={guardando}>{tc('grabarYSalir')}</Boton>
-                <Boton variante="contorno" onClick={() => setModalEntidad(false)}>{tc('salir')}</Boton>
-              </div>
+              <PieBotonesModal
+                editando={!!entidadEditando}
+                onGuardar={() => guardarEntidad(false)}
+                onGuardarYSalir={() => guardarEntidad(true)}
+                onCerrar={() => setModalEntidad(false)}
+                cargando={guardando}
+              />
             </>
           )}
 
@@ -372,11 +375,13 @@ export default function PaginaEntidades() {
                 onChange={(e) => setFormEntidad({ ...formEntidad, prompt: e.target.value })}
               />
               {error && <div className="bg-red-50 border border-red-200 rounded-lg px-4 py-3"><p className="text-sm text-error">{error}</p></div>}
-              <div className="flex gap-3 justify-end pt-2">
-                <Boton variante="primario" onClick={() => guardarEntidad(false)} cargando={guardando}>{tc('grabar')}</Boton>
-                <Boton variante="secundario" onClick={() => guardarEntidad(true)} cargando={guardando}>{tc('grabarYSalir')}</Boton>
-                <Boton variante="contorno" onClick={() => setModalEntidad(false)}>{tc('salir')}</Boton>
-              </div>
+              <PieBotonesModal
+                editando={!!entidadEditando}
+                onGuardar={() => guardarEntidad(false)}
+                onGuardarYSalir={() => guardarEntidad(true)}
+                onCerrar={() => setModalEntidad(false)}
+                cargando={guardando}
+              />
             </div>
           )}
 
@@ -393,11 +398,13 @@ export default function PaginaEntidades() {
                 onChange={(e) => setFormEntidad({ ...formEntidad, system_prompt: e.target.value })}
               />
               {error && <div className="bg-red-50 border border-red-200 rounded-lg px-4 py-3"><p className="text-sm text-error">{error}</p></div>}
-              <div className="flex gap-3 justify-end pt-2">
-                <Boton variante="primario" onClick={() => guardarEntidad(false)} cargando={guardando}>{tc('grabar')}</Boton>
-                <Boton variante="secundario" onClick={() => guardarEntidad(true)} cargando={guardando}>{tc('grabarYSalir')}</Boton>
-                <Boton variante="contorno" onClick={() => setModalEntidad(false)}>{tc('salir')}</Boton>
-              </div>
+              <PieBotonesModal
+                editando={!!entidadEditando}
+                onGuardar={() => guardarEntidad(false)}
+                onGuardarYSalir={() => guardarEntidad(true)}
+                onCerrar={() => setModalEntidad(false)}
+                cargando={guardando}
+              />
             </div>
           )}
         </div>

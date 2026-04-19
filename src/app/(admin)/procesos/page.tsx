@@ -5,7 +5,7 @@ import { useTranslations } from 'next-intl'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Modal } from '@/components/ui/modal'
-import { Boton } from '@/components/ui/boton'
+import { PieBotonesModal } from '@/components/ui/pie-botones-modal'
 import { BarraHerramientas } from '@/components/ui/barra-herramientas'
 import {
   TablaCrud,
@@ -262,37 +262,25 @@ export default function PaginaProcesos() {
             </div>
           )}
 
-          <div className="flex gap-3 justify-end pt-2">
-            <Boton variante="contorno" onClick={crud.cerrarModal}>
-              {tc('salir')}
-            </Boton>
-            <Boton
-              variante="secundario"
-              onClick={() => {
-                if (!crud.form.nombre_proceso.trim()) {
-                  crud.setError(t('errorNombreObligatorio'))
-                  return
-                }
-                crud.guardar(undefined, undefined, { cerrar: true })
-              }}
-              cargando={crud.guardando}
-            >
-              {tc('grabarYSalir')}
-            </Boton>
-            <Boton
-              variante="primario"
-              onClick={() => {
-                if (!crud.form.nombre_proceso.trim()) {
-                  crud.setError(t('errorNombreObligatorio'))
-                  return
-                }
-                crud.guardar(undefined, undefined, { cerrar: false })
-              }}
-              cargando={crud.guardando}
-            >
-              {tc('grabar')}
-            </Boton>
-          </div>
+          <PieBotonesModal
+            editando={!!crud.editando}
+            onGuardar={() => {
+              if (!crud.form.nombre_proceso.trim()) {
+                crud.setError(t('errorNombreObligatorio'))
+                return
+              }
+              crud.guardar(undefined, undefined, { cerrar: false })
+            }}
+            onGuardarYSalir={() => {
+              if (!crud.form.nombre_proceso.trim()) {
+                crud.setError(t('errorNombreObligatorio'))
+                return
+              }
+              crud.guardar(undefined, undefined, { cerrar: true })
+            }}
+            onCerrar={crud.cerrarModal}
+            cargando={crud.guardando}
+          />
         </div>
       </Modal>
     </div>

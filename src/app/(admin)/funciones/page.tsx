@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback } from 'react'
 import { Plus, Pencil, Trash2, X, Download, Search, RefreshCw, Languages } from 'lucide-react'
 import { SortableDndContext, SortableRow, SortableListItem } from '@/components/ui/sortable'
 import { Boton } from '@/components/ui/boton'
+import { PieBotonesModal } from '@/components/ui/pie-botones-modal'
 import { BotonChat } from '@/components/ui/boton-chat'
 import { Input } from '@/components/ui/input'
 import { Insignia } from '@/components/ui/insignia'
@@ -373,7 +374,13 @@ export default function PaginaFunciones() {
               )}
             </div>
             {errorFuncion && <div className="bg-red-50 border border-red-200 rounded-lg px-4 py-3"><p className="text-sm text-error">{errorFuncion}</p></div>}
-            <div className="flex gap-3 justify-end pt-2"><Boton variante="primario" onClick={() => guardarFuncion(false)} cargando={guardandoFuncion}>{funcionEditando ? tc('grabar') : t('crearFuncion')}</Boton><Boton variante="secundario" onClick={() => guardarFuncion(true)} cargando={guardandoFuncion}>{tc('grabarYSalir')}</Boton><Boton variante="contorno" onClick={() => setModalFuncion(false)}>{tc('salir')}</Boton></div>
+            <PieBotonesModal
+              editando={!!funcionEditando}
+              onGuardar={() => guardarFuncion(false)}
+              onGuardarYSalir={() => guardarFuncion(true)}
+              onCerrar={() => setModalFuncion(false)}
+              cargando={guardandoFuncion}
+            />
           </>)}
 
           {/* Tab Otros Datos */}
@@ -436,7 +443,13 @@ export default function PaginaFunciones() {
               </div>
             </div>
             {errorFuncion && <div className="bg-red-50 border border-red-200 rounded-lg px-4 py-3"><p className="text-sm text-error">{errorFuncion}</p></div>}
-            <div className="flex gap-3 justify-end pt-2"><Boton variante="primario" onClick={() => guardarFuncion(false)} cargando={guardandoFuncion}>{funcionEditando ? tc('grabar') : t('crearFuncion')}</Boton><Boton variante="secundario" onClick={() => guardarFuncion(true)} cargando={guardandoFuncion}>{tc('grabarYSalir')}</Boton><Boton variante="contorno" onClick={() => setModalFuncion(false)}>{tc('salir')}</Boton></div>
+            <PieBotonesModal
+              editando={!!funcionEditando}
+              onGuardar={() => guardarFuncion(false)}
+              onGuardarYSalir={() => guardarFuncion(true)}
+              onCerrar={() => setModalFuncion(false)}
+              cargando={guardandoFuncion}
+            />
           </>)}
 
           {/* Tab Aplicaciones */}
@@ -498,7 +511,13 @@ export default function PaginaFunciones() {
                 onChange={(e) => setFormFuncion({ ...formFuncion, prompt: e.target.value })}
               />
               {errorFuncion && <div className="bg-red-50 border border-red-200 rounded-lg px-4 py-3"><p className="text-sm text-error">{errorFuncion}</p></div>}
-              <div className="flex gap-3 justify-end pt-2"><Boton variante="primario" onClick={() => guardarFuncion(false)} cargando={guardandoFuncion}>{tc('grabar')}</Boton><Boton variante="secundario" onClick={() => guardarFuncion(true)} cargando={guardandoFuncion}>{tc('grabarYSalir')}</Boton><Boton variante="contorno" onClick={() => setModalFuncion(false)}>{tc('salir')}</Boton></div>
+              <PieBotonesModal
+                editando={!!funcionEditando}
+                onGuardar={() => guardarFuncion(false)}
+                onGuardarYSalir={() => guardarFuncion(true)}
+                onCerrar={() => setModalFuncion(false)}
+                cargando={guardandoFuncion}
+              />
             </div>
           )}
 
@@ -513,7 +532,13 @@ export default function PaginaFunciones() {
                 onChange={(e) => setFormFuncion({ ...formFuncion, system_prompt: e.target.value })}
               />
               {errorFuncion && <div className="bg-red-50 border border-red-200 rounded-lg px-4 py-3"><p className="text-sm text-error">{errorFuncion}</p></div>}
-              <div className="flex gap-3 justify-end pt-2"><Boton variante="primario" onClick={() => guardarFuncion(false)} cargando={guardandoFuncion}>{tc('grabar')}</Boton><Boton variante="secundario" onClick={() => guardarFuncion(true)} cargando={guardandoFuncion}>{tc('grabarYSalir')}</Boton><Boton variante="contorno" onClick={() => setModalFuncion(false)}>{tc('salir')}</Boton></div>
+              <PieBotonesModal
+                editando={!!funcionEditando}
+                onGuardar={() => guardarFuncion(false)}
+                onGuardarYSalir={() => guardarFuncion(true)}
+                onCerrar={() => setModalFuncion(false)}
+                cargando={guardandoFuncion}
+              />
             </div>
           )}
 
@@ -540,7 +565,13 @@ export default function PaginaFunciones() {
                 <p className="text-xs text-texto-muted">Sin modelo seleccionado. El chat fallará si esta función se usa para conversaciones LLM.</p>
               )}
               {errorFuncion && <div className="bg-red-50 border border-red-200 rounded-lg px-4 py-3"><p className="text-sm text-error">{errorFuncion}</p></div>}
-              <div className="flex gap-3 justify-end pt-2"><Boton variante="primario" onClick={() => guardarFuncion(false)} cargando={guardandoFuncion}>{tc('grabar')}</Boton><Boton variante="secundario" onClick={() => guardarFuncion(true)} cargando={guardandoFuncion}>{tc('grabarYSalir')}</Boton><Boton variante="contorno" onClick={() => setModalFuncion(false)}>{tc('salir')}</Boton></div>
+              <PieBotonesModal
+                editando={!!funcionEditando}
+                onGuardar={() => guardarFuncion(false)}
+                onGuardarYSalir={() => guardarFuncion(true)}
+                onCerrar={() => setModalFuncion(false)}
+                cargando={guardandoFuncion}
+              />
             </div>
           )}
         </div>
