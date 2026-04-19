@@ -1125,27 +1125,5 @@
     "errorNombreObligatorio": "Name is required",
     "eliminarTitulo": "Delete category",
     "eliminarConfirm": "Delete category \"{nombre}\"? This action cannot be undone."
-  },
-  "tiposCanonicosTarea": {
-    "titulo": "Canonical Task Types",
-    "subtitulo": "Global catalog of canonical types to normalize task types",
-    "buscarPlaceholder": "Search canonical type...",
-    "nuevoTipo": "New canonical type",
-    "sinTipos": "No canonical types found",
-    "colCodigo": "Code",
-    "colNombre": "Name",
-    "colDescripcion": "Description",
-    "colEstado": "Status",
-    "editarTitulo": "Edit canonical type: {nombre}",
-    "nuevoTitulo": "New canonical task type",
-    "etiquetaCodigo": "Code",
-    "placeholderCodigo": "Unique code (optional, auto-generated)",
-    "etiquetaNombre": "Name *",
-    "placeholderNombre": "Canonical type name",
-    "etiquetaDescripcion": "Description",
-    "placeholderDescripcion": "Optional canonical type description",
-    "errorNombreObligatorio": "Name is required",
-    "eliminarTitulo": "Delete canonical type",
-    "eliminarConfirm": "Delete canonical type \"{nombre}\"? This action cannot be undone."
   }
 }
