@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useTranslations } from 'next-intl'
-import { Copy, Pencil, Plus, Save, Search, Trash2, X } from 'lucide-react'
+import { Copy, Languages, Pencil, Plus, RefreshCw, Save, Search, Trash2, X } from 'lucide-react'
 import { SortableDndContext, SortableRow, SortableListItem } from '@/components/ui/sortable'
 import { Boton } from '@/components/ui/boton'
 import { Tarjeta, TarjetaCabecera, TarjetaTitulo, TarjetaContenido } from '@/components/ui/tarjeta'
@@ -186,6 +186,22 @@ function TabRolesGlobales() {
       f.nombre.toLowerCase().includes(busquedaFuncion.toLowerCase()) ||
       f.codigo_funcion.toLowerCase().includes(busquedaFuncion.toLowerCase()),
   )
+
+  const [traduciendo, setTraduciendo] = useState<number | null>(null)
+
+  const traducirRol = async (r: Rol) => {
+    if (traduciendo) return
+    setTraduciendo(r.id_rol)
+    try {
+      const res = await rolesApi.traducir(r.id_rol)
+      const idiomas = res.idiomas?.join(', ') || '—'
+      alert(`Traducción generada para "${r.nombre}".\nIdiomas: ${idiomas}\nRegistros: ${res.generadas}`)
+    } catch (e) {
+      alert(`Error traduciendo: ${e instanceof Error ? e.message : 'desconocido'}`)
+    } finally {
+      setTraduciendo(null)
+    }
+  }
 
   const reordenarRoles = async (nuevos: typeof roles) => {
     setRoles(nuevos)
@@ -375,6 +391,14 @@ function TabRolesGlobales() {
                     <td className="py-2 pr-4 font-mono text-xs">{r.codigo_rol}</td>
                     <td className="py-2 pr-4">
                       <div className="flex gap-1 justify-end">
+                        <button
+                          onClick={() => traducirRol(r)}
+                          disabled={traduciendo === r.id_rol}
+                          className="p-1.5 rounded hover:bg-primario-muy-claro text-texto-muted hover:text-primario transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                          title="Traducir rol a todos los idiomas"
+                        >
+                          {traduciendo === r.id_rol ? <RefreshCw size={16} className="animate-spin" /> : <Languages size={16} />}
+                        </button>
                         <button
                           onClick={() => abrirEditar(r)}
                           className="p-1.5 rounded hover:bg-surface-hover text-texto-muted hover:text-primario"
