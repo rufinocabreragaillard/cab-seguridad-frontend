@@ -321,7 +321,6 @@ function TabRolesGlobales() {
                 <tr className="border-b border-borde text-left text-xs uppercase text-texto-muted">
                   <th className="w-8" />
                   <th className="py-2 pr-4">Tipo</th>
-                  <th className="py-2 pr-4">App origen</th>
                   <th className="py-2 pr-4">Nombre</th>
                   <th className="py-2 pr-4">Alias</th>
                   <th className="py-2 pr-4">Descripción</th>
@@ -343,7 +342,6 @@ function TabRolesGlobales() {
                     <td className="py-2 pr-4">
                       <Insignia variante={varianteTipo(r.tipo)}>{etiquetaTipo(r.tipo)}</Insignia>
                     </td>
-                    <td className="py-2 pr-4 text-xs text-texto-muted">{nombreAppOrigen}</td>
                     <td className="py-2 pr-4">{r.nombre}</td>
                     <td className="py-2 pr-4 text-texto-muted">{r.alias_de_rol || '—'}</td>
                     <td className="py-2 pr-4 text-texto-muted truncate max-w-xs">{r.descripcion || '—'}</td>
