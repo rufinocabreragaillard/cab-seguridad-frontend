@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState, useCallback } from 'react'
-import { Plus, Pencil, Trash2, X, Download, Search, RefreshCw } from 'lucide-react'
+import { Plus, Pencil, Trash2, X, Download, Search, RefreshCw, Languages } from 'lucide-react'
 import { SortableDndContext, SortableRow, SortableListItem } from '@/components/ui/sortable'
 import { Boton } from '@/components/ui/boton'
 import { BotonChat } from '@/components/ui/boton-chat'
@@ -81,6 +81,9 @@ export default function PaginaFunciones() {
   // Confirmar eliminacion
   const [confirmacion, setConfirmacion] = useState<Funcion | null>(null)
   const [eliminando, setEliminando] = useState(false)
+
+  // Traducción individual
+  const [traduciendo, setTraduciendo] = useState<string | null>(null)
 
   const selectClass = 'w-full rounded-lg border border-borde bg-surface px-3 py-2 text-sm text-texto focus:outline-none focus:ring-2 focus:ring-primario'
 
@@ -219,6 +222,26 @@ export default function PaginaFunciones() {
     finally { setEliminando(false) }
   }
 
+  // ── Traducir fila individual ───────────────────────────────────────────────
+  const traducirFuncion = async (f: Funcion) => {
+    if (traduciendo) return
+    if (f.traducir === false) {
+      alert(`La función "${f.nombre}" tiene desactivada la traducción (campo "traducir" = false).`)
+      return
+    }
+    setTraduciendo(f.codigo_funcion)
+    try {
+      const res = await funcionesApi.traducir(f.codigo_funcion)
+      const idiomas = res.idiomas?.join(', ') || '—'
+      const campos = res.campos_traducidos?.join(', ') || '—'
+      alert(`Traducción generada para "${f.nombre}".\nIdiomas: ${idiomas}\nCampos: ${campos}\nRegistros guardados: ${res.generadas}`)
+    } catch (e) {
+      alert(`Error traduciendo: ${e instanceof Error ? e.message : 'desconocido'}`)
+    } finally {
+      setTraduciendo(null)
+    }
+  }
+
   // ── Mover función (reordenar) ──────────────────────────────────────────────
   const reordenarFunciones = async (nuevas: Funcion[]) => {
     setFunciones(nuevas)
@@ -266,7 +289,7 @@ export default function PaginaFunciones() {
 
       <SortableDndContext items={funcionesFiltradas as unknown as Record<string, unknown>[]} getId={(f) => (f as Funcion).codigo_funcion} onReorder={(n) => reordenarFunciones(n as unknown as Funcion[])} disabled={!!busqueda}>
         <Tabla>
-          <TablaCabecera><tr><TablaTh className="w-8" /><TablaTh className="w-28">{t('colTipo')}</TablaTh><TablaTh className="w-32">{t('colAlias')}</TablaTh><TablaTh>{t('colNombre')}</TablaTh><TablaTh className="w-40">{t('colUrl')}</TablaTh><TablaTh className="w-40">{t('colCodigo')}</TablaTh><TablaTh className="text-right w-20">{tc('acciones')}</TablaTh></tr></TablaCabecera>
+          <TablaCabecera><tr><TablaTh className="w-8" /><TablaTh className="w-28">{t('colTipo')}</TablaTh><TablaTh className="w-32">{t('colAlias')}</TablaTh><TablaTh>{t('colNombre')}</TablaTh><TablaTh className="w-40">{t('colUrl')}</TablaTh><TablaTh className="w-40">{t('colCodigo')}</TablaTh><TablaTh className="text-right w-28">{tc('acciones')}</TablaTh></tr></TablaCabecera>
           <TablaCuerpo>
             {cargando ? (<TablaFila><TablaTd className="py-8 text-center text-texto-muted" colSpan={7 as never}>Cargando...</TablaTd></TablaFila>
             ) : funcionesFiltradas.length === 0 ? (<TablaFila><TablaTd className="py-8 text-center text-texto-muted" colSpan={7 as never}>No se encontraron funciones</TablaTd></TablaFila>
@@ -279,6 +302,14 @@ export default function PaginaFunciones() {
                 <TablaTd><code className="text-xs bg-fondo px-2 py-1 rounded font-mono">{f.codigo_funcion}</code></TablaTd>
                 <TablaTd>
                   <div className="flex items-center justify-end gap-1">
+                    <button
+                      onClick={() => traducirFuncion(f)}
+                      disabled={traduciendo === f.codigo_funcion || f.traducir === false}
+                      className="p-1.5 rounded-lg hover:bg-primario-muy-claro text-texto-muted hover:text-primario transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                      title={f.traducir === false ? 'Traducción desactivada para esta función' : 'Traducir esta función a todos los idiomas destino'}
+                    >
+                      {traduciendo === f.codigo_funcion ? <RefreshCw size={14} className="animate-spin" /> : <Languages size={14} />}
+                    </button>
                     <button onClick={() => abrirEditarFuncion(f)} className="p-1.5 rounded-lg hover:bg-primario-muy-claro text-texto-muted hover:text-primario transition-colors" title="Editar"><Pencil size={14} /></button>
                     <button onClick={() => setConfirmacion(f)} className="p-1.5 rounded-lg hover:bg-red-50 text-texto-muted hover:text-error transition-colors" title="Eliminar"><Trash2 size={14} /></button>
                   </div>

@@ -315,6 +315,10 @@ export const funcionesApi = {
     api.delete(`/funciones/${id}/aplicaciones/${codigoApp}`),
   reordenar: (orden: { codigo_funcion: string; orden: number }[]) =>
     api.put('/funciones/reordenar', orden),
+  traducir: (codigo: string) =>
+    api.post<{ generadas: number; idiomas: string[]; campos_traducidos?: string[]; mensaje?: string }>(
+      '/traducciones/registro', { tabla: 'funciones', pk: codigo }
+    ).then((r) => r.data),
 }
 
 // ─── Aplicaciones ─────────────────────────────────────────────────────────────
