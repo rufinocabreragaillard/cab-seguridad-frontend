@@ -297,7 +297,7 @@ function TabRolesGlobales() {
                   <th className="py-2 pr-4 w-24 text-right">Acciones</th>
                 </tr>
               </thead>
-              <SortableDndContext items={roles.map(r => String(r.id_rol))} onReorder={(ids) => reordenarRoles(ids.map(id => roles.find(r => String(r.id_rol) === id)!))}>
+              <SortableDndContext items={roles as unknown as Record<string, unknown>[]} getId={(r) => String((r as Rol).id_rol)} onReorder={(newItems) => reordenarRoles(newItems as unknown as Rol[])}>
               <tbody>
                 {roles.map((r) => {
                   const nombreAppOrigen = r.codigo_aplicacion_origen
@@ -537,7 +537,7 @@ function TabRolesGlobales() {
                     Este rol no tiene funciones asignadas.
                   </div>
                 ) : (
-                  <SortableDndContext items={funcionesRol.map(fa => fa.codigo_funcion)} onReorder={(ids) => reordenarFuncionesRol(ids.map(id => funcionesRol.find(fa => fa.codigo_funcion === id)!))}>
+                  <SortableDndContext items={funcionesRol as unknown as Record<string, unknown>[]} getId={(f) => (f as FuncionAsignada).codigo_funcion} onReorder={(newItems) => reordenarFuncionesRol(newItems as unknown as FuncionAsignada[])}>
                   <ul className="divide-y divide-borde">
                     {funcionesRol.map((fa) => (
                       <SortableListItem
